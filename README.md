@@ -31,15 +31,15 @@ src/algo/              58 algorithm implementations across 15 topics
   bit_manipulation/(3) single_number, counting_bits, reverse_bits
   sorting/         (2) quickselect, merge_sort_inversions
   patterns/        (1) sliding_window (max_sum_subarray)
-  strings/             (empty — scaffold only)
-  recursion/           (empty — scaffold only)
+  strings/         (5) valid_palindrome, longest_palindromic_substring, valid_anagram, ...
+  recursion/       (5) pow_x_n, generate_parentheses, flatten_nested_list, ...
 
 src/concepts/      6 instructional modules (t-strings, typing, hypothesis, FFT, Flask, Pydantic)
 src/practice/      Interview simulation exercises
   code_reading/    3 exercises for "Practical Problem Solving" round
   decomposition/   3 exercises for "Problem Decomposition" round
 
-tests/             529 tests mirroring src/ structure (pytest + hypothesis)
+tests/             606 tests mirroring src/ structure (pytest + hypothesis)
 reference-sheets/  9 printable reference sheets (01-08 + Python 3.14 patterns)
 ```
 
