@@ -1,0 +1,144 @@
+[project]
+name = "dsa-study-packet"
+version = "0.1.0"
+description = "Algorithm study for senior full stack interview at target employer"
+requires-python = ">=3.14"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "jsullivan2" }]
+
+dependencies = []
+
+[project.optional-dependencies]
+concepts = [
+  "numpy>=2.0",
+  "scipy>=1.14",
+  "flask>=3.0",
+  "pydantic>=2.9",
+]
+dev = [
+  "pytest>=8.3",
+  "pytest-benchmark>=5.1",
+  "pytest-xdist>=3.5",
+  "hypothesis>=6.115",
+  "mypy>=1.13",
+  "ruff>=0.8",
+]
+
+[tool.uv]
+dev-dependencies = [
+  "pytest>=8.3",
+  "pytest-benchmark>=5.1",
+  "pytest-xdist>=3.5",
+  "hypothesis>=6.115",
+  "mypy>=1.13",
+  "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/algo", "src/concepts"]
+
+# --------------------------------------------------------------------------- #
+# pytest
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+  "--strict-markers",
+  "--strict-config",
+  "-ra",
+  "-q",
+]
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "bench: benchmark tests",
+]
+filterwarnings = ["error"]
+
+# --------------------------------------------------------------------------- #
+# hypothesis
+# --------------------------------------------------------------------------- #
+[tool.hypothesis]
+settings = { max_examples = 200, deadline = 1000 }
+
+# --------------------------------------------------------------------------- #
+# mypy — strict mode
+# --------------------------------------------------------------------------- #
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unreachable = true
+explicit_package_bases = true
+enable_error_code = [
+  "ignore-without-code",
+  "redundant-cast",
+  "truthy-bool",
+  "truthy-iterable",
+]
+mypy_path = "src"
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = "practice.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*", "scipy", "scipy.*", "flask", "flask.*", "pydantic", "pydantic.*"]
+ignore_missing_imports = true
+
+# mypy does not yet support PEP 750 t-strings (tracked upstream).
+[[tool.mypy.overrides]]
+module = ["concepts.t_strings", "tests.concepts.test_t_strings"]
+ignore_errors = true
+
+# hypothesis.stateful stubs are incomplete (run_state_machine_as_test is untyped).
+[[tool.mypy.overrides]]
+module = "tests.concepts.test_hypothesis_patterns"
+disallow_untyped_calls = false
+
+# --------------------------------------------------------------------------- #
+# ruff
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "F",     # pyflakes
+  "E",     # pycodestyle errors
+  "W",     # pycodestyle warnings
+  "I",     # isort
+  "N",     # pep8-naming
+  "UP",    # pyupgrade
+  "B",     # flake8-bugbear
+  "A",     # flake8-builtins
+  "C4",    # flake8-comprehensions
+  "SIM",   # flake8-simplify
+  "TCH",   # flake8-type-checking
+  "RUF",   # ruff-specific rules
+  "PT",    # flake8-pytest-style
+  "RET",   # flake8-return
+  "ARG",   # flake8-unused-arguments
+  "ERA",   # eradicate (commented-out code)
+]
+ignore = [
+  "E501",   # line length handled by formatter
+  "TC003",  # PEP 649 lazy annotations — not worth the verbosity in a study project
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ARG001", "ARG002"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["algo", "concepts"]
+
+[tool.ruff.format]
+docstring-code-format = true
