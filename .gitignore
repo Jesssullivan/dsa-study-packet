@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+
+# mypy
+.mypy_cache/
+
+# pytest
+.pytest_cache/
+.hypothesis/
+
+# Ruff
+.ruff_cache/
+
+# Benchmarks
+.benchmarks/
+
+# direnv
+.direnv/
+
+# Nix
+result
+result-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
