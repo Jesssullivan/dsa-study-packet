@@ -167,6 +167,68 @@ pdf-booklet:
     echo "Done → study-guide-booklet.pdf"
 
 # ──────────────────────────────────────────────
+# Documentation (MkDocs)
+# ──────────────────────────────────────────────
+
+# Serve docs locally with live reload
+docs:
+    uv run --extra docs mkdocs serve
+
+# Build docs site
+docs-build:
+    uv run --extra docs mkdocs build
+
+# Deploy docs to GitHub Pages
+docs-deploy:
+    uv run --extra docs mkdocs gh-deploy --force
+
+# ──────────────────────────────────────────────
+# Challenge mode
+# ──────────────────────────────────────────────
+
+# Start a challenge: strips solution, shows failing tests
+challenge topic problem:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="src/algo/{{ topic }}/{{ problem }}.py"
+    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
+    if [ ! -f "$src" ]; then echo "Error: $src not found"; exit 1; fi
+    mkdir -p ".challenges/{{ topic }}"
+    if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
+    uv run python scripts/strip_solution.py "$src"
+    echo "Challenge: $src — implement the functions to make tests pass"
+    echo "  Run:  just study {{ topic }}"
+    echo "  Peek: just solution {{ topic }} {{ problem }}"
+    uv run pytest "tests/{{ topic }}/test_{{ problem }}.py" -v 2>&1 | tail -20 || true
+
+# Restore the full solution
+solution topic problem:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
+    if [ ! -f "$backup" ]; then echo "No backup for {{ topic }}/{{ problem }}"; exit 1; fi
+    cp "$backup" "src/algo/{{ topic }}/{{ problem }}.py"
+    echo "Solution restored: src/algo/{{ topic }}/{{ problem }}.py"
+
+# Mark a challenge as completed
+challenge-done topic problem:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    progress=".challenges/progress.md"
+    touch "$progress"
+    entry="- [x] {{ topic }}/{{ problem }} — $(date +%Y-%m-%d)"
+    if ! grep -q "{{ topic }}/{{ problem }}" "$progress" 2>/dev/null; then
+        echo "$entry" >> "$progress"
+    else
+        sed -i '' "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress"
+    fi
+    echo "Marked complete: {{ topic }}/{{ problem }}"
+
+# Show challenge progress
+challenge-progress:
+    @cat .challenges/progress.md 2>/dev/null || echo "No challenges completed yet."
+
+# ──────────────────────────────────────────────
 # Release / changelog
 # ──────────────────────────────────────────────
 

@@ -39,3 +39,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# MkDocs
+site/
+
+# Challenge mode
+.challenges/
