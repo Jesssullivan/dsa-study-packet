@@ -42,11 +42,11 @@ just pdf-booklet       # printable reference booklet
 ## Project Structure
 
 ```
-src/algo/          58 algorithm implementations across 13 topics
+src/algo/          58 implementations across 15 topic dirs (strings/ and recursion/ are empty scaffolds)
 src/concepts/      6 instructional modules (t-strings, typing, hypothesis, FFT, Flask, Pydantic)
-src/practice/      Code reading + decomposition exercises
-tests/             Mirrors src/ — 529 tests total
-reference-sheets/  8 printable reference sheets (01-07 + Python 3.14 patterns)
+src/practice/      3 code reading + 3 decomposition exercises
+tests/             529 tests mirroring src/ (pytest + hypothesis)
+reference-sheets/  9 reference sheets (01-08 + Python 3.14 patterns)
 ```
 
 ## Key Files
