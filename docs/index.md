@@ -4,7 +4,7 @@ title: target employer Algorithm Study Guide
 
 # target employer Algorithm Study Guide
 
-A comprehensive algorithm interview preparation kit targeting a **Senior Full-Stack (Backend) Engineer** role at [target employer](https://www.example.com/).
+Senior full-stack (backend) interview prep for [target employer](https://www.example.com/).
 
 <div class="grid cards" markdown>
 
@@ -12,11 +12,11 @@ A comprehensive algorithm interview preparation kit targeting a **Senior Full-St
 
     ---
 
-    13 topics from arrays to graphs, all typed Python 3.14+
+    15 topics, typed Python 3.14+, 42 core daily drills
 
     [:octicons-arrow-right-24: Algorithms](algorithms/index.md)
 
--   :material-test-tube:{ .lg .middle } **600+ Tests**
+-   :material-test-tube:{ .lg .middle } **628 Tests**
 
     ---
 
@@ -36,7 +36,7 @@ A comprehensive algorithm interview preparation kit targeting a **Senior Full-St
 
     ---
 
-    Printable cheat sheets from stdlib to interview-day logistics
+    Printable cheat sheets from stdlib to system design
 
     [:octicons-arrow-right-24: Reference](reference/index.md)
 
@@ -47,61 +47,40 @@ A comprehensive algorithm interview preparation kit targeting a **Senior Full-St
 ## Quick Start
 
 ```bash
-direnv allow          # activate .envrc
-just test             # run all 600+ tests
+direnv allow          # nix devshell + python 3.14 venv
+just test             # 628 tests
 just lint             # ruff + mypy strict
-just practice graphs  # run tests for a specific topic
-just study dp         # watch mode for a topic
+just docs             # this site, locally
 ```
 
 ---
 
-## target employer Interview Overview
+## Interview Rounds
 
-target employer's interview process consists of **5 rounds**:
-
-| Round | Format | Duration | Focus |
-|-------|--------|----------|-------|
-| 1. Pre-screen | Phone call | 30 min | Recruiter screen, background |
-| 2. HackerRank | Online coding | ~90 min | Algorithm problems (medium) |
-| 3. Deep-dive coding | Video call | 2 x 60 min | Backend coding, frontend coding |
-| 4. Technical onsite | In-person | 4-6 hrs | System design, practical problem solving |
-| 5. CEO chat | In-person | 30 min | Culture fit, company direction |
-
-**Difficulty:** LeetCode medium to medium-hard. FAANG-style interviews with emphasis on graph algorithms, system design, and code reading.
-
-**Key domains:** Flight route optimization, geospatial indexing, real-time streaming, 4D trajectory prediction.
+| Round | Format | Focus |
+|-------|--------|-------|
+| Algorithms | 75 min, video | Medium to medium-hard. Graphs, DP, strings. |
+| Practical Problem Solving | Video | Read their code, identify issues, suggest improvements. |
+| Problem Decomposition | Video | Break ambiguous problems into sub-problems. |
+| System Design | 60 min (L7+) | Real-time pipelines, geospatial, streaming. |
+| CEO Chat | In-person | Culture, motivation, trajectory. |
 
 ---
 
-## What's Inside
+## Daily Drill
 
-### Algorithms (`src/algo/`)
+42 core algorithms, all of them, every single day. Challenge mode strips solutions — you re-implement from the signature and docstring alone.
 
-69 implementations across 13 topics: arrays, two pointers, sliding window, stacks/queues, searching, linked lists, trees, graphs, dynamic programming, heaps, backtracking, greedy, bit manipulation, sorting, recursion, and strings.
+```bash
+just challenge graphs dijkstra    # strip solution
+just study graphs                 # watch mode — tests re-run on save
+just solution graphs dijkstra     # peek if stuck
+just challenge-done graphs dijkstra
+just challenge-progress
+```
 
-### Concept Modules (`src/concepts/`)
+The [decision tree](guide/when-to-use-what.md) maps problem signals to patterns.
+The [cross-reference guide](reference/08-cross-reference-guide.md) maps patterns to implementations.
 
-6 production-level Python modules covering PEP 750 t-strings, advanced typing, property-based testing, signal processing, Flask 3.x, and Pydantic v2.
-
-### Practice Exercises (`src/practice/`)
-
-Code reading exercises (caching service, flight data pipeline, rate limiter) and problem decomposition exercises (flight route optimizer, vehicle tracking, geospatial pipeline).
-
-### Reference Sheets (`reference-sheets/`)
-
-9 printable reference sheets covering Python stdlib, data structures, algorithm templates, Python 3.14 patterns, Big-O complexity, common patterns, system design, interview day guide, and the master cross-reference.
-
----
-
-## Start Studying
-
-The fastest path from zero to interview-ready:
-
-1. **Skim** the [decision tree](guide/when-to-use-what.md) to internalize problem-type branching
-2. **Work through** the [7-day challenge plan](challenges/index.md) covering all 69 problems
-3. **Review** the [reference sheets](reference/index.md) for quick recall
-4. **Practice** [code reading](practice/index.md) for the practical problem solving round
-
-[:material-rocket-launch: Start the 7-Day Challenge](challenges/index.md){ .md-button .md-button--primary }
-[:material-map: When to Use What](guide/when-to-use-what.md){ .md-button }
+[:material-rocket-launch: Start Drilling](challenges/index.md){ .md-button .md-button--primary }
+[:material-map: Decision Tree](guide/when-to-use-what.md){ .md-button }

@@ -1,238 +1,200 @@
 ---
-title: Daily Challenges
+title: Daily Drill
 ---
 
-# Daily Challenges
+# Daily Drill
 
-Self-test your algorithm knowledge with the challenge system. Each challenge strips the implementation from a problem file, leaving only the function signature and docstring for you to re-implement from memory.
+42 core algorithms. All of them. Every day. Seven days.
+
+Challenge mode strips each implementation, leaving the signature and docstring.
+You re-implement from scratch and run tests to verify.
 
 ---
 
 ## How It Works
 
 ```bash
-# Start a challenge -- opens the problem with implementation stripped
-just challenge graphs dijkstra
-
-# Check your solution against the test suite
-just solution graphs dijkstra
-
-# Run tests for a specific topic
-just practice graphs
-
-# Watch mode -- re-runs tests on save
-just study dp
+just challenge <topic> <problem>  # strip solution → you implement
+just study <topic>                # watch mode — re-runs tests on save
+just solution <topic> <problem>   # restore if stuck
+just challenge-done <t> <p>       # mark complete
+just challenge-progress           # see stats
 ```
 
-1. `just challenge <topic> <problem>` strips the implementation and opens the file
-2. You re-implement the function from the signature and docstring alone
-3. `just solution <topic> <problem>` restores the original and runs tests
-4. Compare your solution against the reference implementation
-
 ---
 
-## Daily Routine
+## The 42
 
-Follow this routine each study day:
+Copy-paste the full block to strip all 42 at once, or work topic by topic.
 
-1. **Warm-up** (10 min) -- 1 easy problem to build confidence
-2. **Core** (60 min) -- 2 medium problems, 30 min each
-3. **Review** (20 min) -- re-implement yesterday's core problems from memory
-4. **Reference** (15 min) -- study one section of a [reference sheet](../reference/index.md)
-
----
-
-## 7-Day Challenge Plan
-
-Cover all 69 implementations in one week. Each day focuses on related topics.
-
-### Day 1: Arrays + Two Pointers + Sliding Window (9 problems)
-
-**Arrays** (4 problems):
+### Arrays (3)
 
 ```bash
 just challenge arrays two_sum
 just challenge arrays group_anagrams
 just challenge arrays product_except_self
-just challenge arrays top_k_frequent
 ```
 
-**Two Pointers** (3 problems):
+### Two Pointers (2)
 
 ```bash
 just challenge two_pointers three_sum
-just challenge two_pointers container_with_most_water
 just challenge two_pointers trapping_rain_water
 ```
 
-**Sliding Window** (2 problems):
+### Sliding Window (2)
 
 ```bash
-just challenge sliding_window longest_substring_no_repeat
 just challenge sliding_window min_window_substring
+just challenge sliding_window longest_substring_no_repeat
 ```
 
----
-
-### Day 2: Stacks/Queues + Searching + Strings (11 problems)
-
-**Stacks & Queues** (3 problems):
+### Stacks & Queues (2)
 
 ```bash
 just challenge stacks_queues valid_parentheses
-just challenge stacks_queues min_stack
 just challenge stacks_queues daily_temperatures
 ```
 
-**Searching** (3 problems):
+### Searching (2)
 
 ```bash
 just challenge searching binary_search
 just challenge searching search_rotated_array
-just challenge searching find_minimum_rotated
 ```
 
-**Strings** (5 problems):
-
-```bash
-just challenge strings longest_palindrome
-just challenge strings valid_anagram
-just challenge strings longest_common_prefix
-just challenge strings string_to_integer
-just challenge strings count_and_say
-```
-
----
-
-### Day 3: Linked Lists + Trees (8 problems)
-
-**Linked Lists** (3 problems):
+### Linked Lists (2)
 
 ```bash
 just challenge linked_lists reverse_linked_list
-just challenge linked_lists merge_two_sorted
 just challenge linked_lists lru_cache
 ```
 
-**Trees** (5 problems):
+### Trees (3)
 
 ```bash
-just challenge trees max_depth
-just challenge trees invert_tree
 just challenge trees validate_bst
 just challenge trees level_order_traversal
-just challenge trees serialize_deserialize
+just challenge trees trie
 ```
 
----
-
-### Day 4: Graphs (13 problems)
+### Graphs (7)
 
 ```bash
 just challenge graphs number_of_islands
-just challenge graphs clone_graph
 just challenge graphs topological_sort
 just challenge graphs course_schedule
 just challenge graphs dijkstra
-just challenge graphs network_delay_time
-just challenge graphs word_ladder
 just challenge graphs a_star_search
 just challenge graphs bellman_ford
 just challenge graphs minimum_spanning_tree
-just challenge graphs network_flow
-just challenge graphs geohash_grid
-just challenge graphs kd_tree
 ```
 
----
-
-### Day 5: Dynamic Programming (8 problems)
+### Dynamic Programming (5)
 
 ```bash
-just challenge dp climbing_stairs
 just challenge dp coin_change
-just challenge dp longest_increasing_subseq
 just challenge dp edit_distance
 just challenge dp knapsack
+just challenge dp longest_increasing_subseq
 just challenge dp longest_common_subseq
-just challenge dp traveling_salesman_dp
-just challenge dp constraint_satisfaction
 ```
 
----
-
-### Day 6: Heaps + Backtracking + Greedy (10 problems)
-
-**Heaps** (3 problems):
+### Heaps (2)
 
 ```bash
 just challenge heaps kth_largest
 just challenge heaps merge_k_sorted_lists
-just challenge heaps task_scheduler
 ```
 
-**Backtracking** (4 problems):
+### Backtracking (3)
 
 ```bash
 just challenge backtracking subsets
-just challenge backtracking permutations
 just challenge backtracking combination_sum
 just challenge backtracking n_queens
 ```
 
-**Greedy** (3 problems):
+### Greedy (2)
 
 ```bash
 just challenge greedy merge_intervals
 just challenge greedy jump_game
-just challenge greedy interval_scheduling
 ```
 
----
+### Strings (2)
 
-### Day 7: Recursion + Bit Manipulation + Sorting + Review (10 problems)
+```bash
+just challenge strings valid_palindrome
+just challenge strings longest_palindromic_substring
+```
 
-**Bit Manipulation** (3 problems):
+### Recursion (2)
+
+```bash
+just challenge recursion generate_parentheses
+just challenge recursion flatten_nested_list
+```
+
+### Bit Manipulation (1)
 
 ```bash
 just challenge bit_manipulation single_number
-just challenge bit_manipulation counting_bits
-just challenge bit_manipulation reverse_bits
 ```
 
-**Sorting** (2 problems):
+### Sorting (1)
 
 ```bash
 just challenge sorting quickselect
-just challenge sorting merge_sort_inversions
-```
-
-**Review** -- redo your 5 weakest problems from Days 1-6 timed (25 min each):
-
-```bash
-# Pick your weakest 5 and time yourself
-just challenge <topic> <problem>
 ```
 
 ---
 
-## Progress Tracking
+## Tracking
 
-After each day, note which problems you solved cleanly vs. needed hints:
+After each pass, mark status:
 
-| Status | Meaning |
-|--------|---------|
-| :white_check_mark: | Solved from memory in under 25 min |
-| :warning: | Solved but needed a hint or took too long |
-| :x: | Could not solve -- review tomorrow |
+| Mark | Meaning |
+|------|---------|
+| :white_check_mark: | From memory, under 25 min |
+| :warning: | Needed a hint or slow |
+| :x: | Could not solve |
 
-Re-attempt all :warning: and :x: problems the next day during the review phase.
+Re-drill all :warning: and :x: problems first the next day.
+
+```bash
+just challenge-progress
+```
+
+---
+
+## Extended Practice
+
+The remaining 27 implementations are in the repo for deeper study:
+
+- **graphs**: clone_graph, word_ladder, network_delay_time, network_flow, geohash_grid, kd_tree
+- **dp**: climbing_stairs, traveling_salesman_dp, constraint_satisfaction
+- **arrays**: top_k_frequent
+- **two_pointers**: container_with_most_water
+- **stacks_queues**: min_stack
+- **searching**: find_minimum_rotated
+- **linked_lists**: merge_two_sorted
+- **trees**: max_depth, invert_tree
+- **heaps**: task_scheduler
+- **backtracking**: permutations
+- **greedy**: interval_scheduling
+- **strings**: valid_anagram, longest_common_prefix, string_to_integer_atoi
+- **recursion**: pow_x_n, letter_combinations_phone, tower_of_hanoi
+- **bit_manipulation**: counting_bits, reverse_bits
+- **sorting**: merge_sort_inversions
+- **patterns**: sliding_window (max_sum_subarray)
+
+Use `just challenge <topic> <problem>` on any of these the same way.
 
 ---
 
 ## Tips
 
-- **Talk out loud** while solving -- practice the interview communication pattern
-- **Write tests first** if you get stuck -- tests clarify the problem
-- **Time yourself** -- 25 min per medium problem is the interview pace
-- Use the [decision tree](../guide/when-to-use-what.md) if you cannot identify the pattern within 3 minutes
+- Talk out loud while solving — practice interview communication
+- 25 min per problem is interview pace
+- If you can't identify the pattern in 3 min, check the [decision tree](../guide/when-to-use-what.md)
