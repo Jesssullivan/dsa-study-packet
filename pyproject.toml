@@ -108,9 +108,9 @@ disallow_untyped_decorators = false
 disallow_subclassing_any = false
 warn_return_any = false
 
-# mypy does not yet support PEP 750 t-strings (tracked upstream).
+# mypy does not yet support PEP 750 t-string literals (t"...") in test files.
 [[tool.mypy.overrides]]
-module = ["concepts.t_strings", "tests.concepts.test_t_strings"]
+module = "tests.concepts.test_t_strings"
 ignore_errors = true
 
 # hypothesis.stateful stubs are incomplete (run_state_machine_as_test is untyped).
