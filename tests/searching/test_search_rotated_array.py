@@ -37,9 +37,7 @@ class TestSearchRotated:
         ),
         pivot=st.integers(min_value=0, max_value=1000),
     )
-    def test_finds_all_elements_in_rotated(
-        self, data: list[int], pivot: int
-    ) -> None:
+    def test_finds_all_elements_in_rotated(self, data: list[int], pivot: int) -> None:
         """Every element should be found regardless of rotation amount."""
         data.sort()
         k = pivot % len(data)

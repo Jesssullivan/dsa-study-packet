@@ -26,7 +26,7 @@ from collections import deque
 def num_islands(grid: list[list[str]]) -> int:
     """Return the number of islands in *grid*.
 
-    >>> num_islands([["1","1","0"],["0","1","0"],["0","0","1"]])
+    >>> num_islands([["1", "1", "0"], ["0", "1", "0"], ["0", "0", "1"]])
     2
     """
     if not grid or not grid[0]:

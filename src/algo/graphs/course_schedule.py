@@ -54,7 +54,7 @@ def can_finish(num_courses: int, prerequisites: list[list[int]]) -> bool:
 def find_order(num_courses: int, prerequisites: list[list[int]]) -> list[int]:
     """Return a valid course order, or [] if impossible.
 
-    >>> find_order(4, [[1,0],[2,0],[3,1],[3,2]])
+    >>> find_order(4, [[1, 0], [2, 0], [3, 1], [3, 2]])
     [0, 1, 2, 3]
     """
     adj: list[list[int]] = [[] for _ in range(num_courses)]

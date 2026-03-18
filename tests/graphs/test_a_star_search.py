@@ -29,7 +29,7 @@ class TestAStar:
         grid = [
             [1, 999, 1],
             [1, 999, 1],
-            [1,   1, 1],
+            [1, 1, 1],
         ]
         path = a_star(grid, (0, 0), (0, 2))
         assert path is not None

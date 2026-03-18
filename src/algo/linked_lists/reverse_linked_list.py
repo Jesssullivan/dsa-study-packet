@@ -18,8 +18,6 @@ Complexity:
     Space: O(1) iterative, O(n) recursive (call stack)
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 
@@ -60,8 +58,6 @@ def reverse_recursive(head: ListNode | None) -> ListNode | None:
 
 
 # --- helpers for testing ---
-
-
 def from_list(vals: list[int]) -> ListNode | None:
     """Build a linked list from a Python list."""
     dummy = ListNode(0)

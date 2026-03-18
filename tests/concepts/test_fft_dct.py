@@ -1,7 +1,5 @@
 """Tests for FFT / DCT signal-processing utilities."""
 
-from __future__ import annotations
-
 import pytest
 
 np = pytest.importorskip("numpy")

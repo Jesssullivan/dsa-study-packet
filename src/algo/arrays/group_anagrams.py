@@ -24,7 +24,10 @@ from collections import defaultdict
 def group_anagrams(strs: list[str]) -> list[list[str]]:
     """Return groups of anagram strings.
 
-    >>> sorted(sorted(g) for g in group_anagrams(["eat","tea","tan","ate","nat","bat"]))
+    >>> sorted(
+    ...     sorted(g)
+    ...     for g in group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
+    ... )
     [['ate', 'eat', 'tea'], ['bat'], ['nat', 'tan']]
     """
     groups: defaultdict[tuple[str, ...], list[str]] = defaultdict(list)

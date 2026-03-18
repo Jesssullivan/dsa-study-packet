@@ -16,8 +16,6 @@ References:
     https://www.youtube.com/watch?v=spUNpyF58BY  (3Blue1Brown Fourier)
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -26,11 +24,10 @@ from scipy.fft import dct, idct
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+
 # ---------------------------------------------------------------------------
 # Signal generation
 # ---------------------------------------------------------------------------
-
-
 def generate_test_signal(
     frequencies: list[float],
     amplitudes: list[float],
@@ -71,8 +68,6 @@ def generate_test_signal(
 # is present.  The result is symmetric for real inputs, so we keep only
 # the positive half.
 # ---------------------------------------------------------------------------
-
-
 def compute_fft(
     signal: NDArray[np.float64],
     sample_rate: float,
@@ -112,8 +107,6 @@ def compute_fft(
 # coefficients we don't want, then inverse-FFT back to time domain.
 # This is conceptually simple but produces sharp cutoffs (Gibbs ringing).
 # ---------------------------------------------------------------------------
-
-
 def filter_signal(
     signal: NDArray[np.float64],
     sample_rate: float,
@@ -158,8 +151,6 @@ def filter_signal(
 # and MP3 audio coding — it concentrates energy into a few low-frequency
 # coefficients, making it easy to discard the rest.
 # ---------------------------------------------------------------------------
-
-
 def compute_dct(signal: NDArray[np.float64]) -> NDArray[np.float64]:
     """Compute the type-II DCT of *signal*.
 
@@ -188,8 +179,6 @@ def compute_idct(coefficients: NDArray[np.float64]) -> NDArray[np.float64]:
 # ---------------------------------------------------------------------------
 # Spectral analysis
 # ---------------------------------------------------------------------------
-
-
 def spectral_analysis(
     signal: NDArray[np.float64],
     sample_rate: float,

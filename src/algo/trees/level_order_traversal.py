@@ -19,8 +19,6 @@ Complexity:
     Space: O(w) where w = max width of the tree (up to n/2)
 """
 
-from __future__ import annotations
-
 from collections import deque
 from dataclasses import dataclass
 

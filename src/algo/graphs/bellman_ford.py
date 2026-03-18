@@ -39,7 +39,7 @@ def bellman_ford(
     Raises :class:`NegativeCycleError` if a negative cycle is
     reachable from *source*.
 
-    >>> bellman_ford(4, [(0,1,1),(1,2,3),(0,2,10),(2,3,2)], 0)
+    >>> bellman_ford(4, [(0, 1, 1), (1, 2, 3), (0, 2, 10), (2, 3, 2)], 0)
     [0, 1, 4, 6]
     """
     dist: list[float] = [INF] * num_nodes

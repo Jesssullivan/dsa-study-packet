@@ -20,8 +20,6 @@ Complexity:
     Space: O(V)
 """
 
-from __future__ import annotations
-
 from collections import deque
 
 
@@ -44,8 +42,10 @@ class GraphNode:
 def clone_graph(node: GraphNode | None) -> GraphNode | None:
     """Return a deep copy of the graph rooted at *node*.
 
-    >>> n1 = GraphNode(1); n2 = GraphNode(2)
-    >>> n1.neighbors = [n2]; n2.neighbors = [n1]
+    >>> n1 = GraphNode(1)
+    ... n2 = GraphNode(2)
+    >>> n1.neighbors = [n2]
+    ... n2.neighbors = [n1]
     >>> c = clone_graph(n1)
     >>> c is not n1 and c is not None and c.val == 1
     True

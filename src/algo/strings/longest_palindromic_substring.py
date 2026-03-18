@@ -43,7 +43,7 @@ def longest_palindromic_substring(s: str) -> str:
             max_len = length
 
     for i in range(len(s)):
-        _expand(i, i)      # odd length
+        _expand(i, i)  # odd length
         _expand(i, i + 1)  # even length
 
     return s[start : start + max_len]

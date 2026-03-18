@@ -34,7 +34,7 @@ def network_delay_time(
 
     Nodes are 1-indexed.  Returns -1 if any node is unreachable.
 
-    >>> network_delay_time([(2,1,1),(2,3,1),(3,4,1)], 4, 2)
+    >>> network_delay_time([(2, 1, 1), (2, 3, 1), (3, 4, 1)], 4, 2)
     2
     """
     adj: list[list[tuple[int, int]]] = [[] for _ in range(n + 1)]

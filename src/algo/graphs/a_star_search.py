@@ -40,7 +40,7 @@ def a_star(
     (row, col) coordinates from start to goal inclusive, or ``None`` if
     no path exists.
 
-    >>> a_star([[1,1,1],[1,1,1],[1,1,1]], (0,0), (2,2))
+    >>> a_star([[1, 1, 1], [1, 1, 1], [1, 1, 1]], (0, 0), (2, 2))
     [(0, 0), (1, 0), (2, 0), (2, 1), (2, 2)]
     """
     if not grid or not grid[0]:

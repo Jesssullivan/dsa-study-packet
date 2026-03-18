@@ -1,7 +1,5 @@
 """Tests for Pydantic v2 validation patterns."""
 
-from __future__ import annotations
-
 from typing import Annotated, Any
 
 import pytest
@@ -19,11 +17,10 @@ from concepts.validation import (  # noqa: E402
     serialize_user,
 )
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
 def _valid_address() -> dict[str, str]:
     return {
         "street": "123 Main St",
@@ -48,8 +45,6 @@ def _valid_user(**overrides: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # User creation
 # ---------------------------------------------------------------------------
-
-
 class TestUserCreation:
     def test_valid_user(self) -> None:
         user = User(**_valid_user())
@@ -72,8 +67,6 @@ class TestUserCreation:
 # ---------------------------------------------------------------------------
 # Nested Address validation
 # ---------------------------------------------------------------------------
-
-
 class TestAddress:
     def test_valid_address(self) -> None:
         addr = Address(**_valid_address())
@@ -91,8 +84,6 @@ class TestAddress:
 # ---------------------------------------------------------------------------
 # Model validator (cross-field)
 # ---------------------------------------------------------------------------
-
-
 class TestModelValidator:
     def test_under_18_admin_rejected(self) -> None:
         with pytest.raises(ValidationError, match="under 18"):
@@ -136,8 +127,6 @@ class TestDiscriminatedUnion:
 # ---------------------------------------------------------------------------
 # Serialization round-trip
 # ---------------------------------------------------------------------------
-
-
 class TestSerialization:
     def test_roundtrip(self) -> None:
         original = User(**_valid_user())

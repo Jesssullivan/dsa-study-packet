@@ -29,7 +29,9 @@ class TestMyPow:
         assert my_pow(-2.0, 3) == pytest.approx(-8.0)
 
     @given(
-        x=st.floats(min_value=0.1, max_value=10.0, allow_nan=False, allow_infinity=False),
+        x=st.floats(
+            min_value=0.1, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         n=st.integers(min_value=0, max_value=20),
     )
     def test_matches_builtin_pow(self, x: float, n: int) -> None:

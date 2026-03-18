@@ -23,8 +23,10 @@ class TestEdmondsKarp:
 
     def test_diamond_with_cross(self) -> None:
         edges = [
-            (0, 1, 10), (0, 2, 10),
-            (1, 3, 10), (2, 3, 10),
+            (0, 1, 10),
+            (0, 2, 10),
+            (1, 3, 10),
+            (2, 3, 10),
             (1, 2, 1),
         ]
         assert edmonds_karp(4, edges, 0, 3) == 20

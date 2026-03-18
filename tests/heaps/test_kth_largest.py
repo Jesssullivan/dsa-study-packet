@@ -32,7 +32,9 @@ class TestFindKthLargest:
             find_kth_largest([1, 2], 3)
 
     @given(
-        data=st.lists(st.integers(min_value=-1000, max_value=1000), min_size=1, max_size=100),
+        data=st.lists(
+            st.integers(min_value=-1000, max_value=1000), min_size=1, max_size=100
+        ),
     )
     def test_matches_sorted(self, data: list[int]) -> None:
         k = 1

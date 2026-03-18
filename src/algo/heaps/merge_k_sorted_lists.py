@@ -19,8 +19,6 @@ Complexity:
     Space: O(k) for the heap
 """
 
-from __future__ import annotations
-
 import heapq
 from dataclasses import dataclass
 
@@ -34,7 +32,11 @@ class ListNode:
 def merge_k_sorted(lists: list[ListNode | None]) -> ListNode | None:
     """Merge k sorted linked lists into one sorted linked list.
 
-    >>> to_list(merge_k_sorted([from_list([1,4,5]), from_list([1,3,4]), from_list([2,6])]))
+    >>> to_list(
+    ...     merge_k_sorted(
+    ...         [from_list([1, 4, 5]), from_list([1, 3, 4]), from_list([2, 6])]
+    ...     )
+    ... )
     [1, 1, 2, 3, 4, 4, 5, 6]
     """
     heap: list[tuple[int, int, ListNode]] = []
@@ -59,8 +61,6 @@ def merge_k_sorted(lists: list[ListNode | None]) -> ListNode | None:
 
 
 # --- helpers for testing ---
-
-
 def from_list(vals: list[int]) -> ListNode | None:
     """Build a linked list from a Python list."""
     dummy = ListNode(0)

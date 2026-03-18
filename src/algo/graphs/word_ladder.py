@@ -31,7 +31,7 @@ def ladder_length(begin_word: str, end_word: str, word_list: list[str]) -> int:
     Returns 0 if no such sequence exists. The count includes both
     begin_word and end_word.
 
-    >>> ladder_length("hit", "cog", ["hot","dot","dog","lot","log","cog"])
+    >>> ladder_length("hit", "cog", ["hot", "dot", "dog", "lot", "log", "cog"])
     5
     """
     word_set = set(word_list)

@@ -9,7 +9,14 @@ from algo.stacks_queues.daily_temperatures import daily_temperatures
 class TestDailyTemperatures:
     def test_basic(self) -> None:
         assert daily_temperatures([73, 74, 75, 71, 69, 72, 76, 73]) == [
-            1, 1, 4, 2, 1, 1, 0, 0,
+            1,
+            1,
+            4,
+            2,
+            1,
+            1,
+            0,
+            0,
         ]
 
     def test_ascending(self) -> None:

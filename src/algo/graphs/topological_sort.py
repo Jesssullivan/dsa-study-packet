@@ -32,7 +32,7 @@ def topological_sort_kahn(
     *edges* is a list of (u, v) meaning u -> v.
     Returns [] if a cycle exists.
 
-    >>> topological_sort_kahn(4, [(0,1),(0,2),(1,3),(2,3)])
+    >>> topological_sort_kahn(4, [(0, 1), (0, 2), (1, 3), (2, 3)])
     [0, 1, 2, 3]
     """
     adj: list[list[int]] = [[] for _ in range(num_nodes)]
@@ -66,7 +66,7 @@ def topological_sort_dfs(
 
     Returns [] if a cycle exists.
 
-    >>> topological_sort_dfs(4, [(0,1),(0,2),(1,3),(2,3)])
+    >>> topological_sort_dfs(4, [(0, 1), (0, 2), (1, 3), (2, 3)])
     [0, 2, 1, 3]
     """
     adj: list[list[int]] = [[] for _ in range(num_nodes)]

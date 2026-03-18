@@ -61,7 +61,7 @@ def kruskal(
     *edges* is a list of (u, v, weight) for an undirected graph.
     Returns the MST as a list of (u, v, weight) edges.
 
-    >>> kruskal(4, [(0,1,1),(1,2,2),(0,2,3),(2,3,4)])
+    >>> kruskal(4, [(0, 1, 1), (1, 2, 2), (0, 2, 3), (2, 3, 4)])
     [(0, 1, 1), (1, 2, 2), (2, 3, 4)]
     """
     sorted_edges = sorted(edges, key=lambda e: e[2])
@@ -85,7 +85,9 @@ def prim(
 
     *edges* is a list of (u, v, weight) for an undirected graph.
 
-    >>> sorted(prim(4, [(0,1,1),(1,2,2),(0,2,3),(2,3,4)]), key=lambda e: e[2])
+    >>> sorted(
+    ...     prim(4, [(0, 1, 1), (1, 2, 2), (0, 2, 3), (2, 3, 4)]), key=lambda e: e[2]
+    ... )
     [(0, 1, 1), (1, 2, 2), (2, 3, 4)]
     """
     adj: list[list[tuple[int, float]]] = [[] for _ in range(num_nodes)]

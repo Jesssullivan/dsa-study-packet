@@ -22,8 +22,6 @@ Complexity:
     Space: O(1) — at most 26 distinct task types
 """
 
-from __future__ import annotations
-
 import heapq
 from collections import Counter, deque
 from typing import TYPE_CHECKING

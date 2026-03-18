@@ -18,8 +18,6 @@ Complexity:
     Space: O(h) where h = height of tree (call stack)
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 

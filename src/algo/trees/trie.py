@@ -21,8 +21,6 @@ Complexity:
     Space: O(N * m) where N = number of words, m = average word length.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 
 

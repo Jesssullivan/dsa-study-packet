@@ -35,7 +35,7 @@ def dijkstra(
     *edges* is a list of (u, v, weight) with weight >= 0.
     Unreachable nodes have distance ``float('inf')``.
 
-    >>> dijkstra(4, [(0,1,1),(0,2,4),(1,2,2),(1,3,6),(2,3,3)], 0)
+    >>> dijkstra(4, [(0, 1, 1), (0, 2, 4), (1, 2, 2), (1, 3, 6), (2, 3, 3)], 0)
     [0, 1, 3, 6]
     """
     adj: list[list[tuple[int, float]]] = [[] for _ in range(num_nodes)]

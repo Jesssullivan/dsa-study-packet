@@ -33,7 +33,9 @@ def edmonds_karp(
 
     *edges* is a list of (u, v, capacity).
 
-    >>> edmonds_karp(4, [(0,1,10),(0,2,10),(1,3,10),(2,3,10),(1,2,1)], 0, 3)
+    >>> edmonds_karp(
+    ...     4, [(0, 1, 10), (0, 2, 10), (1, 3, 10), (2, 3, 10), (1, 2, 1)], 0, 3
+    ... )
     20
     """
     capacity: list[list[int]] = [[0] * num_nodes for _ in range(num_nodes)]

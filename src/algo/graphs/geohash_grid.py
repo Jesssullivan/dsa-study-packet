@@ -164,6 +164,5 @@ def neighbors(geohash: str) -> dict[str, str]:
     ['e', 'n', 'ne', 'nw', 's', 'se', 'sw', 'w']
     """
     return {
-        d: neighbor(geohash, d)
-        for d in ("n", "s", "e", "w", "ne", "nw", "se", "sw")
+        d: neighbor(geohash, d) for d in ("n", "s", "e", "w", "ne", "nw", "se", "sw")
     }

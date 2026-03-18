@@ -18,8 +18,6 @@ Complexity:
     Space: O(1) — only pointer manipulation, no new nodes allocated
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 
@@ -55,8 +53,6 @@ def merge_two_sorted(
 
 
 # --- helpers for testing ---
-
-
 def from_list(vals: list[int]) -> ListNode | None:
     """Build a linked list from a Python list."""
     dummy = ListNode(0)

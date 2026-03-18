@@ -24,7 +24,9 @@ class MinStack:
     """Stack supporting O(1) push, pop, top, and get_min.
 
     >>> ms = MinStack()
-    >>> ms.push(-2); ms.push(0); ms.push(-3)
+    >>> ms.push(-2)
+    ... ms.push(0)
+    ... ms.push(-3)
     >>> ms.get_min()
     -3
     >>> ms.pop()

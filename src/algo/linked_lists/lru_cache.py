@@ -18,8 +18,6 @@ Complexity:
     Space: O(capacity)
 """
 
-from __future__ import annotations
-
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
@@ -51,8 +49,6 @@ class LRUCache:
 
 
 # --- Manual doubly-linked-list implementation ---
-
-
 @dataclass
 class _DNode:
     """Internal node for the doubly linked list."""

@@ -33,7 +33,9 @@ class TestLongestCommonPrefix:
             max_size=5,
         ),
     )
-    def test_constructed_prefix_is_found(self, prefix: str, suffixes: list[str]) -> None:
+    def test_constructed_prefix_is_found(
+        self, prefix: str, suffixes: list[str]
+    ) -> None:
         strs = [prefix + s for s in suffixes]
         result = longest_common_prefix(strs)
         assert result.startswith(prefix) or prefix.startswith(result)

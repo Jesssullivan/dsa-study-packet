@@ -29,7 +29,9 @@ class TestMaxSumSubarray:
             max_sum_subarray([1, 2], 3)
 
     @given(
-        data=st.lists(st.integers(min_value=-1000, max_value=1000), min_size=1, max_size=100),
+        data=st.lists(
+            st.integers(min_value=-1000, max_value=1000), min_size=1, max_size=100
+        ),
     )
     def test_result_matches_brute_force(self, data: list[int]) -> None:
         k = 1  # use k=1 so brute force is just max()

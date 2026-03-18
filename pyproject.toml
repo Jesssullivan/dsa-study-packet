@@ -101,6 +101,13 @@ ignore_errors = true
 module = ["numpy", "numpy.*", "scipy", "scipy.*", "flask", "flask.*", "pydantic", "pydantic.*"]
 ignore_missing_imports = true
 
+# Concept modules with optional deps: decorators become untyped when deps not installed.
+[[tool.mypy.overrides]]
+module = ["concepts.modern_flask", "concepts.validation"]
+disallow_untyped_decorators = false
+disallow_subclassing_any = false
+warn_return_any = false
+
 # mypy does not yet support PEP 750 t-strings (tracked upstream).
 [[tool.mypy.overrides]]
 module = ["concepts.t_strings", "tests.concepts.test_t_strings"]

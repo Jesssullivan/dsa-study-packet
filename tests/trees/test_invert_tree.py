@@ -27,7 +27,11 @@ def _to_list(root: TreeNode | None) -> list[int | None]:
 
 class TestInvertTree:
     def test_basic(self) -> None:
-        tree = TreeNode(4, TreeNode(2, TreeNode(1), TreeNode(3)), TreeNode(7, TreeNode(6), TreeNode(9)))
+        tree = TreeNode(
+            4,
+            TreeNode(2, TreeNode(1), TreeNode(3)),
+            TreeNode(7, TreeNode(6), TreeNode(9)),
+        )
         result = invert_tree(tree)
         assert _to_list(result) == [4, 7, 2, 9, 6, 3, 1]
 

@@ -18,19 +18,16 @@ References:
     https://flask.palletsprojects.com/en/stable/testing/
 """
 
-from __future__ import annotations
-
 import uuid
 from dataclasses import dataclass
 from typing import Any
 
 from flask import Blueprint, Flask, Response, jsonify, request
 
+
 # ---------------------------------------------------------------------------
 # Domain models (plain dataclasses — no ORM needed for demo)
 # ---------------------------------------------------------------------------
-
-
 @dataclass
 class Item:
     """A catalog item with an integer id, a name, and a price."""
@@ -79,8 +76,6 @@ def _reset_store() -> None:
 # ---------------------------------------------------------------------------
 # Custom error
 # ---------------------------------------------------------------------------
-
-
 class ValidationError(Exception):
     """Raised when request data fails validation.
 
@@ -167,8 +162,6 @@ def create_item() -> tuple[Response, int]:
 # request logging, or injecting context.
 # ``after_request`` runs after the view — perfect for adding headers.
 # ---------------------------------------------------------------------------
-
-
 @api_bp.before_request
 def log_request() -> None:
     """Log every incoming request's method and path."""
@@ -193,8 +186,6 @@ def add_request_id(response: Response) -> Response:
 #   - Multiple configurations (dev, staging, prod) can coexist.
 #   - Circular-import issues around ``app`` are eliminated.
 # ---------------------------------------------------------------------------
-
-
 def create_app(testing: bool = False) -> Flask:
     """Build and configure the Flask application.
 

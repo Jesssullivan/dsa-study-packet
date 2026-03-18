@@ -23,11 +23,10 @@ References:
     https://zod.dev/  (TypeScript counterpart — see inline comparisons)
 """
 
-from __future__ import annotations
-
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+
 
 # ---------------------------------------------------------------------------
 # Nested model: Address
@@ -37,8 +36,6 @@ from pydantic import BaseModel, Field, ValidationError, field_validator, model_v
 #   city (z.string min 1), state (z.string length 2),
 #   zip_code (z.string regex for 5 digits).
 # ---------------------------------------------------------------------------
-
-
 class Address(BaseModel):
     """A US-style mailing address."""
 
@@ -56,8 +53,6 @@ class Address(BaseModel):
 #   age (z.number min 0 max 150), address (AddressSchema),
 #   tags (z.array of z.string, default empty).
 # ---------------------------------------------------------------------------
-
-
 class User(BaseModel):
     """A user account with nested address and optional tags."""
 
@@ -108,8 +103,6 @@ class User(BaseModel):
 #   ShapeSchema = z.discriminatedUnion on "shape_type" with
 #     CircleSchema and RectangleSchema.
 # ---------------------------------------------------------------------------
-
-
 class Circle(BaseModel):
     """A circle, identified by ``shape_type = "circle"``."""
 
@@ -137,8 +130,6 @@ Shape = Annotated[Circle | Rectangle, Field(discriminator="shape_type")]
 # ``model_validate()`` creates a model from a dict, running all validators.
 # Together they give you a safe serialize/deserialize round-trip.
 # ---------------------------------------------------------------------------
-
-
 def serialize_user(user: User) -> dict[str, object]:
     """Convert a User to a plain dict (JSON-safe)."""
     return user.model_dump()

@@ -158,9 +158,7 @@ class TestTrieProperties:
         query=st.text(alphabet="xyz", min_size=1, max_size=6),
     )
     @settings(max_examples=50)
-    def test_non_inserted_words_not_found(
-        self, words: list[str], query: str
-    ) -> None:
+    def test_non_inserted_words_not_found(self, words: list[str], query: str) -> None:
         t = Trie()
         for word in words:
             t.insert(word)

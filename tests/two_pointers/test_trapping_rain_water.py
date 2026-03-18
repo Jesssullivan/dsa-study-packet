@@ -50,7 +50,5 @@ class TestTrap:
         for i in range(n - 2, -1, -1):
             right_max[i] = max(right_max[i + 1], data[i])
 
-        expected = sum(
-            min(left_max[i], right_max[i]) - data[i] for i in range(n)
-        )
+        expected = sum(min(left_max[i], right_max[i]) - data[i] for i in range(n))
         assert trap(data) == expected
