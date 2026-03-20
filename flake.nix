@@ -22,6 +22,7 @@
             pkgs.just
             pkgs.git-cliff
             pkgs.pandoc
+            pkgs.tectonic
             pkgs.entr
             pkgs.watchexec
           ];

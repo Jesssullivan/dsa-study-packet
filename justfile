@@ -149,22 +149,15 @@ pdf-all:
     done
     echo "Done. PDFs in reference-sheets/pdf/"
 
-# Combine all reference sheets into one printable booklet
+# Generate printable PDF booklet (decision trees + 1 algo per page)
 pdf-booklet:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "Building study-guide-booklet.pdf..."
-    pandoc reference-sheets/0[1-9]*.md \
-        -o study-guide-booklet.pdf \
-        --pdf-engine=tectonic \
-        -V geometry:margin=0.75in \
-        -V fontsize=10pt \
-        -V colorlinks=true \
-        --toc \
-        --toc-depth=2 \
-        -M title="target employer Interview Study Guide" \
-        -M date="$(date +%Y-%m-%d)"
-    echo "Done → study-guide-booklet.pdf"
+    echo "Generating booklet.tex..."
+    uv run python scripts/gen_booklet.py
+    echo "Compiling booklet.pdf with tectonic..."
+    tectonic booklet.tex
+    echo "Done → booklet.pdf"
 
 # ──────────────────────────────────────────────
 # Documentation (MkDocs)
