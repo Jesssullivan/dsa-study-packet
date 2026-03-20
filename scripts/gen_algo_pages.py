@@ -391,7 +391,9 @@ def _gen_summary(
 
     # Practice and Challenges
     lines.append("* [Practice](practice/index.md)")
-    lines.append("* [Challenges](challenges/index.md)")
+    lines.append("* Challenges")
+    lines.append("    * [Daily Drill](challenges/index.md)")
+    lines.append("    * [Progress](challenges/progress.md)")
 
     # Guide
     lines.append("* Guide")

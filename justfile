@@ -228,6 +228,11 @@ challenge-done topic problem:
 challenge-progress:
     @cat .challenges/progress.md 2>/dev/null || echo "No challenges completed yet."
 
+# Reset challenge progress (clear all completions)
+challenge-reset:
+    rm -f .challenges/progress.md
+    @echo "Progress cleared."
+
 # ──────────────────────────────────────────────
 # Release / changelog
 # ──────────────────────────────────────────────
