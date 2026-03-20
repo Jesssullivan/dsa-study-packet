@@ -55,15 +55,18 @@ just docs             # this site, locally
 
 ---
 
-## Interview Rounds
+## Interview Flow
 
-| Round | Format | Focus |
-|-------|--------|-------|
-| Algorithms | 75 min, video | Medium to medium-hard. Graphs, DP, strings. |
-| Practical Problem Solving | Video | Read their code, identify issues, suggest improvements. |
-| Problem Decomposition | Video | Break ambiguous problems into sub-problems. |
-| System Design | 60 min (L7+) | Real-time pipelines, geospatial, streaming. |
-| CEO Chat | In-person | Culture, motivation, trajectory. |
+| Stage | Round | Focus |
+|-------|-------|-------|
+| 1 | Pre-screen | Headhunter chats with CTO and hiring manager based on FOSS contributions, PR experience, etc. |
+| 2 | Hiring manager interview | Role fit, experience, expectations. |
+| 3 | Engineering lead interview | Technical depth, architecture thinking, team dynamics. |
+| 4 | Backend algo deep dive | 1-3 hrs coding. Graphs, DP, strings, optimization. |
+| 5 | Frontend / cross-team engineering | 1-3 hrs. Cross-team collaboration, full-stack breadth. |
+| 6 | On-site intensive | 6-8 hrs. All-day in-person interviews across multiple rounds. |
+| 7 | CEO interview | Culture, vision, team fit. |
+| 8 | Offer & negotiation | Offer terms, agreements, logistics. |
 
 ---
 

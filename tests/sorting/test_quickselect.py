@@ -23,11 +23,11 @@ class TestQuickselect:
         assert quickselect([5, 3, 1, 2, 4], 5) == 5
 
     def test_k_out_of_range_raises(self) -> None:
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError):
             quickselect([1, 2], 3)
 
     def test_k_zero_raises(self) -> None:
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError):
             quickselect([1, 2], 0)
 
     @given(

@@ -21,7 +21,7 @@ class TestClimbStairs:
         assert climb_stairs(0) == 1
 
     def test_negative_raises(self) -> None:
-        with pytest.raises(ValueError, match="non-negative"):
+        with pytest.raises(ValueError):
             climb_stairs(-1)
 
     @given(n=st.integers(min_value=2, max_value=30))

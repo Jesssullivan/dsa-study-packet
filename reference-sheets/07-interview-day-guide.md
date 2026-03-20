@@ -48,9 +48,23 @@ Open these before the interview starts:
 
 ---
 
-## How to Use Tabs by Round
+## Interview Flow & Prep by Round
 
-### Round 1: Algorithms & Data Structures (75 min)
+### Stage 1: Pre-screen
+
+Headhunter chats with CTO and hiring manager based on FOSS contributions, PR experience, etc.
+No prep needed -- this is about your existing body of work.
+
+### Stage 2: Hiring manager interview
+
+Role fit, experience, expectations. Be ready to discuss your background, why target employer, and what you bring.
+
+### Stage 3: Engineering lead interview
+
+Technical depth, architecture thinking, team dynamics.
+**Print sheet on desk**: 06 (system design) for reference.
+
+### Stage 4: Backend algo deep dive (1-3 hrs)
 
 **Tabs**: 1-5 for quick stdlib lookups and complexity verification.
 **Print sheets on desk**: 01, 03, 04, 05.
@@ -62,49 +76,38 @@ Open these before the interview starts:
 4. Test with the given examples + one edge case.
 5. State time and space complexity.
 
-**Time budget** (for 3 problems in 75 min):
-- Problem 1: 20 min (likely easiest)
-- Problem 2: 25 min
-- Problem 3: 25 min
-- Buffer: 5 min
+Think out loud the entire time. Silence = lost signal.
 
-### Round 2: Practical Problem Solving
+### Stage 5: Frontend / cross-team engineering deep dive (1-3 hrs)
 
 **Tabs**: None needed (they show you code).
-**Print sheet on desk**: 01 for stdlib reference.
+**Print sheet on desk**: 01 for stdlib reference, 05 for common patterns.
 
-**5-step framework**:
+**5-step framework for code review**:
 1. **Read slowly** -- skim signatures and docstrings first, then trace one path.
 2. **Identify the "smell"** -- nested loops, missing error handling, N+1 queries, unbounded cache.
 3. **Trace with concrete input** -- pick a small input and walk through the code line by line.
 4. **Name the pattern/antipattern** -- "This is an N+1 query pattern" or "This cache has no eviction policy."
 5. **Propose fix with complexity analysis** -- "Replace the nested loop with a hash map lookup, O(n^2) -> O(n)."
 
-### Round 3: Problem Decomposition
-
-**Print sheet on desk**: 05 (common patterns).
-
-**Framework**:
+**Problem decomposition framework**:
 1. Restate the problem in your own words. Confirm understanding.
 2. Identify sub-problems. Draw a diagram (use your notepad).
 3. Map each sub-problem to a known algorithm or data structure.
 4. Define interfaces between components.
 5. Discuss tradeoffs: time vs space, accuracy vs speed, complexity vs maintainability.
 
-Think out loud the entire time. Silence = lost signal.
+### Stage 6: On-site intensive (6-8 hrs)
 
-### Round 4: System Design (L7+ / Staff)
+All-day in-person. Multiple rounds covering algorithms, system design, code reading, and collaboration.
 
-**Tab**: 6 (VisuAlgo for visualization).
-**Print sheet on desk**: 06 (system design).
-
-**Framework** (30 min total):
+**System design framework** (30 min per round):
 - 5 min: **Requirements** -- functional + non-functional. Ask clarifying questions. Estimate scale (QPS, data volume, latency target).
 - 5 min: **High-level design** -- draw boxes and arrows. Identify core components.
 - 15 min: **Deep-dive components** -- pick 2-3 to detail. Schema, APIs, data flow, failure modes.
 - 5 min: **Tradeoffs** -- consistency vs availability, cost vs performance. Name alternatives you considered.
 
-### Round 5: CEO Chat
+### Stage 7: CEO interview
 
 **Tab**: 8 (target employer website / domain platform platform page).
 
@@ -114,7 +117,11 @@ Prepare 3-4 questions showing genuine interest:
 - "How does the team balance defense vs commercial product priorities?"
 - "What does the path from Series B to the next stage look like for target employer?"
 
-No technical prep needed. Be authentic, curious, and concise.
+Culture, vision, team fit. Be authentic, curious, and concise.
+
+### Stage 8: Offer & negotiation
+
+No prep in this guide -- but know your numbers and priorities going in.
 
 ---
 

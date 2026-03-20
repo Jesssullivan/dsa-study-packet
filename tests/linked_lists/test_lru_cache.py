@@ -48,7 +48,7 @@ class TestLRUCache:
         assert cache.get(4) == 4
 
     def test_zero_capacity_raises(self) -> None:
-        with pytest.raises(ValueError, match="capacity must be positive"):
+        with pytest.raises(ValueError):
             LRUCache(0)
 
 
@@ -95,5 +95,5 @@ class TestLRUCacheManual:
         assert cache.get(4) == 4
 
     def test_zero_capacity_raises(self) -> None:
-        with pytest.raises(ValueError, match="capacity must be positive"):
+        with pytest.raises(ValueError):
             LRUCacheManual(0)

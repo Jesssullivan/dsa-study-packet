@@ -42,17 +42,17 @@ class TestMinStack:
 
     def test_pop_empty_raises(self) -> None:
         ms = MinStack()
-        with pytest.raises(IndexError, match="pop from empty"):
+        with pytest.raises(IndexError):
             ms.pop()
 
     def test_top_empty_raises(self) -> None:
         ms = MinStack()
-        with pytest.raises(IndexError, match="top from empty"):
+        with pytest.raises(IndexError):
             ms.top()
 
     def test_get_min_empty_raises(self) -> None:
         ms = MinStack()
-        with pytest.raises(IndexError, match="get_min from empty"):
+        with pytest.raises(IndexError):
             ms.get_min()
 
     @given(

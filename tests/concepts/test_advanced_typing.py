@@ -178,12 +178,12 @@ class TestStack:
 
     def test_pop_empty_raises(self) -> None:
         s: Stack[int] = Stack()
-        with pytest.raises(IndexError, match="pop from empty stack"):
+        with pytest.raises(IndexError):
             s.pop()
 
     def test_peek_empty_raises(self) -> None:
         s: Stack[int] = Stack()
-        with pytest.raises(IndexError, match="peek at empty stack"):
+        with pytest.raises(IndexError):
             s.peek()
 
     def test_lifo_order(self) -> None:

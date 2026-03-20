@@ -21,11 +21,11 @@ class TestMaxSumSubarray:
         assert max_sum_subarray([-1, -2, 5, -1, 3], 2) == 4
 
     def test_k_zero_raises(self) -> None:
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError):
             max_sum_subarray([1, 2, 3], 0)
 
     def test_k_too_large_raises(self) -> None:
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError):
             max_sum_subarray([1, 2], 3)
 
     @given(

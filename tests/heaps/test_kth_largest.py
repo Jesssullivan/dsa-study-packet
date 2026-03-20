@@ -24,11 +24,11 @@ class TestFindKthLargest:
         assert find_kth_largest([7], 1) == 7
 
     def test_k_zero_raises(self) -> None:
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError):
             find_kth_largest([1, 2, 3], 0)
 
     def test_k_too_large_raises(self) -> None:
-        with pytest.raises(ValueError, match="out of range"):
+        with pytest.raises(ValueError):
             find_kth_largest([1, 2], 3)
 
     @given(

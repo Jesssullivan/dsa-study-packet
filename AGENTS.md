@@ -120,7 +120,7 @@ fill for future interviews."
 ```
 Prompt: "Add a new concept module for [topic]. Follow the style in
 src/concepts/ — heavy comments, web references, paired tests. Add it to
-STUDY_PLAN.md and README.md."
+README.md."
 ```
 
 ### 10. Generate Reference Material
@@ -152,6 +152,5 @@ to the specific implementations in this repo.
 This repo is designed to be shareable. Others can:
 1. `git clone` + `direnv allow` → full dev environment via nix
 2. `just test` → verify everything works
-3. Follow `STUDY_PLAN.md` for structured daily practice
-4. Use `reference-sheets/07-interview-day-guide.md` on test day
+3. Use `reference-sheets/07-interview-day-guide.md` on test day
 5. Use the agent workflows above for AI-assisted study

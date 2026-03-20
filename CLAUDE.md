@@ -51,7 +51,6 @@ reference-sheets/  9 reference sheets (01-08 + Python 3.14 patterns)
 
 ## Key Files
 
-- `STUDY_PLAN.md` — 4-week daily schedule with problem assignments
 - `RESEARCH.md` — target employer company research, tech stack, products
 - `algorithm-interview-resources.md` — books, platforms, YouTube, domain resources
 - `reference-sheets/07-interview-day-guide.md` — test day printouts, tabs, strategies

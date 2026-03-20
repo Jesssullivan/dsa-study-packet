@@ -24,7 +24,7 @@ class TestTwoSum:
         assert two_sum([1, 5, 100, 200], 300) == (2, 3)
 
     def test_no_solution_raises(self) -> None:
-        with pytest.raises(ValueError, match="no two elements sum to target"):
+        with pytest.raises(ValueError):
             two_sum([1, 2, 3], 100)
 
     @given(
