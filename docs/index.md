@@ -16,7 +16,7 @@ Senior full-stack (backend) interview prep for [target employer](https://www.exa
 
     [:octicons-arrow-right-24: Algorithms](algorithms/index.md)
 
--   :material-test-tube:{ .lg .middle } **628 Tests**
+-   :material-test-tube:{ .lg .middle } **647 Tests**
 
     ---
 
@@ -24,11 +24,11 @@ Senior full-stack (backend) interview prep for [target employer](https://www.exa
 
     [:octicons-arrow-right-24: Challenges](challenges/index.md)
 
--   :material-book-open-variant:{ .lg .middle } **6 Concept Modules**
+-   :material-book-open-variant:{ .lg .middle } **7 Concept Modules**
 
     ---
 
-    T-strings, typing, Hypothesis, FFT, Flask, Pydantic
+    T-strings, typing, Hypothesis, benchmarking, FFT, Flask, Pydantic
 
     [:octicons-arrow-right-24: Concepts](concepts/index.md)
 
@@ -48,7 +48,7 @@ Senior full-stack (backend) interview prep for [target employer](https://www.exa
 
 ```bash
 direnv allow          # nix devshell + python 3.14 venv
-just test             # 628 tests
+just test             # 647 tests
 just lint             # ruff + mypy strict
 just docs             # this site, locally
 ```
@@ -87,3 +87,15 @@ The [cross-reference guide](reference/08-cross-reference-guide.md) maps patterns
 
 [:material-rocket-launch: Start Drilling](challenges/index.md){ .md-button .md-button--primary }
 [:material-map: Decision Tree](guide/when-to-use-what.md){ .md-button }
+
+---
+
+## Printable Booklet
+
+123-page reference: decision trees, pattern keywords, and every algorithm with full implementation — one per page.
+
+[:material-download: Download PDF](assets/booklet.pdf){ .md-button }
+
+<div markdown class="pdf-viewer">
+<iframe src="assets/booklet.pdf" width="100%" height="800px" style="border: 1px solid #ccc; border-radius: 8px;"></iframe>
+</div>

@@ -108,6 +108,7 @@
 * Concepts
     * [Overview](concepts/index.md)
     * [Advanced Typing](concepts/advanced-typing.md)
+    * [Benchmarking](concepts/benchmarking.md)
     * [Fft Dct](concepts/fft-dct.md)
     * [Hypothesis Patterns](concepts/hypothesis-patterns.md)
     * [Modern Flask](concepts/modern-flask.md)

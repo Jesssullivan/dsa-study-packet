@@ -46,7 +46,7 @@ site/
 # PDF booklet build artifacts
 booklet.tex
 booklet.pdf
-*.pdf
+docs/assets/booklet.pdf
 
 # Challenge mode
 .challenges/

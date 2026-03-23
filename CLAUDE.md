@@ -8,7 +8,7 @@ target employer (target employer). Python 3.14+, strict typing, property-based t
 ## Quick Reference
 
 ```bash
-just test              # run all 529 tests
+just test              # run all 647 tests
 just lint              # ruff + mypy strict
 just practice graphs   # run tests for a specific topic
 just study dp          # watch mode for a topic
@@ -43,9 +43,9 @@ just pdf-booklet       # printable reference booklet
 
 ```
 src/algo/          68 implementations across 15 topics
-src/concepts/      6 instructional modules (t-strings, typing, hypothesis, FFT, Flask, Pydantic)
+src/concepts/      7 instructional modules (t-strings, typing, hypothesis, benchmarking, FFT, Flask, Pydantic)
 src/practice/      3 code reading + 3 decomposition exercises
-tests/             606 tests mirroring src/ (pytest + hypothesis)
+tests/             647 tests mirroring src/ (pytest + hypothesis)
 reference-sheets/  9 reference sheets (01-08 + Python 3.14 patterns)
 ```
 

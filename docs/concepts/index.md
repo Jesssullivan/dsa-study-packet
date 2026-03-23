@@ -4,7 +4,7 @@ title: Concept Modules
 
 # Concept Modules
 
-Six production-level Python modules covering topics that surface in practical problem solving, system design, and code review rounds. Each module is heavily commented for self-study.
+Seven production-level Python modules covering topics that surface in practical problem solving, system design, and code review rounds. Each module is heavily commented for self-study.
 
 ```bash
 just test-concepts    # run concept module tests (installs numpy/scipy/flask/pydantic)
@@ -22,6 +22,14 @@ just study-concept    # watch mode
     Lazy interpolation, safe SQL/HTML templating, structured logging with Python 3.14 template strings.
 
     [:octicons-arrow-right-24: t-strings](t-strings.md)
+
+-   :material-timer-outline:{ .lg .middle } **Benchmarking (T-Strings)**
+
+    ---
+
+    Interview timing patterns: `timed()`, `bench_compare()`, empirical Big-O verification, all rendered via t-strings.
+
+    [:octicons-arrow-right-24: benchmarking](benchmarking.md)
 
 -   :material-language-python:{ .lg .middle } **Advanced Typing**
 
@@ -77,3 +85,4 @@ just study-concept    # watch mode
 | fft_dct | Sensor data pipelines | Relevant when target employer asks about ADS-B signal processing or weather radar |
 | modern_flask | API layer | Pairs with `validation.py` for full request lifecycle |
 | validation | Runtime types | Runtime counterpart to `advanced_typing`'s static type system |
+| benchmarking | `top_k_frequent`, `kth_largest` | Empirical complexity verification of bucket sort O(n) vs heap O(n log k) |
