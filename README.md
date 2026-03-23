@@ -90,4 +90,3 @@ docs/             mkdocs site
 - [Cross-Reference Guide](reference-sheets/08-cross-reference-guide.md) — pattern → implementation lookup
 - [Interview Day Guide](reference-sheets/07-interview-day-guide.md) — printouts, tabs, strategy
 - [Algorithm Templates](reference-sheets/03-algorithm-templates.md) — binary search, BFS/DFS, DP, backtracking
-- [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) — AI agent workflows
