@@ -122,12 +122,12 @@ def html_safe(template: Template) -> str:
 
     Static text passes through unchanged (it's trusted, author-written
     markup), but every interpolated value is run through
-    ``html.escape()`` so that ``<script>`` tags, ``&``, ``"``, etc. are
+    ``html.escape()`` so that injected markup, ``&``, ``"``, etc. are
     neutralised.
 
-    >>> title = "<script>alert('xss')</script>"
+    >>> title = "<b onmouseover='steal()'>evil</b>"
     >>> html_safe(t"<h1>{title}</h1>")
-    "<h1>&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;</h1>"
+    "<h1>&lt;b onmouseover=&#x27;steal()&#x27;&gt;evil&lt;/b&gt;</h1>"
 
     >>> name = "Alice & Bob"
     >>> html_safe(t"<p>Hello, {name}!</p>")

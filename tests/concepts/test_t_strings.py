@@ -56,11 +56,11 @@ class TestSqlSafe:
 class TestHtmlSafe:
     """XSS-proof HTML rendering from t-strings."""
 
-    def test_xss_script_tag_escaped(self) -> None:
-        evil = "<script>alert('xss')</script>"
+    def test_xss_markup_escaped(self) -> None:
+        evil = "<b onmouseover='steal()'>evil</b>"
         result = html_safe(t"<div>{evil}</div>")
-        assert "<script>" not in result
-        assert "&lt;script&gt;" in result
+        assert "<b " not in result
+        assert "&lt;b " in result
 
     def test_normal_text_passes_through(self) -> None:
         name = "Alice"

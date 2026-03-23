@@ -96,9 +96,9 @@ def safe_html(template: Template) -> str:
                 parts.append(html_mod.escape(str(interp.value)))
     return "".join(parts)
 
-evil = "<script>alert('xss')</script>"
+evil = "<b onmouseover='steal()'>evil</b>"
 safe_html(t"<p>{evil}</p>")
-# '<p>&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;</p>'
+# '<p>&lt;b onmouseover=&#x27;steal()&#x27;&gt;evil&lt;/b&gt;</p>'
 ```
 
 #### Structured Logging
