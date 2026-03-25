@@ -1,7 +1,6 @@
-I am most pleased to announce I will never need to do another DSA / FAANG style interview again.   I'll just politely decline ^w^
+I am most pleased to announce I will never need to do another DSA / FAANG style interview again.   I'll just politely decline, and encurage you to decline and disparage such interview practices too.  ^w^
 
 ---
-
 
 
 ## Quick Start
