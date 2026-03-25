@@ -1,4 +1,7 @@
-I am most pleased to announce I will never need to do another DSA / FAANG style interview again.   I'll just politely decline, and encurage you to decline and disparage such interview practices too.  ^w^
+I am pleased to announce I will never need to do another DSA / FAANG style interview again.   I'll just politely decline.  I encurage you to decline and disparage such interview practices too.  ^w^  
+
+
+
 
 ---
 
@@ -12,10 +15,7 @@ just lint           # ruff + mypy strict
 just docs           # mkdocs site at localhost:8000
 ```
 
-## Daily Drill
 
-42 core algorithms, all of them, every day, 7 days straight.
-Challenge mode strips each solution — you re-implement against the test suite.
 
 ```bash
 just challenge arrays two_sum     # strip solution → implement
