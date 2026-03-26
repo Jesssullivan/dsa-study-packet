@@ -1,5 +1,3 @@
-I am pleased to announce I will never need to do another DSA / FAANG style interview again.   I'll just politely decline.  I encurage you to decline and disparage such interview practices too.  ^w^  
-
 
 
 
