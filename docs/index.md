@@ -1,10 +1,10 @@
 ---
-title: target employer Algorithm Study Guide
+title: DSA Study Guide
 ---
 
-# target employer Algorithm Study Guide
+# Algorithm Study Guide
 
-Senior full-stack (backend) interview prep for [target employer](https://www.example.com/).
+Full-stack (backend) interview prep for DSA exams.
 
 <div class="grid cards" markdown>
 
@@ -72,7 +72,7 @@ just docs             # this site, locally
 
 ## Daily Drill
 
-42 core algorithms, all of them, every single day. Challenge mode strips solutions — you re-implement from the signature and docstring alone.
+42 core algorithms, all of them, every single day. Challenge mode strips solutions — Jess re-implements from the signature and docstring alone.
 
 ```bash
 just challenge graphs dijkstra    # strip solution
