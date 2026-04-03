@@ -10,9 +10,7 @@ when weather conditions change significantly.
 
 ## Your Task
 
-Break this problem down using the structure below. Spend 15-20 minutes
-thinking through each section before looking at the hints at the bottom.
-
+˚
 ---
 
 ## 1. Clarifying Questions (list 5-8 you'd ask the interviewer)
@@ -26,16 +24,16 @@ thinking through each section before looking at the hints at the bottom.
 ## 2. Inputs
 
 | Input | Format | Source | Update Frequency |
-|---|---|---|---|
-| | | | |
-| | | | |
+|-------|--------|--------|------------------|
+|       |        |        |                  |
+|       |        |        |                  |
 
 ## 3. Outputs
 
 | Output | Format | Consumer |
-|---|---|---|
-| | | |
-| | | |
+|--------|--------|----------|
+|        |        |          |
+|        |        |          |
 
 ## 4. Constraints
 
@@ -55,23 +53,23 @@ thinking through each section before looking at the hints at the bottom.
 ## 6. Data Structures
 
 | Sub-Problem | Data Structure | Why |
-|---|---|---|
-| | | |
-| | | |
+|-------------|----------------|-----|
+|             |                |     |
+|             |                |     |
 
 ## 7. Algorithms
 
 | Sub-Problem | Algorithm | Time Complexity | Space Complexity |
-|---|---|---|---|
-| | | | |
-| | | | |
+|-------------|-----------|-----------------|------------------|
+|             |           |                 |                  |
+|             |           |                 |                  |
 
 ## 8. Tradeoffs
 
 | Decision | Option A | Option B | Your Choice & Why |
-|---|---|---|---|
-| | | | |
-| | | | |
+|----------|----------|----------|-------------------|
+|          |          |          |                   |
+|          |          |          |                   |
 
 ## 9. Architecture Sketch
 
@@ -100,6 +98,7 @@ Describe the high-level components and how they interact:
 - Are there hard constraints? (no-fly zones, altitude restrictions, ATC routing)
 - What's the acceptable compute time for a single route optimization?
 - Is there a human in the loop or is it fully automated?
+
 </details>
 
 <details>
@@ -110,6 +109,7 @@ Describe the high-level components and how they interact:
 3. **Cost function design** -- combine fuel burn, time, turbulence risk, wind advantage into a single edge weight
 4. **Pathfinding** -- A* or Dijkstra with the cost function, respecting altitude and airspace constraints
 5. **Re-optimization trigger** -- detect when weather changes enough to invalidate the current route
+
 </details>
 
 <details>
@@ -119,4 +119,5 @@ Describe the high-level components and how they interact:
 - **R-tree or H3 index** for fast weather data lookup by spatial coordinate
 - **Weighted graph** with dynamic edge costs (recomputed when weather updates)
 - **Priority queue (min-heap)** for A* frontier
+
 </details>
