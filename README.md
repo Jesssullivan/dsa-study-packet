@@ -1,7 +1,11 @@
-# target employer Interview Study Guide
 
-69 algorithm implementations. 42 core daily drills. 628 tests.
-Senior full-stack (backend) prep for [target employer](https://www.example.com/).
+
+
+---
+
+
+
+
 
 ## Quick Start
 
@@ -12,10 +16,7 @@ just lint           # ruff + mypy strict
 just docs           # mkdocs site at localhost:8000
 ```
 
-## Daily Drill
 
-42 core algorithms, all of them, every day, 7 days straight.
-Challenge mode strips each solution — you re-implement against the test suite.
 
 ```bash
 just challenge arrays two_sum     # strip solution → implement
