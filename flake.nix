@@ -1,5 +1,5 @@
 {
-  description = "Algorithm study environment for ASI interview";
+  description = "DSA and technical interview study environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -14,7 +14,7 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          name = "study-for-asi";
+          name = "dsa-study-packet";
 
           packages = [
             python
@@ -41,7 +41,7 @@
             uv sync --all-extras 2>/dev/null || uv pip install -e ".[dev]"
 
             echo ""
-            echo "study-for-asi dev shell"
+            echo "dsa-study-packet dev shell"
             echo "  python : $(python --version)"
             echo "  uv     : $(uv --version)"
             echo "  just   : $(just --version)"

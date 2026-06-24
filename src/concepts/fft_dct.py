@@ -1,6 +1,6 @@
 """FFT and DCT — frequency-domain signal processing with NumPy/SciPy.
 
-ASI relevance:
+Mission-systems relevance:
     ADS-B signal analysis, weather radar processing, sensor fusion — all
     depend on extracting frequency content from time-domain signals.
 

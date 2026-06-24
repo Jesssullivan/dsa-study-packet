@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import ast
 import sys
-import textwrap
 from pathlib import Path
 
 

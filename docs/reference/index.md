@@ -7,7 +7,7 @@ title: Reference Sheets
 Nine printable reference sheets covering everything from Python stdlib to interview-day logistics. Print them out or keep them open as tabs during study sessions.
 
 ```bash
-just pdf-booklet  # generate printable PDF booklet
+just packet  # generate printable PDF packet
 ```
 
 ---

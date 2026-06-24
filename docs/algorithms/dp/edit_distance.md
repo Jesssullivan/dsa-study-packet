@@ -11,7 +11,7 @@ operations (insert, delete, replace) to convert word1 into word2.
 
 ## Approach
 
-2D DP where dp[i][j] is the edit distance between the first i
+2D DP where ``dp[i][j]`` is the edit distance between the first i
 characters of word1 and the first j characters of word2.
 Space-optimized to a single row since each cell only depends on
 the current and previous row.

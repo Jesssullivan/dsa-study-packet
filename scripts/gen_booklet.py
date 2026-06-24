@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import ast
+import json
 import re
 import textwrap
 from pathlib import Path
@@ -46,6 +47,19 @@ TOPIC_ORDER: list[tuple[str, str]] = [
 ]
 
 TOPIC_TITLES = dict(TOPIC_ORDER)
+
+# Appendix: interview topics that round out whiteboard coverage beyond the
+# Core 42 (concurrency, hashing internals, amortized analysis, recursion ->
+# iteration, fixed-width numeric pitfalls). Authored as structured data in
+# reference-sheets/appendix-topics.json so the LaTeX is generated compile-safely
+# (every field escaped); rendered by _gen_appendix_pages().
+APPENDIX_DATA = REF_SHEETS / "appendix-topics.json"
+
+
+def _load_appendix_topics() -> list[dict]:
+    if APPENDIX_DATA.exists():
+        return json.loads(APPENDIX_DATA.read_text())
+    return []
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -320,25 +334,25 @@ def _gen_decision_tree_pages() -> str:
     parts.append(r"\end{tabular}")
     parts.append(r"\end{small}")
 
-    # ASI domain mapping
+    # Mission-systems domain mapping
     parts.append(r"\vspace{1em}")
-    parts.append(r"\section{ASI Domain Mapping}")
+    parts.append(r"\section{Mission-Systems Domain Mapping}")
     parts.append(r"\begin{small}")
     parts.append(r"\begin{tabular}{l l}")
-    parts.append(r"\textbf{Aviation Problem} & \textbf{Algorithm} \\")
+    parts.append(r"\textbf{Mission Problem} & \textbf{Algorithm} \\")
     parts.append(r"\hline")
 
-    asi = [
+    mission_examples = [
         ("Route aircraft around weather", "A*, weighted graph"),
         ("Track nearby aircraft", "Geohash, KD-tree"),
         ("Schedule maintenance with deps", "Topological sort"),
         ("Optimize fuel across routes", "Dijkstra, Bellman-Ford"),
         ("Real-time position streaming", "Sliding window"),
-        ("Airspace network planning", "MST, network flow"),
+        ("Network or airspace planning", "MST, network flow"),
         ("Signal processing (ADS-B)", "FFT, DCT"),
     ]
 
-    for problem, algo in asi:
+    for problem, algo in mission_examples:
         parts.append(f"  {_tex_escape(problem)} & {_tex_escape(algo)} \\\\")
 
     parts.append(r"\end{tabular}")
@@ -417,6 +431,85 @@ def _gen_algo_page(source_path: Path) -> str:
     return "\n".join(parts)
 
 
+# ── Appendix pages (structured -> LaTeX, compile-safe) ───────────────
+
+
+def _gen_appendix_pages(topics: list[dict]) -> str:
+    """Render the structured appendix topics into LaTeX.
+
+    Every string is escaped except code blocks (emitted verbatim with unicode
+    stripped), so arbitrary authored content cannot break the build.
+    """
+    if not topics:
+        return ""
+
+    parts: list[str] = [r"\newpage", r"\chapter{Appendix: Interview Topics}", ""]
+
+    for t in topics:
+        parts.append(r"\newpage")
+        parts.append(f"\\section{{{_tex_escape(t.get('section_title', ''))}}}")
+
+        summary = (t.get("summary") or "").strip()
+        if summary:
+            parts.append(_tex_escape(summary))
+            parts.append("")
+
+        key_points = t.get("key_points") or []
+        if key_points:
+            parts.append(r"\subsection*{Key Points}")
+            parts.append(r"\begin{itemize}[leftmargin=1.2em,itemsep=1pt,topsep=2pt]")
+            for kp in key_points:
+                parts.append(f"  \\item {_tex_escape(kp)}")
+            parts.append(r"\end{itemize}")
+            parts.append("")
+
+        for tbl in t.get("tables") or []:
+            header = tbl.get("header") or []
+            rows = tbl.get("rows") or []
+            if not header or not rows:
+                continue
+            ncol = len(header)
+            colspec = " ".join(["X"] * ncol)
+            title = (tbl.get("title") or "").strip()
+            if title:
+                parts.append(f"\\subsection*{{{_tex_escape(title)}}}")
+            parts.append(r"\begin{small}")
+            parts.append(f"\\begin{{tabularx}}{{\\linewidth}}{{{colspec}}}")
+            parts.append(
+                " & ".join(f"\\textbf{{{_tex_escape(h)}}}" for h in header) + r" \\"
+            )
+            parts.append(r"\hline")
+            for row in rows:
+                cells = (list(row) + [""] * ncol)[:ncol]
+                parts.append(" & ".join(_tex_escape(c) for c in cells) + r" \\")
+            parts.append(r"\end{tabularx}")
+            parts.append(r"\end{small}")
+            parts.append("")
+
+        for cb in t.get("code_blocks") or []:
+            caption = (cb.get("caption") or "").strip()
+            if caption:
+                parts.append(f"\\subsection*{{{_tex_escape(caption)}}}")
+            code = (cb.get("code") or "").replace("—", "--").replace("–", "-")
+            parts.append(r"\begin{small}")
+            parts.append(r"\begin{verbatim}")
+            parts.append(code.rstrip())
+            parts.append(r"\end{verbatim}")
+            parts.append(r"\end{small}")
+            parts.append("")
+
+        pitfalls = t.get("pitfalls") or []
+        if pitfalls:
+            parts.append(r"\subsection*{Pitfalls}")
+            parts.append(r"\begin{itemize}[leftmargin=1.2em,itemsep=1pt,topsep=2pt]")
+            for pf in pitfalls:
+                parts.append(f"  \\item {_tex_escape(pf)}")
+            parts.append(r"\end{itemize}")
+            parts.append("")
+
+    return "\n".join(parts)
+
+
 # ── Document assembly ────────────────────────────────────────────────
 
 
@@ -431,6 +524,8 @@ def _gen_preamble() -> str:
     \usepackage{xcolor}
     \usepackage{fancyhdr}
     \usepackage{titlesec}
+    \usepackage{tabularx}
+    \usepackage{enumitem}
 
     \hypersetup{
         colorlinks=true,
@@ -472,7 +567,7 @@ def main() -> None:
     parts.append("")
 
     # Title
-    parts.append(r"\title{\textbf{ASI Algorithm Study Guide}\\[0.5em]\large Printable Reference Booklet}")
+    parts.append(r"\title{\textbf{DSA Study Guide}\\[0.5em]\large Printable Reference Packet}")
     parts.append(r"\author{}")
     parts.append(r"\date{\today}")
     parts.append("")
@@ -501,6 +596,11 @@ def main() -> None:
 
         for src_file in source_files:
             parts.append(_gen_algo_page(src_file))
+
+    # Appendix: interview topics that round out whiteboard coverage.
+    appendix = _gen_appendix_pages(_load_appendix_topics())
+    if appendix:
+        parts.append(appendix)
 
     parts.append(r"\end{document}")
     parts.append("")

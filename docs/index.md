@@ -2,9 +2,10 @@
 title: DSA Study Guide
 ---
 
-# Algorithm Study Guide
+# DSA Study Guide
 
-Full-stack (backend) interview prep for DSA exams.
+Technical interview prep for DSA drills, system design discussion, code reading,
+and printable non-electronic study packets.
 
 <div class="grid cards" markdown>
 
@@ -12,7 +13,7 @@ Full-stack (backend) interview prep for DSA exams.
 
     ---
 
-    15 topics, typed Python 3.14+, 42 core daily drills
+    15 topics, typed Python 3.14+, 42 core drills
 
     [:octicons-arrow-right-24: Algorithms](algorithms/index.md)
 
@@ -51,6 +52,7 @@ direnv allow          # nix devshell + python 3.14 venv
 just test             # 647 tests
 just lint             # ruff + mypy strict
 just docs             # this site, locally
+just packet           # latest printable PDF packet
 ```
 
 ---
@@ -65,14 +67,15 @@ just docs             # this site, locally
 | 4 | Backend algo deep dive | 1-3 hrs coding. Graphs, DP, strings, optimization. |
 | 5 | Frontend / cross-team engineering | 1-3 hrs. Cross-team collaboration, full-stack breadth. |
 | 6 | On-site intensive | 6-8 hrs. All-day in-person interviews across multiple rounds. |
-| 7 | CEO interview | Culture, vision, team fit. |
+| 7 | Executive or bar-raiser interview | Mission fit, judgment, team fit. |
 | 8 | Offer & negotiation | Offer terms, agreements, logistics. |
 
 ---
 
 ## Daily Drill
 
-42 core algorithms, all of them, every single day. Challenge mode strips solutions — Jess re-implements from the signature and docstring alone.
+42 core algorithms for repeated drills. Challenge mode strips solutions so you
+re-implement from the signature and docstring alone.
 
 ```bash
 just challenge graphs dijkstra    # strip solution
@@ -90,9 +93,10 @@ The [cross-reference guide](reference/08-cross-reference-guide.md) maps patterns
 
 ---
 
-## Printable Booklet
+## Printable Packet
 
-123-page reference: decision trees, pattern keywords, and every algorithm with full implementation — one per page.
+Printable reference: decision trees, pattern keywords, selected notes, and every
+algorithm with full implementation.
 
 [:material-download: Download PDF](assets/booklet.pdf){ .md-button }
 
