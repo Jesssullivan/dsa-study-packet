@@ -1,0 +1,653 @@
+[
+  {
+    "section_title": "Concurrency & Parallelism Primitives",
+    "summary": "Concurrency is structure (interleaving independent tasks); parallelism is execution (work at the same instant on multiple cores). Pick the model by bottleneck: I/O-bound work wants concurrency (asyncio or threads), CPU-bound work wants parallelism (processes or subinterpreters). In CPython the GIL serializes bytecode so threads do NOT give CPU parallelism, but they do overlap blocking I/O. The hard problems are shared mutable state (race conditions, atomicity) and liveness (deadlock, starvation); the durable fixes are immutability, message passing over queues, and disciplined lock ordering.",
+    "key_points": [
+      "Concurrency vs parallelism: concurrency = dealing with many things at once (structure/interleaving); parallelism = doing many things at once (>=2 cores). You can have concurrency on 1 core.",
+      "I/O-bound -> overlap waits (asyncio/threads). CPU-bound -> use real cores (processes/subinterpreters/native code). Diagnose the bottleneck before choosing.",
+      "Threads: shared address space, cheap to spawn, fast data sharing, but need locks; a crash/segfault in native code can take down the whole process.",
+      "Processes: isolated memory, true parallelism even under the GIL, robust fault isolation; cost = IPC/serialization (pickle) and higher spawn/memory overhead.",
+      "asyncio: single thread, single event loop, cooperative multitasking via await; thousands of sockets cheaply, but ONE blocking call (CPU or sync I/O) stalls every task. Offload blocking work to run_in_executor.",
+      "GIL = one mutex; only one thread executes Python bytecode at a time in CPython. Released around blocking I/O and many C extensions (NumPy), so threads still help I/O-bound code.",
+      "GIL protects the interpreter's internal state and makes individual bytecodes atomic; it does NOT make your multi-step operations atomic (read-modify-write across bytecodes can still race).",
+      "Python 3.12 added per-interpreter GIL (subinterpreters, PEP 684); 3.13 added free-threaded build (PEP 703, no-GIL, opt-in) and stdlib subinterpreters (PEP 734).",
+      "Lock = mutual exclusion (non-reentrant in Python: same thread re-acquiring deadlocks). RLock = reentrant, owner can acquire N times, must release N times.",
+      "Semaphore = counter permitting N concurrent holders (bound a resource pool / limit concurrency). BoundedSemaphore raises if released too many times.",
+      "Condition = lock + wait/notify; wait() in a while-loop on a predicate to handle spurious wakeups and re-checks. Event = one-bit broadcast flag (set/clear/wait) for signaling.",
+      "Coffman's 4 conditions for deadlock (ALL required): mutual exclusion, hold-and-wait, no preemption, circular wait. Break any one to prevent deadlock.",
+      "Deadlock avoidance: global lock ordering (break circular wait), acquire-all-or-none / try-lock with backoff (break hold-and-wait), timeouts (introduce preemption), or avoid shared locks entirely (queues).",
+      "Race condition = correctness depends on timing/interleaving of unsynchronized access to shared mutable state. Atomicity = an operation completes indivisibly (all-or-nothing, no observable midpoint).",
+      "queue.Queue is thread-safe with built-in locking; bounded queue (maxsize) gives backpressure so a fast producer cannot exhaust memory (blocks until a slot frees).",
+      "Futures/pools: concurrent.futures gives ThreadPoolExecutor (I/O) and ProcessPoolExecutor (CPU). A Future is a handle to a pending result; .result() blocks, as_completed() yields in finish order.",
+      "Decision rule: many sockets/high I/O -> asyncio; blocking I/O libs or simple overlap -> threads; CPU crunch in pure Python -> processes (or subinterpreters / release GIL in C / use NumPy)."
+    ],
+    "tables": [
+      {
+        "title": "Execution models in CPython",
+        "header": [
+          "Model",
+          "Parallel CPU?",
+          "Best for"
+        ],
+        "rows": [
+          [
+            "Threads",
+            "No (GIL)",
+            "I/O-bound, blocking libs, shared state"
+          ],
+          [
+            "Processes",
+            "Yes",
+            "CPU-bound, fault isolation"
+          ],
+          [
+            "asyncio",
+            "No",
+            "Massive I/O concurrency, many sockets"
+          ],
+          [
+            "Subinterpreters",
+            "Yes (3.12+)",
+            "CPU + isolation, cheaper than procs"
+          ]
+        ]
+      },
+      {
+        "title": "Synchronization primitives",
+        "header": [
+          "Primitive",
+          "Purpose",
+          "Note"
+        ],
+        "rows": [
+          [
+            "Lock",
+            "Mutual exclusion",
+            "Non-reentrant; re-acquire deadlocks"
+          ],
+          [
+            "RLock",
+            "Reentrant mutex",
+            "Acquire N -> release N, same thread"
+          ],
+          [
+            "Semaphore",
+            "Allow N holders",
+            "Bound pools / limit concurrency"
+          ],
+          [
+            "Condition",
+            "Wait/notify",
+            "while-loop the predicate"
+          ],
+          [
+            "Event",
+            "Broadcast flag",
+            "set/clear/wait, one-shot signal"
+          ],
+          [
+            "Queue",
+            "Thread-safe handoff",
+            "maxsize -> backpressure"
+          ]
+        ]
+      },
+      {
+        "title": "GIL: protects vs does NOT protect",
+        "header": [
+          "Protects",
+          "Does NOT protect"
+        ],
+        "rows": [
+          [
+            "Interpreter internal state",
+            "Your multi-step invariants"
+          ],
+          [
+            "Single bytecode atomicity",
+            "Read-modify-write (n += 1)"
+          ],
+          [
+            "Refcount integrity",
+            "Compound/check-then-act logic"
+          ]
+        ]
+      }
+    ],
+    "code_blocks": [
+      {
+        "caption": "Race vs fix: n += 1 is 3 bytecodes (load/add/store), not atomic",
+        "code": "# RACE: load, add, store can interleave\ncounter = 0\ndef bump():\n    global counter\n    for _ in range(100000):\n        counter += 1   # not atomic!\n\n# FIX: serialize the read-modify-write\nlock = threading.Lock()\ndef bump_safe():\n    global counter\n    for _ in range(100000):\n        with lock:\n            counter += 1"
+      },
+      {
+        "caption": "Bounded producer-consumer with backpressure + sentinel shutdown",
+        "code": "import queue, threading\nq = queue.Queue(maxsize=100)   # bounded -> backpressure\nDONE = object()\n\ndef producer(items):\n    for it in items:\n        q.put(it)              # blocks if full\n    q.put(DONE)\n\ndef consumer():\n    while True:\n        it = q.get()\n        if it is DONE:\n            q.task_done(); break\n        handle(it)\n        q.task_done()"
+      },
+      {
+        "caption": "Deadlock by lock-order inversion -> fix with global ordering",
+        "code": "# DEADLOCK: T1 locks A then B; T2 locks B then A\n# FIX: every thread acquires in one global order\ndef transfer(a, b, amt):\n    first, second = sorted((a, b), key=id)\n    with first.lock:\n        with second.lock:\n            a.bal -= amt; b.bal += amt"
+      },
+      {
+        "caption": "Futures: pick pool by bottleneck",
+        "code": "from concurrent.futures import (\n    ThreadPoolExecutor, ProcessPoolExecutor, as_completed)\n\n# I/O-bound: threads overlap waits\nwith ThreadPoolExecutor(max_workers=32) as ex:\n    futs = [ex.submit(fetch, u) for u in urls]\n    for f in as_completed(futs):\n        use(f.result())   # raises if task raised\n\n# CPU-bound: processes use real cores\nwith ProcessPoolExecutor() as ex:\n    results = list(ex.map(crunch, chunks))"
+      },
+      {
+        "caption": "Condition: guard the predicate in a while loop",
+        "code": "cond = threading.Condition()\nready = False\ndef waiter():\n    with cond:\n        while not ready:        # re-check: spurious wakeups\n            cond.wait()\n        consume()\ndef signaler():\n    with cond:\n        global ready; ready = True\n        cond.notify_all()"
+      }
+    ],
+    "pitfalls": [
+      "Assuming threads speed up CPU-bound Python: the GIL serializes bytecode, so you get little/no speedup (often slower due to contention). Use processes/subinterpreters or drop into C/NumPy.",
+      "Treating n += 1, list.append in a loop, or check-then-act (if k not in d: d[k]=...) as atomic. The GIL guarantees single-bytecode atomicity only, not your compound operation.",
+      "One blocking or CPU-heavy call inside asyncio freezes the entire event loop and every coroutine. Use await for I/O and loop.run_in_executor for blocking/CPU work.",
+      "Calling Lock.acquire() twice in the same thread (or recursive code paths) -> self-deadlock; use RLock when re-entry is genuine.",
+      "Inconsistent lock acquisition order across code paths creates circular wait -> deadlock. Enforce one global ordering (e.g., sort by id) or use try-acquire with timeout + backoff.",
+      "Unbounded queues hide backpressure: a fast producer can exhaust memory. Set maxsize so producers block when consumers fall behind.",
+      "Forgetting to signal consumers to stop (sentinel/poison pill or shutdown event) leaves worker threads blocked on get() forever.",
+      "Sharing non-picklable objects, locks, or large data across ProcessPoolExecutor: state is copied via pickle, not shared; mutations in a child are NOT visible to the parent.",
+      "Swallowing exceptions in futures: an error inside a task surfaces only when you call .result(); if you never read the future, the failure is silent.",
+      "Catching/relying on free-threaded (no-GIL) builds in 3.13 as default: it is opt-in and many C extensions are not yet thread-safe under it; verify before depending on real thread parallelism."
+    ]
+  },
+  {
+    "section_title": "Hash Table Internals",
+    "summary": "A hash table maps keys to slots in an array via a hash function, giving expected O(1) lookup/insert/delete by trading space for time. Performance hinges on hash quality (uniform spread) and load factor (n/m); collisions are unavoidable (pigeonhole / birthday paradox), so the design choice is how to resolve them: separate chaining (slots hold lists) or open addressing (probe other slots). Resize by doubling keeps amortized O(1) inserts; worst case degrades to O(n) when everything collides into one bucket. Consistent hashing reframes the same problem for distributed sharding so that adding/removing a node moves only K/N keys instead of nearly all.",
+    "key_points": [
+      "Hash function goals: deterministic (same key -> same hash every time), uniform (spread keys evenly to minimize collisions), fast, and avalanche (small key change -> big hash change). Map to slot via h(key) mod m.",
+      "Load factor alpha = n/m (entries / buckets). It is the single knob driving collision probability and probe cost; keep it bounded by resizing.",
+      "Separate chaining: each bucket is a list (or tree). Insert prepends O(1); search/delete O(1+alpha). Tolerates alpha > 1, simple deletes, but uses pointers + cache-unfriendly.",
+      "Open addressing: all entries live in the array itself; on collision, probe a sequence until an empty slot. Cache-friendly, no pointers, but needs alpha < 1 and degrades sharply as alpha -> 1.",
+      "Linear probing: try i, i+1, i+2 ... Best cache locality but causes primary clustering (long contiguous runs that grow and merge).",
+      "Quadratic probing: try i, i+1, i+4, i+9 ... Breaks primary clustering but has secondary clustering (same-hash keys share a probe path); needs care so it visits all slots.",
+      "Double hashing: step size = second hash of key. Spreads probe sequences per key, minimizing clustering; near-ideal distribution.",
+      "Robin Hood hashing: on insert, the entry with the larger probe distance (poorer) steals the slot from the richer entry, which keeps probing. Equalizes probe lengths, low variance, great for high load factors.",
+      "Average O(1): with good hash + bounded alpha, expected probes are constant (chaining ~1+alpha; linear probing ~1/(1-alpha)). Worst-case O(n): adversarial or terrible hash collides all keys into one bucket -> linear scan.",
+      "Resize / rehash: when alpha exceeds a threshold, allocate a bigger table (double m) and reinsert (rehash) every key (h mod m changes). One resize is O(n), but doubling amortizes to O(1) per insert.",
+      "Tombstones: in open addressing you cannot blank a deleted slot (it would break probe chains that pass through it). Mark it DELETED; lookups skip past, inserts may reuse. Accumulating tombstones bloats probe length -> rehash to clean.",
+      "Hash flooding / DoS: attacker crafts colliding keys to force O(n) buckets. Mitigation: randomized/keyed hashing (e.g. SipHash) so collisions are unpredictable per process.",
+      "Consistent hashing: place nodes and keys on a hash ring (0..2^k-1); a key belongs to the next node clockwise. Adding/removing a node remaps only ~K/N keys (its arc), not the whole keyspace as plain mod-N would.",
+      "Virtual nodes (vnodes): each physical node owns many ring positions. Smooths load imbalance and, on node loss, spreads its keys across many survivors instead of one neighbor.",
+      "Python dict: open addressing (perturbation probe, not chaining), with a compact two-array layout (dense entries array + sparse index array). Preserves insertion order (guaranteed since 3.7) and saves ~20-25% memory. Resizes (typically ~2/3 full) by ~4x for small dicts, ~2x for large. Keys must be hashable (immutable, __hash__ + __eq__)."
+    ],
+    "tables": [
+      {
+        "title": "Chaining vs Open Addressing",
+        "header": [
+          "Aspect",
+          "Separate chaining",
+          "Open addressing"
+        ],
+        "rows": [
+          [
+            "Storage",
+            "buckets -> lists/trees",
+            "entries inline in array"
+          ],
+          [
+            "Load factor",
+            "works at alpha > 1",
+            "needs alpha < 1 (~0.7)"
+          ],
+          [
+            "Cache behavior",
+            "poor (pointer chasing)",
+            "good (contiguous)"
+          ],
+          [
+            "Delete",
+            "easy (unlink node)",
+            "needs tombstones"
+          ],
+          [
+            "Degrade mode",
+            "long lists",
+            "clustering, full table"
+          ]
+        ]
+      },
+      {
+        "title": "Collision strategies (open addressing)",
+        "header": [
+          "Strategy",
+          "Probe step",
+          "Clustering"
+        ],
+        "rows": [
+          [
+            "Linear",
+            "i+1, i+2, ...",
+            "primary (runs)"
+          ],
+          [
+            "Quadratic",
+            "i+1, i+4, i+9",
+            "secondary"
+          ],
+          [
+            "Double hash",
+            "k*h2(key)",
+            "minimal"
+          ],
+          [
+            "Robin Hood",
+            "linear + steal",
+            "low variance"
+          ]
+        ]
+      },
+      {
+        "title": "Cost summary (good hash)",
+        "header": [
+          "Op",
+          "Average",
+          "Worst"
+        ],
+        "rows": [
+          [
+            "lookup",
+            "O(1)",
+            "O(n)"
+          ],
+          [
+            "insert",
+            "O(1) amortized",
+            "O(n) on resize / all-collide"
+          ],
+          [
+            "delete",
+            "O(1)",
+            "O(n)"
+          ],
+          [
+            "resize",
+            "O(n) one-time",
+            "O(n)"
+          ]
+        ]
+      }
+    ],
+    "code_blocks": [
+      {
+        "caption": "Open addressing: linear probe lookup with tombstones",
+        "code": "EMPTY, DELETED = object(), object()\n\ndef find(tbl, key):\n    m = len(tbl)\n    i = hash(key) % m\n    for _ in range(m):\n        slot = tbl[i]\n        if slot is EMPTY:\n            return None          # stop: chain ends\n        if slot is not DELETED and slot.key == key:\n            return slot.val      # found\n        i = (i + 1) % m          # probe next; skip DELETED\n    return None"
+      },
+      {
+        "caption": "Amortized resize by doubling (chaining)",
+        "code": "def put(ht, key, val):\n    if (ht.n + 1) / ht.m > 0.75:   # load factor threshold\n        rehash(ht, ht.m * 2)       # O(n), but rare\n    b = hash(key) % ht.m\n    ht.buckets[b].upsert(key, val)\n    ht.n += 1\n# n inserts cost O(n) total -> O(1) each amortized"
+      },
+      {
+        "caption": "Consistent hashing: key -> node on the ring",
+        "code": "# ring: sorted list of (pos, node), many vnodes per node\ndef node_for(ring, key):\n    h = hash(key) % RING_SIZE\n    for pos, node in ring:        # first vnode clockwise\n        if pos >= h:\n            return node\n    return ring[0][1]             # wrap around\n# add/remove a node remaps only ~K/N keys"
+      }
+    ],
+    "pitfalls": [
+      "Confusing load factor thresholds: chaining stays fine past alpha=1, but open addressing blows up as alpha -> 1 (probe count ~1/(1-alpha)); resize earlier (~0.7).",
+      "Forgetting that rehash changes h mod m, so every key may move to a new bucket; you cannot skip reinsertion on resize.",
+      "In open addressing, physically clearing a deleted slot breaks any probe chain that passed through it -> use tombstones, and periodically rehash to purge them.",
+      "Assuming O(1) is guaranteed: a bad/adversarial hash collapses to O(n). For untrusted input use keyed hashing (SipHash) to prevent hash-flooding DoS.",
+      "Plain hash(key) mod N for sharding remaps almost all keys when N changes; that is exactly what consistent hashing avoids.",
+      "Without virtual nodes, consistent hashing gives uneven load and dumps a failed node's whole arc onto its single clockwise neighbor.",
+      "Mutating a key after insertion (or using a mutable/unhashable key) corrupts lookups because its hash/bucket no longer matches; keys must be immutable.",
+      "Relying on Python set iteration order for determinism: dict preserves insertion order, but set does not.",
+      "Quadratic probing can fail to find an empty slot even when one exists unless table size and probe formula are chosen to cover all slots (e.g. power-of-two size with triangular numbers)."
+    ]
+  },
+  {
+    "section_title": "Amortized Analysis",
+    "summary": "Amortized analysis proves a tight bound on the TOTAL cost of a sequence of n operations, then divides by n. It is a worst-case guarantee over the sequence, not a probabilistic average: no randomness or input distribution is assumed. Use it when an operation is occasionally expensive but the expense is \"paid for\" by many prior cheap operations. The three tools are aggregate (count total work, divide), accounting/banker (overcharge cheap ops, store credit to fund expensive ones), and potential (define a function Phi of the data-structure state; amortized = actual + delta-Phi).",
+    "key_points": [
+      "Definition: amortized cost per op = (worst-case total cost of any sequence of n ops) / n. It bounds the AVERAGE over the sequence in the WORST case.",
+      "Aggregate method: bound total work T(n) for n ops directly, then amortized = T(n)/n. Simplest; gives one cost for all op types.",
+      "Accounting (banker) method: assign each op a chosen amortized charge; cheap ops are overcharged and deposit credit on the structure; expensive ops spend stored credit. Invariant: total credit (bank balance) stays >= 0 at all times -> sum of amortized >= sum of actual -> valid upper bound.",
+      "Potential method: pick Phi(state) >= 0 with Phi(initial)=0. amortized_i = actual_i + Phi(after_i) - Phi(before_i). Telescopes: sum(amortized) = sum(actual) + Phi(final) - Phi(initial) >= sum(actual) when Phi(final) >= 0. Phi is the credit balance made into a formula.",
+      "Dynamic array append: keep capacity; when full, allocate new array of size 2*cap and copy. n appends cost n cheap writes + copies at sizes 1,2,4,...,n. Copies sum <= 2n (geometric series). Total <= 3n -> O(1) amortized per append.",
+      "Why doubling (x2), not grow-by-k: with fixed +k growth you resize every k appends copying ~i elements -> total copy work ~ sum over resizes ~ n^2/(2k) = O(n^2), i.e. O(n) amortized per append. Geometric growth makes resize work a convergent geometric series = O(n) total.",
+      "Growth factor f>1 (any constant) gives O(1) amortized: copy cost sums to n * f/(f-1). f=2 is common; smaller f (e.g. 1.5) wastes less memory but copies more often. Constant factor must be >1, not additive.",
+      "Monotonic stack (daily_temperatures): outer loop over n elements; inner while pops. Each index is pushed exactly once and popped at most once across the WHOLE run, so total push+pop work <= 2n -> O(n), even though one iteration's inner loop can be O(n).",
+      "Sliding window (variable-size, two pointers): right pointer advances n times, left pointer only advances and never resets, so left advances <= n times total. Combined pointer moves <= 2n -> O(n) amortized, despite a nested-looking while.",
+      "Amortized vs average-case: amortized = deterministic worst case over a sequence (no probability). Average-case = expectation over a random input distribution. Worst-case (per-op) = single worst op. A single append can still be O(n); amortized O(1) only describes the run.",
+      "Amortized is NOT a tail/latency guarantee: one operation may spike to O(n) (the resize). For hard real-time / DoD low-jitter needs, prefer worst-case-per-op structures or incremental resizing; amortized throughput hides the spike.",
+      "Banker's intuition map: credit on structure == potential energy Phi. Accounting picks per-op charges; potential picks a global state function. Same proof, two notations."
+    ],
+    "tables": [
+      {
+        "title": "Three Methods Compared",
+        "header": [
+          "Method",
+          "Core idea",
+          "Key check"
+        ],
+        "rows": [
+          [
+            "Aggregate",
+            "Total T(n), divide by n",
+            "Bound T(n) tightly"
+          ],
+          [
+            "Accounting",
+            "Overcharge cheap, save credit",
+            "Bank balance >= 0 always"
+          ],
+          [
+            "Potential",
+            "amort=actual+dPhi",
+            "Phi>=0, Phi(init)=0"
+          ]
+        ]
+      },
+      {
+        "title": "Growth Policy for Append",
+        "header": [
+          "Policy",
+          "Total copy work",
+          "Amortized/op"
+        ],
+        "rows": [
+          [
+            "Double (x2)",
+            "<= 2n (geometric)",
+            "O(1)"
+          ],
+          [
+            "x f (f>1)",
+            "n*f/(f-1)",
+            "O(1)"
+          ],
+          [
+            "+k fixed",
+            "~ n^2/(2k)",
+            "O(n)"
+          ],
+          [
+            "+1 each time",
+            "~ n^2/2",
+            "O(n)"
+          ]
+        ]
+      },
+      {
+        "title": "Three Cost Notions",
+        "header": [
+          "Notion",
+          "Over what",
+          "Randomness?"
+        ],
+        "rows": [
+          [
+            "Worst-case/op",
+            "single op",
+            "no"
+          ],
+          [
+            "Amortized",
+            "sequence of ops",
+            "no"
+          ],
+          [
+            "Average-case",
+            "input distribution",
+            "yes (expectation)"
+          ]
+        ]
+      }
+    ],
+    "code_blocks": [
+      {
+        "caption": "Dynamic array append: O(1) amortized via doubling",
+        "code": "def append(self, x):\n    if self.size == self.cap:        # full -> grow\n        new = [None] * (2 * self.cap) # geometric x2\n        for i in range(self.size):    # copy: cost = old size\n            new[i] = self.buf[i]\n        self.buf, self.cap = new, 2 * self.cap\n    self.buf[self.size] = x           # O(1) common case\n    self.size += 1\n# n appends: writes n + copies (1+2+4+...+n) <= 3n -> O(1)/op"
+      },
+      {
+        "caption": "Potential proof sketch for append",
+        "code": "# Let Phi = 2*size - cap  (>=0 between resizes; =0 right after grow)\n# Cheap append: actual=1, dPhi=+2 -> amortized = 3\n# Resize at size=cap: actual = cap+1 (copy cap + write 1)\n#   before grow Phi = 2*cap - cap = cap\n#   after  grow Phi = 2*(cap+1) - 2*cap = 2\n#   dPhi = 2 - cap ; amortized = (cap+1) + (2 - cap) = 3\n# Every op amortizes to 3 = O(1).  Telescoping sum bounds total."
+      },
+      {
+        "caption": "Monotonic stack: each index pushed/popped once -> O(n)",
+        "code": "def daily_temperatures(t):\n    res = [0] * len(t)\n    st = []                       # holds indices, decreasing temps\n    for i, cur in enumerate(t):\n        while st and t[st[-1]] < cur:   # amortized: total pops <= n\n            j = st.pop()\n            res[j] = i - j\n        st.append(i)              # each i pushed exactly once\n    return res\n# Inner while can run O(n) once, but sum of all pops <= n -> O(n)."
+      },
+      {
+        "caption": "Sliding window: left never rewinds -> O(n)",
+        "code": "def longest_unique(s):\n    seen, left, best = {}, 0, 0\n    for right, c in enumerate(s):      # right: n steps\n        if c in seen and seen[c] >= left:\n            left = seen[c] + 1         # left only moves forward\n        seen[c] = right\n        best = max(best, right - left + 1)\n    return best\n# right advances n; left advances total <= n -> <= 2n moves = O(n)."
+      }
+    ],
+    "pitfalls": [
+      "Calling amortized O(1) a per-operation guarantee. A single resize append is genuinely O(n); only the n-op run averages to O(1). Say 'amortized' out loud, not just 'O(1)'.",
+      "Conflating amortized with average-case. Amortized uses NO probability and holds for the worst sequence; average-case needs an input distribution and gives an expectation. Interviewers at FFRDCs probe this distinction.",
+      "Claiming append is O(1) amortized under additive (+k) growth. Additive growth is O(n) amortized / O(n^2) total; only multiplicative (constant factor > 1) growth works.",
+      "Potential-method errors: forgetting Phi(initial)=0 or letting Phi go negative. If Phi can dip below its start, sum(amortized) no longer upper-bounds sum(actual).",
+      "Accounting-method error: leaving the bank balance negative at any point. Each expensive op must be fully prepaid by credit already deposited.",
+      "Stating monotonic-stack/sliding-window as O(n^2) from the visible nested loop. The inner loop's total iterations across the whole run are bounded by n (each element enters/leaves once), so it is O(n).",
+      "Assuming amortized bounds tail latency. For real-time/DoD jitter-sensitive paths, the O(n) resize spike matters; mention incremental-resize or fixed-capacity alternatives.",
+      "Forgetting that pop/delete with shrinking can thrash if you shrink at the same threshold you grow; shrink at <= 1/4 full (not 1/2) to keep both grow and shrink O(1) amortized."
+    ]
+  },
+  {
+    "section_title": "Recursion to Iteration Conversion",
+    "summary": "Every recursive algorithm can be made iterative by simulating the call stack with an explicit stack: each pushed item is a \"frame\" holding the arguments plus a marker for where to resume. Tail calls (the recursive call is the last action, nothing happens to its result) are special: they need no stack at all and become a plain loop. The hard cases are non-tail recursion (DFS inorder, quicksort, backtracking) where work remains after a child returns; you encode that pending work as a resume-state on the frame. Convert to iteration when the language lacks tail-call optimization (CPython, default limit ~1000) or when depth can exceed the stack (deep/skewed trees, large inputs) and you risk RecursionError or a native stack overflow.",
+    "key_points": [
+      "Recursion == implicit stack of activation frames; iteration with an explicit stack reproduces it exactly. Push args + a resume marker; pop to 'return'.",
+      "Tail call: result of the recursive call is returned unchanged with no pending work. It can reuse the same frame -> rewrite as a loop (reassign args, continue). No stack growth.",
+      "TCO (tail-call optimization) is done by Scheme, Lua, most functional langs. NOT by CPython or Java (by spec); Python author Guido rejected it deliberately. So in Python you MUST hand-convert tails.",
+      "Accumulator trick: turn non-tail linear recursion into tail form by carrying a running result as an extra arg (e.g. factorial(n,acc)), then loop it.",
+      "Preorder DFS is the easy case: visit node, then push children -> a single explicit stack, no resume state. Push right child BEFORE left so left pops first.",
+      "Inorder/postorder need resume state because work happens AFTER a child returns. Use a visited flag, a two-color (gray/white) marker, or split frames into sub-steps.",
+      "Quicksort recursion is two calls; only ONE needs the real stack. Push the larger partition, loop on the smaller (Sedgewick) -> stack depth O(log n) worst case instead of O(n).",
+      "Backtracking (permutations, subsets, N-queens) = DFS over a choice tree. Explicit-stack form pushes (partial_solution, remaining_choices); pop, extend, push children. Must undo state when a branch is exhausted.",
+      "When iteration is REQUIRED: depth > recursion limit, adversarial/deep inputs (a 100k-node linked list or degenerate BST), or hard real-time where stack overflow is unacceptable.",
+      "General template: replace 'call f(x)' with stack.push((state=ENTER, x)); the main loop pops, dispatches on state, and pushes follow-up frames for post-child work. A return value goes into a 'last_result' register the parent frame reads.",
+      "Iterative depth is the same as recursive depth (you moved the stack to the heap), so it trades a fixed OS stack for a growable heap stack and a clear error path, not zero memory.",
+      "BFS is naturally iterative with a QUEUE, not a stack; do not confuse DFS-to-stack with BFS. Swapping stack for queue changes traversal order/semantics."
+    ],
+    "tables": [
+      {
+        "title": "Recursion shape -> iterative conversion",
+        "header": [
+          "Shape",
+          "Conversion",
+          "Stack depth"
+        ],
+        "rows": [
+          [
+            "Tail (last act)",
+            "Loop: reassign args, continue",
+            "O(1)"
+          ],
+          [
+            "Linear non-tail",
+            "Add accumulator -> tail -> loop",
+            "O(1)"
+          ],
+          [
+            "Tree, preorder",
+            "Explicit stack, push children",
+            "O(h)"
+          ],
+          [
+            "Tree, inorder",
+            "Stack + visited/state marker",
+            "O(h)"
+          ],
+          [
+            "Quicksort",
+            "Push larger half, loop smaller",
+            "O(log n)"
+          ],
+          [
+            "Backtracking",
+            "Stack of (partial, choices)",
+            "O(depth)"
+          ]
+        ]
+      },
+      {
+        "title": "When to convert in Python",
+        "header": [
+          "Trigger",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Depth > ~1000",
+            "Hits sys.recursionlimit -> RecursionError"
+          ],
+          [
+            "Deep/skewed tree",
+            "h ~ n, native stack overflow"
+          ],
+          [
+            "No TCO",
+            "CPython never elides tail frames"
+          ],
+          [
+            "Hot path",
+            "Explicit stack avoids call overhead"
+          ]
+        ]
+      }
+    ],
+    "code_blocks": [
+      {
+        "caption": "Iterative DFS: preorder and inorder of a binary tree",
+        "code": "# PREORDER (easy: no resume state)\ndef preorder(root):\n    out, st = [], [root] if root else []\n    while st:\n        n = st.pop()\n        out.append(n.val)\n        if n.right: st.append(n.right)  # right first\n        if n.left:  st.append(n.left)   # so left pops first\n    return out\n\n# INORDER (push-left, then process, then go right)\ndef inorder(root):\n    out, st, cur = [], [], root\n    while st or cur:\n        while cur:          # dive left\n            st.append(cur); cur = cur.left\n        cur = st.pop()      # leftmost pending\n        out.append(cur.val) # visit\n        cur = cur.right     # then right subtree\n    return out"
+      },
+      {
+        "caption": "Iterative quicksort (push larger half, loop smaller -> O(log n) stack)",
+        "code": "def quicksort(a):\n    st = [(0, len(a) - 1)]\n    while st:\n        lo, hi = st.pop()\n        if lo >= hi:\n            continue\n        p = partition(a, lo, hi)     # a[p] now in place\n        left  = (lo, p - 1)\n        right = (p + 1, hi)\n        # push the LARGER side, recurse-by-loop on smaller\n        if (left[1]-left[0]) > (right[1]-right[0]):\n            st.append(left); st.append(right)\n        else:\n            st.append(right); st.append(left)\n# partition: standard Lomuto/Hoare; returns pivot index"
+      },
+      {
+        "caption": "General transform: state on stack frames (resume marker)",
+        "code": "# recursive: do A; r = rec(child); do B(r); return val\nENTER, AFTER = 0, 1\ndef iterative(root):\n    st = [(ENTER, root)]\n    ret = None\n    while st:\n        state, x = st.pop()\n        if state == ENTER:\n            # do A\n            st.append((AFTER, x))     # frame to resume\n            st.append((ENTER, child_of(x)))  # the 'call'\n        else:  # AFTER: child returned in 'ret'\n            # do B(ret); set ret = val for parent\n            ret = combine(x, ret)\n    return ret"
+      }
+    ],
+    "pitfalls": [
+      "Pushing left child before right in preorder reverses output order; push right first so left is processed first (LIFO).",
+      "Forgetting the resume marker on non-tail recursion: you revisit nodes or skip the post-child work (B). Inorder/postorder break silently without a visited/state flag.",
+      "Quicksort that pushes both halves unconditionally can still hit O(n) stack on sorted input; you must loop on the smaller partition to guarantee O(log n).",
+      "Confusing stack vs queue: replacing the DFS stack with a queue gives BFS, a different traversal -> wrong answer if order matters.",
+      "Backtracking without undo: when a branch is exhausted you must restore shared mutable state (board, visited set), or push immutable copies; mutation leaks across branches.",
+      "Iteration does not reduce total depth/memory for tree recursion -- it moves the stack to the heap. The win is avoiding the fixed native/CPython limit, not using less space.",
+      "Raising sys.setrecursionlimit too high crashes the interpreter with a C stack overflow (segfault) instead of a catchable RecursionError -- convert to iteration instead.",
+      "Only the LAST action being a call makes it a tail call; 'return 1 + f(n-1)' is NOT tail (the add is pending) and needs an accumulator first.",
+      "Empty-input edge cases: guard root is None (DFS) and lo >= hi (quicksort) or you index past the end / loop forever."
+    ]
+  },
+  {
+    "section_title": "Fixed-Width & Numeric Pitfalls (C/C++/Java vs Python)",
+    "summary": "In C/C++/Java, int is a fixed-width two's-complement type (usually 32-bit, range -2^31 .. 2^31-1) that silently overflows; Python ints are arbitrary precision and never overflow, so bugs that crash a C interview disappear in Python. State this contrast out loud: the same algorithm is safe in Python but UB or wraparound in C/C++ and well-defined wraparound (for int operations) only in Java. Whiteboard defenses: compute midpoints as lo+(hi-lo)/2, accumulate sums/hashes under a prime modulus, and watch INT_MIN, unsigned wrap, negative-number division semantics, and float equality.",
+    "key_points": [
+      "Fixed width: C/C++ int and Java int are typically 32-bit two's complement: range -2147483648 .. 2147483647; long/long long is 64-bit (-2^63 .. 2^63-1). Python int is unbounded (bignum) -> never overflows.",
+      "Midpoint bug: mid=(lo+hi)/2 overflows when lo+hi > INT_MAX even though both fit. Fix: mid=lo+(hi-lo)/2. Famous in binary search and mergesort (JDK Arrays.binarySearch had this bug, fixed ~2006).",
+      "lo+(hi-lo)/2 assumes lo<=hi (nonnegative gap). General signed-safe form: lo+((hi-lo)>>1) for ints, or use unsigned/wider type. In Java, (lo+hi)>>>1 (unsigned shift) also fixes it.",
+      "Sum/product/hash overflow: accumulating into 32-bit overflows fast (sum of n ~10^5 values, or factorials beyond 12!, or rolling hashes). Use 64-bit (long) and/or reduce mod a prime each step.",
+      "Competitive convention: answer mod 1e9+7 (1000000007, prime). Take mod after every add/mul. (a*b)%M needs a,b<M and product <2^63 -> cast to long before multiply: (long)a*b%M.",
+      "Modular negatives: in C/Java, (-5)%3 == -1 (sign follows dividend). To get nonnegative residue: ((x%M)+M)%M. Python's -5%3 == 1 already.",
+      "Signed vs unsigned: C unsigned arithmetic is modular (well-defined wrap); signed overflow is UNDEFINED BEHAVIOR (compiler may assume it never happens). Java has no unsigned; all int ops wrap (defined two's complement).",
+      "Two's complement: most-significant bit is the sign; -x = ~x + 1. Range is asymmetric: there is no positive INT_MIN. |INT_MIN| is not representable.",
+      "INT_MIN trap: -INT_MIN, abs(INT_MIN), and INT_MIN/-1 overflow. In C signed overflow is UB; abs(INT_MIN) is UB. Guard before negating/abs.",
+      "Mixing signed+unsigned in C promotes signed to unsigned: e.g. -1 < (unsigned)1 evaluates as (huge) < 1 -> false. Beware size_t in loops counting down.",
+      "Division/truncation with negatives: C/C++/Java truncate toward ZERO (-7/2 == -3); Python // floors toward NEGATIVE INFINITY (-7//2 == -4). Same for modulo sign.",
+      "Float equality: never use == on floats. Compare with tolerance: fabs(a-b) <= eps (or relative eps for large magnitudes). 0.1+0.2 != 0.3. NaN != NaN is always true."
+    ],
+    "tables": [
+      {
+        "title": "Language numeric model contrast",
+        "header": [
+          "Aspect",
+          "C/C++",
+          "Python / Java"
+        ],
+        "rows": [
+          [
+            "int width",
+            "32-bit, overflows",
+            "Py: unbounded; Java: 32-bit wraps"
+          ],
+          [
+            "signed overflow",
+            "Undefined Behavior",
+            "Py: n/a; Java: defined wrap"
+          ],
+          [
+            "unsigned type",
+            "yes, modular wrap",
+            "Py/Java: none"
+          ],
+          [
+            "a/b negatives",
+            "trunc toward 0",
+            "Py: floor; Java: trunc 0"
+          ],
+          [
+            "-5 % 3",
+            "-2",
+            "Py: 1; Java: -2"
+          ],
+          [
+            "bignum default",
+            "no",
+            "Py: yes; Java: no (BigInteger)"
+          ]
+        ]
+      },
+      {
+        "title": "Common overflow sites and the fix",
+        "header": [
+          "Site",
+          "Bug",
+          "Fix"
+        ],
+        "rows": [
+          [
+            "binary search mid",
+            "(lo+hi)/2",
+            "lo+(hi-lo)/2"
+          ],
+          [
+            "prefix sum",
+            "32-bit accum",
+            "use 64-bit long"
+          ],
+          [
+            "modmul",
+            "a*b in 32-bit",
+            "(long)a*b % M"
+          ],
+          [
+            "abs/negate",
+            "abs(INT_MIN) UB",
+            "guard ==INT_MIN"
+          ],
+          [
+            "hash accumulate",
+            "wrap to neg",
+            "reduce mod prime"
+          ]
+        ]
+      }
+    ],
+    "code_blocks": [
+      {
+        "caption": "Overflow-safe binary search midpoint",
+        "code": "// BAD: (lo+hi) can overflow int\n// int mid = (lo + hi) / 2;\n\n// GOOD (C/C++/Java), assumes lo <= hi:\nint mid = lo + (hi - lo) / 2;\n\n// Java alternative, unsigned shift:\nint mid2 = (lo + hi) >>> 1;"
+      },
+      {
+        "caption": "Modular sum/product convention (mod 1e9+7)",
+        "code": "const long M = 1000000007L;\nlong acc = 0;\nfor (int x : a) acc = (acc + x) % M;   // sum\nlong prod = 1;\nfor (int x : a) prod = (prod * x) % M;  // x,prod < M, fits 2^63\n// nonnegative residue if x could be negative:\nlong r = ((x % M) + M) % M;"
+      },
+      {
+        "caption": "INT_MIN / negation guard and float compare",
+        "code": "// abs(INT_MIN) and -INT_MIN are UB in C (overflow)\nif (x == INT_MIN) handle_special(); else y = (x < 0) ? -x : x;\n\n// Float equality with tolerance\nbool eq(double a, double b) {\n  double eps = 1e-9;\n  return fabs(a - b) <= eps * fmax(1.0, fmax(fabs(a), fabs(b)));\n}\n// NaN check: a != a is true only for NaN"
+      }
+    ],
+    "pitfalls": [
+      "Saying 'lo+(hi-lo)/2 always works' without noting it needs lo<=hi. If lo>hi or values can be negative, the gap can still overflow; use a wider type or unsigned shift.",
+      "Doing (long) cast AFTER the multiply: (long)(a*b) overflows in 32-bit first. Cast a operand first: (long)a*b.",
+      "Forgetting that Java int wraps silently with NO exception (unlike Python which just grows) -> bugs are invisible until a test value crosses 2^31.",
+      "Assuming -5 % 3 is positive because Python does it; C/C++/Java give -2. Normalize with ((x%M)+M)%M for array indexing / hashing.",
+      "Relying on signed overflow 'wrapping' in C -- it is UB; compilers optimize assuming it cannot happen (e.g. x+1 > x always true), producing surprising behavior.",
+      "Mixing signed and unsigned (or using size_t in a countdown loop for(i=n-1; i>=0; ...) with unsigned i) -> infinite loop, since unsigned i>=0 is always true.",
+      "Using == on floats, or comparing accumulated float sums to an exact constant. Also forgetting NaN breaks ordering: NaN compares false to everything, so sorts/min/max misbehave.",
+      "Truncation vs floor: off-by-one in index math (e.g. negative modular bucket) when porting Python // logic to C/Java division.",
+      "Char/byte sign: in C, char may be signed; reading bytes >127 can go negative. Use unsigned char for byte values and hashing."
+    ]
+  }
+]
