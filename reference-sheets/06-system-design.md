@@ -91,7 +91,7 @@ or AP (serve stale data during partition).
 - **Saga**: distributed transaction as a sequence of local transactions + compensating actions.
 - **Idempotency**: design operations so retries are safe. Use idempotency keys.
 
-## Domain-relevant: Real-Time & Geospatial
+## Mission-Systems Relevant: Real-Time & Geospatial
 
 ### Real-Time Data Ingestion
 - **Pattern**: Source -> Message broker (Kafka) -> Stream processor -> Store + Serve

@@ -17,7 +17,8 @@ When to use:
     See also: geohash_grid for grid-based spatial indexing.
 
 Complexity:
-    Build: O(n log n)
+    Build: O(n log^2 n)  (median chosen by a full sort at each level;
+           O(n log n) is achievable with median-of-medians selection)
     Query: O(log n) average, O(n) worst case
     Space: O(n)
 """

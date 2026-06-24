@@ -7,10 +7,10 @@ This module demonstrates idiomatic Flask for building JSON APIs:
     3. Error handlers       — custom ``ValidationError`` + 404 both return JSON.
     4. Middleware            — before/after request hooks for logging & headers.
 
-target employer relevance:
-    Most target employer backend services expose REST or GraphQL APIs.  Understanding
-    Flask's request lifecycle helps with debugging, testing, and extending
-    any WSGI-based Python service.
+Mission-systems relevance:
+    Many backend services expose REST or GraphQL APIs. Understanding Flask's
+    request lifecycle helps with debugging, testing, and extending any
+    WSGI-based Python service.
 
 References:
     https://flask.palletsprojects.com/en/stable/patterns/appfactories/

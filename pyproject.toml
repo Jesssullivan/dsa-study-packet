@@ -1,7 +1,7 @@
 [project]
 name = "dsa-study-packet"
 version = "0.1.0"
-description = "Algorithm study for senior full stack interview at target employer"
+description = "Company-neutral DSA and technical interview study guide"
 requires-python = ">=3.14"
 readme = "README.md"
 license = { text = "MIT" }
@@ -28,16 +28,6 @@ docs = [
   "mkdocs-section-index>=0.3",
 ]
 dev = [
-  "pytest>=8.3",
-  "pytest-benchmark>=5.1",
-  "pytest-xdist>=3.5",
-  "hypothesis>=6.115",
-  "mypy>=1.13",
-  "ruff>=0.8",
-]
-
-[tool.uv]
-dev-dependencies = [
   "pytest>=8.3",
   "pytest-benchmark>=5.1",
   "pytest-xdist>=3.5",
@@ -157,7 +147,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ARG001", "ARG002"]
+"tests/**/*.py" = ["ARG001", "ARG002", "PT011"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["algo", "concepts"]

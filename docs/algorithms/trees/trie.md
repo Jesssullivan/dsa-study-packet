@@ -17,7 +17,7 @@ in a dict keyed by character for O(1) branching.
 
 ## When to Use
 
-Autocomplete, spell checking, IP routing, prefix matching. target employer relevance:
+Autocomplete, spell checking, IP routing, prefix matching. Mission-systems relevance:
 airport code lookup (e.g., "BO" -> ["BOS", "BOI", "BOG"]), flight ID
 prefix search, geospatial name indexing.
 

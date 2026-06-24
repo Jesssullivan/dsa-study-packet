@@ -1,5 +1,5 @@
 {
-  description = "Algorithm study environment for target employer interview";
+  description = "DSA and technical interview study environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";

@@ -1,6 +1,6 @@
 # Interview Day Guide
 
-Practical, printable reference for target employer interview day.
+Practical, printable reference for technical interview day.
 
 ---
 
@@ -14,7 +14,7 @@ Practical, printable reference for target employer interview day.
 4. `05-common-patterns.md` -- pattern recognition triggers
 5. `04-big-o-complexity.md` -- complexity verification
 6. `06-system-design.md` -- for system design round (L7+)
-7. RESEARCH.md first page (company overview, products, tech stack)
+7. RESEARCH.md first page, if available (organization overview, mission, products, tech stack)
 
 **Physical Items**:
 - Notepad + pen (for sketching graphs, trees, state transitions)
@@ -44,7 +44,7 @@ Open these before the interview starts:
 | 5 | <https://www.bigocheatsheet.com/> | Data structure & sorting complexities |
 | 6 | <https://visualgo.net/> | Algorithm visualization (graphs, sorting, trees) |
 | 7 | <https://docs.python.org/3/library/typing.html> | Type hints reference |
-| 8 | <https://www.example.com/platform> | target employer domain platform platform (CEO chat prep) |
+| 8 | Target organization/product pages | Mission, product, and leadership context |
 
 ---
 
@@ -57,7 +57,8 @@ No prep needed -- this is about your existing body of work.
 
 ### Stage 2: Hiring manager interview
 
-Role fit, experience, expectations. Be ready to discuss your background, why target employer, and what you bring.
+Role fit, experience, expectations. Be ready to discuss your background, why
+the organization, and what you bring.
 
 ### Stage 3: Engineering lead interview
 
@@ -107,17 +108,17 @@ All-day in-person. Multiple rounds covering algorithms, system design, code read
 - 15 min: **Deep-dive components** -- pick 2-3 to detail. Schema, APIs, data flow, failure modes.
 - 5 min: **Tradeoffs** -- consistency vs availability, cost vs performance. Name alternatives you considered.
 
-### Stage 7: CEO interview
+### Stage 7: Executive or bar-raiser interview
 
-**Tab**: 8 (target employer website / domain platform platform page).
+**Tab**: 8 (target organization/product pages).
 
 Prepare 3-4 questions showing genuine interest:
-- "How is domain platform evolving beyond aviation into other verticals like maritime and rail?"
+- "How is the mission evolving across operational domains?"
 - "What's the biggest technical challenge the engineering team is tackling right now?"
-- "How does the team balance defense vs commercial product priorities?"
-- "What does the path from Series B to the next stage look like for target employer?"
+- "How does the team balance mission needs, reliability, and product velocity?"
+- "Which constraints shape engineering decisions most: latency, security, scale, certification, or operator workflow?"
 
-Culture, vision, team fit. Be authentic, curious, and concise.
+Mission, judgment, team fit. Be authentic, curious, and concise.
 
 ### Stage 8: Offer & negotiation
 

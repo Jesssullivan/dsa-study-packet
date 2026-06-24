@@ -320,25 +320,25 @@ def _gen_decision_tree_pages() -> str:
     parts.append(r"\end{tabular}")
     parts.append(r"\end{small}")
 
-    # target employer domain mapping
+    # Mission-systems domain mapping
     parts.append(r"\vspace{1em}")
-    parts.append(r"\section{target employer Domain Mapping}")
+    parts.append(r"\section{Mission-Systems Domain Mapping}")
     parts.append(r"\begin{small}")
     parts.append(r"\begin{tabular}{l l}")
-    parts.append(r"\textbf{Aviation Problem} & \textbf{Algorithm} \\")
+    parts.append(r"\textbf{Mission Problem} & \textbf{Algorithm} \\")
     parts.append(r"\hline")
 
-    domain_examples = [
+    mission_examples = [
         ("Route aircraft around weather", "A*, weighted graph"),
         ("Track nearby aircraft", "Geohash, KD-tree"),
         ("Schedule maintenance with deps", "Topological sort"),
         ("Optimize fuel across routes", "Dijkstra, Bellman-Ford"),
         ("Real-time position streaming", "Sliding window"),
-        ("Airspace network planning", "MST, network flow"),
+        ("Network or airspace planning", "MST, network flow"),
         ("Signal processing (ADS-B)", "FFT, DCT"),
     ]
 
-    for problem, algo in domain_examples:
+    for problem, algo in mission_examples:
         parts.append(f"  {_tex_escape(problem)} & {_tex_escape(algo)} \\\\")
 
     parts.append(r"\end{tabular}")
@@ -472,7 +472,7 @@ def main() -> None:
     parts.append("")
 
     # Title
-    parts.append(r"\title{\textbf{target employer Algorithm Study Guide}\\[0.5em]\large Printable Reference Booklet}")
+    parts.append(r"\title{\textbf{DSA Study Guide}\\[0.5em]\large Printable Reference Packet}")
     parts.append(r"\author{}")
     parts.append(r"\date{\today}")
     parts.append("")
