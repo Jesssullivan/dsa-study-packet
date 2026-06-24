@@ -42,8 +42,13 @@ bench *args:
 
 # Run ruff linter + mypy type checker
 lint:
-    uv run ruff check src/ tests/
+    uv run ruff check src/ tests/ scripts/
     uv run mypy
+    uv run python scripts/check_public_boundary.py
+
+# Check that private prep material has not entered the public packet tree
+public-boundary:
+    uv run python scripts/check_public_boundary.py
 
 # Format code with ruff
 fmt:

@@ -20,6 +20,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - run: pip install uv
       - run: uv sync --extra docs
+      - name: Check public boundary
+        run: uv run python scripts/check_public_boundary.py
       - name: Build PDF booklet
         run: |
           uv run python scripts/gen_booklet.py
