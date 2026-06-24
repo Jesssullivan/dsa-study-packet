@@ -38,13 +38,21 @@ just packet
 That command regenerates the LaTeX booklet from current code and notes,
 compiles the printable PDF, and refreshes the PDF embedded in the docs site.
 
+## Public Boundary
+
+This repository is the public-safe, company-neutral packet. Keep employer
+names, interview dates, panel notes, recruiter details, private strategy, and
+tailored positioning out of this tree.
+
+Private downstream repositories can depend on `@dsa_study_packet//:booklet`
+and compose the neutral PDF with job-specific front or back matter. Those
+private supersets own employer-specific context; this repository owns only the
+generic study material.
+
 ## Downstream Composition (Bazel)
 
 This repo is also a Bazel module (`dsa_study_packet`). `bazel build //:booklet`
 compiles the SSOT `booklet.tex` into a cacheable, RBE-friendly PDF graph node.
-A private superset repo (`private_downstream/study_<company>`) depends on
-`@dsa_study_packet//:booklet` and `\includepdf`s it between company-specific
-front and back matter — so the neutral packet here stays company-agnostic while
-each interview gets a tailored superset. Refresh the neutral content with
-`just packet`; downstream lanes pick it up on rebuild.
-
+Private superset repos can depend on `@dsa_study_packet//:booklet` and
+`\includepdf` it between company-specific front and back matter. Refresh the
+neutral content with `just packet`; downstream lanes pick it up on rebuild.

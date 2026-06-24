@@ -5,6 +5,8 @@ algorithm fluency, system design discussion, and printable non-electronic notes.
 
 The repo is organized so source code, tests, and authored notes are the source of
 truth. The web docs, TeX, and PDF packet are generated from those materials.
+Employer-specific interview prep belongs in private downstream supersets, not
+in this repository.
 
 ## Quick Start
 
