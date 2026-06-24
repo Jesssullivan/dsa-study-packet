@@ -490,7 +490,7 @@ def _gen_appendix_pages(topics: list[dict]) -> str:
             caption = (cb.get("caption") or "").strip()
             if caption:
                 parts.append(f"\\subsection*{{{_tex_escape(caption)}}}")
-            code = (cb.get("code") or "").replace("—", "--").replace("–", "-")
+            code = (cb.get("code") or "").replace("\u2014", "--").replace("\u2013", "-")
             parts.append(r"\begin{small}")
             parts.append(r"\begin{verbatim}")
             parts.append(code.rstrip())
