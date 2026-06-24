@@ -1,32 +1,53 @@
+# DSA Study Guide
 
+Company-neutral study material for technical interviews that expect whiteboarding,
+algorithm fluency, system design discussion, and printable non-electronic notes.
 
-
----
-
-
-
-
+The repo is organized so source code, tests, and authored notes are the source of
+truth. The web docs, TeX, and PDF packet are generated from those materials.
 
 ## Quick Start
 
 ```bash
-direnv allow        # nix devshell + python 3.14 venv
-just test           # 628 tests
+direnv allow        # nix devshell + Python 3.14 venv
+just test           # pytest + hypothesis
 just lint           # ruff + mypy strict
-just docs           # mkdocs site at localhost:8000
+just docs           # local MkDocs site
+just packet         # latest printable TeX -> PDF packet
 ```
 
+## Source Of Truth
 
+| Path | Role |
+|------|------|
+| `src/algo/` | Implementations and docstrings for DSA study |
+| `tests/` | Examples, properties, and correctness checks |
+| `src/concepts/` | Supporting technical concepts: typing, validation, Flask, FFT/DCT, benchmarking |
+| `src/practice/` | Code-reading and decomposition drills |
+| `reference-sheets/` | Authored printable notes and quick-reference sheets |
+| `scripts/gen_booklet.py` | Builds the printable LaTeX packet from code and notes |
+| `scripts/gen_algo_pages.py` | Builds MkDocs algorithm pages from code docstrings |
+
+Generated artifacts:
+
+| Artifact | Command |
+|----------|---------|
+| `booklet.tex` | `uv run python scripts/gen_booklet.py` |
+| `booklet.pdf` | `just packet` |
+| `docs/assets/booklet.pdf` | `just packet` |
+| `site/` | `just docs-build` |
+
+## Daily Drill
 
 ```bash
-just challenge arrays two_sum     # strip solution → implement
-just study arrays                 # watch mode — tests re-run on save
-just solution arrays two_sum      # peek if stuck
+just challenge arrays two_sum     # strip solution -> implement
+just study arrays                 # watch mode, tests re-run on save
+just solution arrays two_sum      # restore solution if stuck
 just challenge-done arrays two_sum
 just challenge-progress
 ```
 
-### Core 42
+## Core 42
 
 | Topic | # | Drill set |
 |-------|---|-----------|
@@ -47,47 +68,5 @@ just challenge-progress
 | bit_manipulation | 1 | single_number |
 | sorting | 1 | quickselect |
 
-The remaining 27 implementations stay in the repo as extended practice and reference.
-
-## Commands
-
-```bash
-just                              # list all commands
-
-# ── Testing ──
-just test                         # all 628 tests
-just practice <topic>             # one topic
-just study <topic>                # watch mode
-just test-concepts                # concept modules (numpy/scipy/flask/pydantic)
-
-# ── Challenge ──
-just challenge <topic> <problem>  # strip solution, show failing tests
-just solution <topic> <problem>   # restore solution
-just challenge-done <t> <p>       # mark complete
-just challenge-progress           # show progress
-
-# ── Quality ──
-just lint                         # ruff + mypy strict
-just fmt                          # auto-format
-
-# ── Docs ──
-just docs                         # mkdocs serve
-just pdf-booklet                  # printable reference booklet
-```
-
-## Structure
-
-```
-src/algo/         69 implementations, 15 topics (42 core + 27 extended)
-src/concepts/     6 modules: t-strings, typing, hypothesis, FFT, Flask, Pydantic
-src/practice/     3 code reading + 3 decomposition exercises
-tests/            628 tests (pytest + hypothesis)
-reference-sheets/ 9 printable reference sheets
-docs/             mkdocs site
-```
-
-## Reference
-
-- [Cross-Reference Guide](reference-sheets/08-cross-reference-guide.md) — pattern → implementation lookup
-- [Interview Day Guide](reference-sheets/07-interview-day-guide.md) — printouts, tabs, strategy
-- [Algorithm Templates](reference-sheets/03-algorithm-templates.md) — binary search, BFS/DFS, DP, backtracking
+The remaining implementations stay in the repo as extended practice and
+reference material.

@@ -1,0 +1,15 @@
+load("@rules_tectonic//tectonic:defs.bzl", "tectonic_pdf")
+
+package(default_visibility = ["//visibility:public"])
+
+# booklet.tex is the SSOT artifact produced by `just packet` (gen_booklet.py).
+# Export it so other tools/repos can consume the source, and compile it here so
+# the neutral packet PDF is a cacheable, RBE-friendly Bazel graph node that the
+# private study lanes compose against.
+exports_files(["booklet.tex"])
+
+tectonic_pdf(
+    name = "booklet",
+    src = "booklet.tex",
+    reruns = 2,
+)

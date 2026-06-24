@@ -126,6 +126,9 @@
     * [Interview Day Guide](reference/07-interview-day-guide.md)
     * [Cross Reference Guide](reference/08-cross-reference-guide.md)
 * [Practice](practice/index.md)
-* [Challenges](challenges/index.md)
+* Challenges
+    * [Daily Drill](challenges/index.md)
+    * [Progress](challenges/progress.md)
 * Guide
     * [When to Use What](guide/when-to-use-what.md)
+    * [Source of Truth](guide/source-of-truth.md)

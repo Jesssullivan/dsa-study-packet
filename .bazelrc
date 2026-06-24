@@ -1,0 +1,23 @@
+# Bazel config for dsa_study_packet.
+#
+# Mirrors GloriousFlywheel's shared cache-backed contract: local builds work with
+# no remote backend; CI attaches a remote cache at invocation and selects the
+# ci-cached config. Remote EXECUTION is opt-in and intentionally NOT enabled here.
+
+common --enable_bzlmod
+build --incompatible_strict_action_env
+build --disk_cache=~/.cache/bazel/dsa-study-packet
+test --test_output=errors
+
+# Shared remote cache, behavior-only. The endpoint is supplied at invocation via
+#   bazel build --config=ci-cached --remote_cache=$BAZEL_REMOTE_CACHE //:booklet
+# so cluster-internal URLs are never committed (per the GF cache contract).
+# Shared developers must never upload local action results to the shared cache.
+build:ci-cached --remote_upload_local_results=false
+build:ci-cached --remote_download_minimal
+build:ci-cached --remote_timeout=60
+build:ci-cached --experimental_remote_cache_async
+build:ci-cached --experimental_remote_cache_ttl=3h
+build:cache-readonly --config=ci-cached
+
+try-import %workspace%/user.bazelrc

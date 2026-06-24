@@ -18,7 +18,7 @@ stack (process in reverse to maintain order).
 ## When to Use
 
 Processing recursive/nested data structures — JSON, XML, file trees,
-AST traversal. target employer relevance: nested geospatial data, hierarchical
+AST traversal. Mission-systems relevance: nested geospatial data, hierarchical
 flight plans.
 
 ## Complexity

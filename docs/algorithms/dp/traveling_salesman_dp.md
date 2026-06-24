@@ -14,7 +14,7 @@ starting city.
 
 Bitmask DP (Held-Karp algorithm). State is (visited_set, current_city).
 Use an integer bitmask to represent the set of visited cities.
-dp[mask][i] = minimum cost to visit the cities in `mask`, ending at city i.
+``dp[mask][i]`` = minimum cost to visit the cities in `mask`, ending at city i.
 
 ## When to Use
 

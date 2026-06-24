@@ -157,7 +157,12 @@ pdf-booklet:
     uv run python scripts/gen_booklet.py
     echo "Compiling booklet.pdf with tectonic..."
     tectonic booklet.tex
-    echo "Done → booklet.pdf"
+    mkdir -p docs/assets
+    cp booklet.pdf docs/assets/booklet.pdf
+    echo "Done -> booklet.pdf and docs/assets/booklet.pdf"
+
+# Build the latest printable study packet from source code and notes
+packet: pdf-booklet
 
 # ──────────────────────────────────────────────
 # Documentation (MkDocs)

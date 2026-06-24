@@ -13,8 +13,14 @@ Approach:
 When to use:
     Shortest path when you have a good heuristic (estimated distance to goal).
     Better than Dijkstra when goal is known — avoids exploring irrelevant nodes.
-    target employer relevance: flight route optimization with destination-aware pruning.
+    Mission-systems relevance: route optimization with destination-aware pruning.
     Use Manhattan distance for grids, great-circle distance for geospatial.
+
+Note:
+    Optimality requires an admissible heuristic (never overestimates the true
+    remaining cost) and, for this no-closed-set form, a consistent one.
+    Manhattan distance satisfies both on a 4-connected grid with per-cell cost
+    >= 1, so the path is optimal when the goal is first popped.
 
 Complexity:
     Time:  O(E log V) with a good heuristic (grid: E ~ 4V)
@@ -36,7 +42,7 @@ def a_star(
 ) -> list[tuple[int, int]] | None:
     """Return the shortest path from *start* to *goal* on *grid*.
 
-    *grid[r][c]* is the cost to enter cell (r, c). Returns a list of
+    ``grid[r][c]`` is the cost to enter cell (r, c). Returns a list of
     (row, col) coordinates from start to goal inclusive, or ``None`` if
     no path exists.
 
