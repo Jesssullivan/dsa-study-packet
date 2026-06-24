@@ -174,7 +174,7 @@ Need nearest in 2D/3D?      --> KD-tree or geohash
 | `t_strings.py` | Learning Python 3.14 features, preventing injection | `sql_safe()`, `html_safe()`, `structured_log()`, `render()` | PEP 750, ref sheet 03 (Python 3.14) |
 | `advanced_typing.py` | Writing typed Python, understanding Protocol vs ABC | `Drawable` Protocol, `Stack[T]`, `Container[T]`, `@overload`, `TypeGuard` | PEP 544/612/647/695/696, ref sheet 03 |
 | `hypothesis_patterns.py` | Learning property-based testing, finding edge cases | `SortedList`, `BoundedCounter` | Hypothesis docs, ref sheet 03, `tests/concepts/test_hypothesis_patterns.py` |
-| `fft_dct.py` | Signal processing, frequency analysis, sensor data | `compute_fft()`, `filter_signal()`, `compute_dct()`, `spectral_analysis()` | ASI: ADS-B signals, weather radar |
+| `fft_dct.py` | Signal processing, frequency analysis, sensor data | `compute_fft()`, `filter_signal()`, `compute_dct()`, `spectral_analysis()` | Radar, telemetry, radio, and other sensor streams |
 | `modern_flask.py` | Web API patterns, app factory, testing | `create_app()`, `api_bp` Blueprint, `ValidationError` | System design round, API questions |
 | `validation.py` | Data validation, API boundaries, Pydantic v2 vs Zod | `User` model, `Address`, `Shape` discriminated union, `serialize_user()` | Practical problem solving round |
 
@@ -183,18 +183,18 @@ Need nearest in 2D/3D?      --> KD-tree or geohash
 - **t_strings** demonstrate the *template pattern* -- same concept as parameterized queries in `sql_safe()`, analogous to how DP builds solutions from templates
 - **advanced_typing** shows `Stack[T]` -- the same LIFO structure used in `valid_parentheses.py` and `daily_temperatures.py`
 - **hypothesis_patterns** uses `bisect` -- the same binary search strategy in `longest_increasing_subseq.py`
-- **fft_dct** is pure signal processing -- relevant when ASI interview asks about sensor data pipelines
+- **fft_dct** is pure signal processing -- relevant for sensor data pipelines
 - **modern_flask** is the API layer -- pairs with `validation.py` for full request lifecycle
 - **validation** with Pydantic is the runtime counterpart to `advanced_typing`'s static type system
 
 ---
 
-## Section 4: ASI-Domain Problem Mapping
+## Section 4: Mission-Systems Problem Mapping
 
-| ASI Domain Challenge | Relevant Algorithms | Implementations |
+| Mission Challenge | Relevant Algorithms | Implementations |
 |---|---|---|
 | Flight route optimization | A*, Dijkstra, Bellman-Ford | `graphs/a_star_search.py`, `graphs/dijkstra.py`, `graphs/bellman_ford.py` |
-| Airspace network planning | MST, Network flow | `graphs/minimum_spanning_tree.py`, `graphs/network_flow.py` |
+| Network or airspace planning | MST, Network flow | `graphs/minimum_spanning_tree.py`, `graphs/network_flow.py` |
 | Weather-constrained routing | Constraint satisfaction, TSP | `dp/constraint_satisfaction.py`, `dp/traveling_salesman_dp.py` |
 | Geospatial indexing (airports, waypoints) | Geohash, KD-tree | `graphs/geohash_grid.py`, `graphs/kd_tree.py` |
 | Real-time data streaming | Sliding window, heaps | `sliding_window/`, `heaps/task_scheduler.py` |
@@ -206,9 +206,9 @@ Need nearest in 2D/3D?      --> KD-tree or geohash
 | Network capacity planning | Max flow, MST | `graphs/network_flow.py`, `graphs/minimum_spanning_tree.py` |
 | Task prioritization with constraints | Heap + cooldown, greedy | `heaps/task_scheduler.py`, `greedy/jump_game.py` |
 
-### How to frame algorithm answers for ASI
+### How to frame algorithm answers for mission systems
 
-When asked about an aviation/aerospace domain problem, connect to fundamentals:
+When asked about an operational domain problem, connect to fundamentals:
 
 1. **"How would you route aircraft around weather?"**
    - Model airspace as weighted graph, weather cells as infinite-weight edges
@@ -434,7 +434,7 @@ Work through every implementation in order:
 4. Trees + graphs (day 4)
 5. DP + backtracking (day 5)
 6. Heaps, greedy, bit manipulation, sorting (day 6)
-7. Concept modules + ASI domain mapping (day 7)
+7. Concept modules + mission-systems mapping (day 7)
 
 ---
 

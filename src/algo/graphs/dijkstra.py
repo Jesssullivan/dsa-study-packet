@@ -11,7 +11,7 @@ Approach:
 When to use:
     Shortest path with NON-NEGATIVE weights. Flight routing, network latency,
     road navigation. For negative weights use Bellman-Ford instead.
-    ASI relevance: core of route optimization in PRESCIENCE.
+    Mission-systems relevance: core of route and cost optimization.
 
 Complexity:
     Time:  O((V + E) log V)

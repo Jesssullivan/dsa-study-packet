@@ -82,7 +82,7 @@ just study-concept    # watch mode
 | t_strings | Template pattern | Parameterized queries in `sql_safe()`, analogous to DP building solutions from templates |
 | advanced_typing | `Stack[T]` | Same LIFO structure used in `valid_parentheses.py` and `daily_temperatures.py` |
 | hypothesis_patterns | `bisect` | Same binary search strategy as `longest_increasing_subseq.py` |
-| fft_dct | Sensor data pipelines | Relevant when ASI asks about ADS-B signal processing or weather radar |
+| fft_dct | Sensor data pipelines | Relevant for ADS-B, radar, telemetry, and other signal streams |
 | modern_flask | API layer | Pairs with `validation.py` for full request lifecycle |
 | validation | Runtime types | Runtime counterpart to `advanced_typing`'s static type system |
 | benchmarking | `top_k_frequent`, `kth_largest` | Empirical complexity verification of bucket sort O(n) vs heap O(n log k) |

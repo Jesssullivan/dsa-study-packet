@@ -438,12 +438,12 @@ Bit Manipulation        (7 problems)
 5. **System Design Interview, Vol 1 & 2 (Alex Xu)**
    Best system design prep. Priority:
    - Vol 1, Ch 1-5: fundamentals (scaling, caching, load balancing, messaging, databases)
-   - Vol 1, Ch 11: Design a News Feed (real-time fan-out, similar to ASI's data distribution)
-   - Vol 2: specific designs matching ASI's domain -- real-time data processing, geospatial systems, notification/alerting pipelines
+   - Vol 1, Ch 11: Design a News Feed (real-time fan-out and data distribution)
+   - Vol 2: real-time data processing, geospatial systems, notification/alerting pipelines
 
 ---
 
-## 9. ASI-Domain Resources
+## 9. Mission-Systems Domain Resources
 
 ### Aviation / ADS-B
 - **OpenSky Network**: <https://opensky-network.org/> -- free live and historical flight tracking data, REST API
@@ -454,17 +454,17 @@ Bit Manipulation        (7 problems)
 ### Geospatial
 - **H3 (Uber's hexagonal indexing)**: <https://h3geo.org/> -- hierarchical geospatial index. Know: resolution levels, `h3.latlng_to_cell()`, `h3.grid_ring()`, `h3.grid_disk()`.
 - **PostGIS documentation**: <https://postgis.net/documentation/> -- spatial SQL. Know: `ST_Distance`, `ST_Within`, `ST_Intersects`, spatial indexes (GiST).
-- **Mapbox GL JS docs**: <https://docs.mapbox.com/mapbox-gl-js/> -- ASI uses Mapbox for map rendering. Understand layers, sources, expressions.
+- **Mapbox GL JS docs**: <https://docs.mapbox.com/mapbox-gl-js/> -- map rendering layers, sources, and expressions.
 - **GeoJSON specification**: <https://geojson.org/> -- data format for geospatial features (points, polygons, lines).
 
 ### Optimization
-- **Google OR-Tools**: <https://developers.google.com/optimization> -- vehicle routing, scheduling, constraint programming. Directly relevant to ASI's route optimization.
+- **Google OR-Tools**: <https://developers.google.com/optimization> -- vehicle routing, scheduling, constraint programming.
 - **scipy.optimize**: <https://docs.scipy.org/doc/scipy/reference/optimize.html> -- numerical optimization in Python.
 - **PuLP**: <https://coin-or.github.io/pulp/> -- linear programming in Python. Good for modeling flight scheduling constraints.
 
 ### ML / Weather
 - **NOAA Weather APIs**: <https://www.weather.gov/documentation/services-web-api> -- free weather data, forecasts, alerts.
-- **PyTorch Geometric**: <https://pyg.org/> -- graph neural networks. Relevant to ASI's graph-based modeling.
+- **PyTorch Geometric**: <https://pyg.org/> -- graph neural networks for graph-based modeling.
 - **LightGBM documentation**: <https://lightgbm.readthedocs.io/> -- gradient boosting for tabular data (demand prediction, classification).
 - **Weights & Biases**: <https://docs.wandb.ai/> -- experiment tracking alternative to MLflow.
 
@@ -478,7 +478,7 @@ Key documentation for the concept modules in `src/concepts/`:
 |-------|-----|-------|
 | Flask 3.x | <https://flask.palletsprojects.com/en/stable/> | Async views, class-based views, nested blueprints |
 | Pydantic v2 | <https://docs.pydantic.dev/latest/> | Model validators, discriminated unions, serialization |
-| Zod (TypeScript) | <https://zod.dev/> | Runtime type validation (ASI uses TypeScript frontend) |
+| Zod (TypeScript) | <https://zod.dev/> | Runtime type validation for TypeScript frontends |
 | numpy.fft | <https://numpy.org/doc/stable/reference/routines.fft.html> | FFT, IFFT, rfft, fftfreq |
 | scipy.fft | <https://docs.scipy.org/doc/scipy/reference/fft.html> | DCT, DST, more FFT variants |
 | Python typing | <https://docs.python.org/3/library/typing.html> | TypeVar, Protocol, ParamSpec, TypeGuard |

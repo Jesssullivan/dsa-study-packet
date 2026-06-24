@@ -219,7 +219,7 @@ Need nearest in 2D/3D?     --> KD-tree or geohash
 
 ---
 
-## ASI Domain Mapping
+## Mission-Systems Domain Mapping
 
 When an interviewer frames a problem in aviation terms, translate to fundamentals:
 
@@ -230,6 +230,6 @@ When an interviewer frames a problem in aviation terms, translate to fundamental
 | Schedule maintenance with deps | Topological sort | `graphs/topological_sort.py` |
 | Optimize fuel across routes | Dijkstra, Bellman-Ford | `graphs/dijkstra.py`, `graphs/bellman_ford.py` |
 | Real-time position streaming | Sliding window | `sliding_window/` |
-| Airspace network planning | MST, network flow | `graphs/minimum_spanning_tree.py`, `graphs/network_flow.py` |
+| Network or airspace planning | MST, network flow | `graphs/minimum_spanning_tree.py`, `graphs/network_flow.py` |
 | Signal processing (ADS-B, radar) | FFT, DCT | `concepts/fft_dct.py` |
 | API validation | Pydantic, Flask | `concepts/validation.py`, `concepts/modern_flask.py` |

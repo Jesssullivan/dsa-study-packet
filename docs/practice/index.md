@@ -4,7 +4,8 @@ title: Practice Exercises
 
 # Practice Exercises
 
-Exercises designed for the **Practical Problem Solving** round at ASI, where the interviewer shows you unfamiliar code and asks you to analyze it.
+Exercises designed for practical problem-solving rounds where the interviewer
+shows you unfamiliar code and asks you to analyze it.
 
 ---
 

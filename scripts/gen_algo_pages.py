@@ -269,7 +269,7 @@ def _gen_problem_page(
         "",
         f"        **Run:** `just challenge {topic} {problem}`",
         "",
-        f"        Then implement the functions to make all tests pass.",
+        "        Then implement the functions to make all tests pass.",
         f"        Use `just study {topic}` for watch mode.",
         "",
         '    ??? success "Reveal Solution"',
@@ -398,6 +398,7 @@ def _gen_summary(
     # Guide
     lines.append("* Guide")
     lines.append("    * [When to Use What](guide/when-to-use-what.md)")
+    lines.append("    * [Source of Truth](guide/source-of-truth.md)")
 
     lines.append("")
     return "\n".join(lines)

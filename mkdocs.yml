@@ -1,8 +1,8 @@
-site_name: ASI Algorithm Study Guide
-site_url: https://jesssullivan.github.io/study-for-asi/
-site_description: Algorithm interview study guide — 69 implementations, daily challenges
-repo_url: https://github.com/Jesssullivan/study-for-asi
-repo_name: Jesssullivan/study-for-asi
+site_name: DSA Study Packet
+site_url: https://jesssullivan.github.io/dsa-study-packet/
+site_description: Company-neutral DSA and technical interview study packet
+repo_url: https://github.com/Jesssullivan/dsa-study-packet
+repo_name: Jesssullivan/dsa-study-packet
 
 theme:
   name: material

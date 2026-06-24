@@ -8,7 +8,7 @@ Problem:
 Approach:
     Bitmask DP (Held-Karp algorithm). State is (visited_set, current_city).
     Use an integer bitmask to represent the set of visited cities.
-    dp[mask][i] = minimum cost to visit the cities in `mask`, ending at city i.
+    ``dp[mask][i]`` = minimum cost to visit the cities in `mask`, ending at city i.
 
 When to use:
     Visit-all-nodes optimization — "shortest route visiting every city",
@@ -31,7 +31,7 @@ INF = float("inf")
 def tsp(dist: Sequence[Sequence[int | float]]) -> int | float:
     """Return the minimum cost tour visiting all cities and returning to start.
 
-    *dist* is an n x n adjacency matrix where dist[i][j] is the cost
+    *dist* is an n x n adjacency matrix where ``dist[i][j]`` is the cost
     from city i to city j.
 
     >>> tsp([[0, 10, 15, 20], [10, 0, 35, 25], [15, 35, 0, 30], [20, 25, 30, 0]])
