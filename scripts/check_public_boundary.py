@@ -26,13 +26,16 @@ FORBIDDEN_CONTENT = (
             )
         ),
     ),
-    ("legacy ASI repo name", re.compile(re.escape("DSA-study-" + "ASI"))),
+    (
+        "legacy company-specific repo name",
+        re.compile(re.escape("DSA-study-" + "A" + "SI")),
+    ),
     ("private resume repo name", re.compile(r"\bspear[_-]resumes\b")),
-    ("private MITRE marker", re.compile(r"\bMITRE\b")),
-    ("private SCEPTER marker", re.compile(r"\bSCEPTER\b")),
-    ("private ASI marker", re.compile(r"\bASI\b")),
-    ("private CRA marker", re.compile(r"\bCRA\b")),
-    ("private STR marker", re.compile(r"\bSTR\b")),
+    ("private employer marker", re.compile(r"\b" + "MI" + r"TRE\b")),
+    ("private employer marker", re.compile(r"\b" + "SCE" + r"PTER\b")),
+    ("private employer marker", re.compile(r"\b" + "A" + r"SI\b")),
+    ("private employer marker", re.compile(r"\b" + "C" + r"RA\b")),
+    ("private employer marker", re.compile(r"\b" + "S" + r"TR\b")),
 )
 
 
