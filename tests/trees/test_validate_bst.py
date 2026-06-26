@@ -1,5 +1,10 @@
 """Tests for validate binary search tree."""
 
+from itertools import pairwise
+
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.trees.validate_bst import TreeNode, is_valid_bst
 
 
@@ -45,3 +50,74 @@ class TestIsValidBST:
             TreeNode(12, TreeNode(10), TreeNode(14)),
         )
         assert is_valid_bst(tree) is True
+
+def _inorder_vals(node: TreeNode | None) -> list[int]:
+    if node is None:
+        return []
+    return [*_inorder_vals(node.left), node.val, *_inorder_vals(node.right)]
+
+def _strictly_increasing(xs: list[int]) -> bool:
+    return all(a < b for a, b in pairwise(xs))
+
+def _build_balanced_bst(vals: list[int]) -> TreeNode | None:
+    if not vals:
+        return None
+    mid = len(vals) // 2
+    return TreeNode(
+        vals[mid],
+        _build_balanced_bst(vals[:mid]),
+        _build_balanced_bst(vals[mid + 1 :]),
+    )
+
+_random_trees = st.recursive(
+    st.none() | st.builds(TreeNode, st.integers(min_value=-50, max_value=50)),
+    lambda children: st.builds(
+        TreeNode,
+        st.integers(min_value=-50, max_value=50),
+        children,
+        children,
+    ),
+    max_leaves=20,
+)
+
+class TestIsValidBSTProperties:
+    @given(tree=_random_trees)
+    def test_matches_inorder_oracle(self, tree: TreeNode | None) -> None:
+        """A tree is a BST iff its in-order traversal is strictly increasing."""
+        expected = _strictly_increasing(_inorder_vals(tree))
+        assert is_valid_bst(tree) is expected
+
+    @given(
+        vals=st.lists(
+            st.integers(min_value=-50, max_value=50),
+            min_size=1,
+            max_size=20,
+            unique=True,
+        ),
+    )
+    def test_balanced_bst_from_sorted_distinct_is_valid(
+        self, vals: list[int]
+    ) -> None:
+        """A balanced tree built from sorted distinct values is always a BST."""
+        tree = _build_balanced_bst(sorted(vals))
+        assert is_valid_bst(tree) is True
+
+    @given(
+        vals=st.lists(
+            st.integers(min_value=-50, max_value=50),
+            min_size=2,
+            max_size=20,
+            unique=True,
+        ),
+    )
+    def test_injected_violation_is_rejected(self, vals: list[int]) -> None:
+        """Forcing the minimum node above the global max breaks the BST."""
+        ordered = sorted(vals)
+        root = _build_balanced_bst(ordered)
+        assert root is not None
+        node = root
+        while node.left is not None:
+            node = node.left
+        # leftmost node is the minimum; push it above every other value
+        node.val = ordered[-1] + 1
+        assert is_valid_bst(root) is False

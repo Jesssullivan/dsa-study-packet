@@ -395,8 +395,13 @@ def _gen_summary(
     lines.append("    * [Daily Drill](challenges/index.md)")
     lines.append("    * [Progress](challenges/progress.md)")
 
+    # Printables (booklet + reference-sheet PDFs)
+    lines.append("* [Printables](printables.md)")
+
     # Guide
     lines.append("* Guide")
+    lines.append("    * [Getting Started](guide/getting-started.md)")
+    lines.append("    * [Learning Paths](guide/learning-paths.md)")
     lines.append("    * [When to Use What](guide/when-to-use-what.md)")
     lines.append("    * [Source of Truth](guide/source-of-truth.md)")
 

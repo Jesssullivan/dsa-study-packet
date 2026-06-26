@@ -30,6 +30,7 @@ docs = [
 dev = [
   "pytest>=8.3",
   "pytest-benchmark>=5.1",
+  "pytest-cov>=5.0",
   "pytest-xdist>=3.5",
   "hypothesis>=6.115",
   "mypy>=1.13",
@@ -65,6 +66,23 @@ filterwarnings = ["error"]
 # --------------------------------------------------------------------------- #
 [tool.hypothesis]
 settings = { max_examples = 200, deadline = 1000 }
+
+# --------------------------------------------------------------------------- #
+# coverage
+# --------------------------------------------------------------------------- #
+[tool.coverage.run]
+branch = true
+source = ["src/algo", "src/concepts"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+  "\\.\\.\\.",
+]
 
 # --------------------------------------------------------------------------- #
 # mypy — strict mode
