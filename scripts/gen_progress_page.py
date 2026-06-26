@@ -95,6 +95,19 @@ def main() -> None:
         lines.append(f'`{"█" * bar_filled}{"░" * bar_empty}` {pct}%')
         lines.append("")
 
+    # Per-topic summary table
+    lines.append("| Topic | Done | Progress |")
+    lines.append("|-------|------|----------|")
+    for topic, problems in CORE_42.items():
+        topic_done = sum(1 for p in problems if f"{topic}/{p}" in completed)
+        topic_pct = int(topic_done / len(problems) * 100)
+        filled = topic_pct // 10
+        bar = "█" * filled + "░" * (10 - filled)
+        lines.append(
+            f"| {_topic_title(topic)} | {topic_done}/{len(problems)} | `{bar}` {topic_pct}% |"
+        )
+    lines.append("")
+
     lines.append("---")
     lines.append("")
 
@@ -111,6 +124,21 @@ def main() -> None:
                 lines.append(f"- [x] {_title(problem)}{date_str}")
             else:
                 lines.append(f"- [ ] {_title(problem)}")
+        lines.append("")
+
+    # Suggested next — first few problems not yet completed
+    remaining = [
+        f"{topic}/{problem}"
+        for topic, problems in CORE_42.items()
+        for problem in problems
+        if f"{topic}/{problem}" not in completed
+    ]
+    if remaining:
+        lines.append("## Suggested next")
+        lines.append("")
+        for key in remaining[:5]:
+            topic, problem = key.split("/")
+            lines.append(f"- `just challenge {topic} {problem}` — {_title(problem)}")
         lines.append("")
 
     lines.append("---")

@@ -14,9 +14,15 @@ Run automatically by mkdocs-gen-files during `mkdocs build`.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import mkdocs_gen_files
+
+# Reuse the challenge-mode body stripper so the web "attempt" view matches the
+# CLI `just challenge` scaffold exactly.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from strip_solution import strip_solution
 
 # ── Paths ────────────────────────────────────────────────────────────
 
@@ -262,15 +268,28 @@ def _gen_problem_page(
             "",
         ]
 
+    # "Your task" scaffold: signatures + docstrings only (bodies stripped),
+    # so a web reader can attempt before revealing. Each line is indented 4
+    # spaces to sit inside the content tab's fenced code block.
+    stripped = strip_solution(source)
+    stripped_block = "\n".join(
+        ("    " + line) if line.strip() else "" for line in stripped.splitlines()
+    )
+
     lines += [
         '=== "Challenge"',
         "",
         '    !!! question "Implement it yourself"',
         "",
-        f"        **Run:** `just challenge {topic} {problem}`",
+        "        Fill in the bodies below from the signatures and docstrings, then",
+        "        check yourself against the **Reveal Solution** tab.",
         "",
-        "        Then implement the functions to make all tests pass.",
-        f"        Use `just study {topic}` for watch mode.",
+        f"        Drilling locally? `just challenge {topic} {problem}` strips the file"
+        f" and `just study {topic}` re-runs the tests on every save.",
+        "",
+        f'    ```python title="{problem}.py — your task"',
+        stripped_block,
+        "    ```",
         "",
         '    ??? success "Reveal Solution"',
         "",
