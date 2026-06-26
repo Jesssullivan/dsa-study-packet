@@ -36,15 +36,21 @@ study-concept:
 bench *args:
     uv run pytest -m bench --benchmark-enable --benchmark-sort=fullname {{ args }}
 
+# Run tests with coverage (statement + branch) over the algo + concept sources
+cov *args:
+    uv run pytest --cov=src/algo --cov=src/concepts --cov-branch --cov-report=term-missing {{ args }}
+
 # ──────────────────────────────────────────────
 # Code quality
 # ──────────────────────────────────────────────
 
-# Run ruff linter + mypy type checker
+# Run ruff linter + mypy type checker + repo guards
 lint:
     uv run ruff check src/ tests/ scripts/
     uv run mypy
     uv run python scripts/check_public_boundary.py
+    uv run python scripts/check_no_stubs.py
+    uv run python scripts/validate_appendix_schema.py
 
 # Check that private prep material has not entered the public packet tree
 public-boundary:

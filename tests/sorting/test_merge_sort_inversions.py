@@ -38,3 +38,38 @@ class TestCountInversions:
             if data[i] > data[j]
         )
         assert count_inversions(data) == expected
+
+def _inversions_via_bubble_sort(nums: list[int]) -> int:
+    """Independent oracle: inversion count equals adjacent swaps in bubble sort."""
+    arr = list(nums)
+    swaps = 0
+    n = len(arr)
+    for i in range(n):
+        for j in range(n - 1 - i):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                swaps += 1
+    return swaps
+
+@given(
+    data=st.lists(st.integers(min_value=-50, max_value=50), min_size=0, max_size=30),
+)
+def test_inversions_match_bubble_sort_swaps(data: list[int]) -> None:
+    """Inversion count equals the number of adjacent swaps bubble sort performs."""
+    assert count_inversions(data) == _inversions_via_bubble_sort(data)
+
+@given(
+    data=st.lists(
+        st.integers(min_value=-100, max_value=100),
+        min_size=0,
+        max_size=30,
+        unique=True,
+    ),
+)
+def test_inversions_reversal_complement_unique(data: list[int]) -> None:
+    """For distinct values, inv(xs) + inv(reversed xs) == C(n, 2)."""
+    n = len(data)
+    assert (
+        count_inversions(data) + count_inversions(list(reversed(data)))
+        == n * (n - 1) // 2
+    )
