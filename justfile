@@ -237,6 +237,10 @@ challenge-done topic problem:
 challenge-progress:
     @cat .challenges/progress.md 2>/dev/null || echo "No challenges completed yet."
 
+# Spaced-repetition: show the next problems due for drilling (default 5)
+study-spaced n="5":
+    @uv run python scripts/study_schedule.py {{ n }}
+
 # Reset challenge progress (clear all completions)
 challenge-reset:
     rm -f .challenges/progress.md

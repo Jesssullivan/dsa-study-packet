@@ -1,8 +1,8 @@
 ---
-title: DSA Study Guide
+title: DSA Study Packet
 ---
 
-# DSA Study Guide
+# DSA Study Packet
 
 Technical interview prep for DSA drills, system design discussion, code reading,
 and printable non-electronic study packets.
