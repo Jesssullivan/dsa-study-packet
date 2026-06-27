@@ -12,7 +12,6 @@ Approach:
 When to use:
     Minimum cost to connect all nodes — cable/road/pipeline routing,
     network backbone design. Kruskal for sparse graphs, Prim for dense.
-    Aviation: minimum-cost ground infrastructure linking airports.
 
 Complexity:
     Kruskal: O(E log E)  (sort-dominated)

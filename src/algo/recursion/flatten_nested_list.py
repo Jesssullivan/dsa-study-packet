@@ -11,8 +11,7 @@ Approach:
 
 When to use:
     Processing recursive/nested data structures — JSON, XML, file trees,
-    AST traversal. Mission-systems relevance: nested geospatial data, hierarchical
-    flight plans.
+    AST traversal.
 
 Complexity:
     Time:  O(n) — where n = total elements across all nesting levels

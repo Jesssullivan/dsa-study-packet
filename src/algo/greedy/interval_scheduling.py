@@ -12,7 +12,7 @@ Approach:
 When to use:
     Activity selection / resource booking — "max non-overlapping intervals",
     "minimum removals for no overlap", "room scheduling". Sort by end time,
-    greedily pick earliest-finishing. Aviation: gate/runway slot allocation.
+    greedily pick earliest-finishing.
 
 Complexity:
     Time:  O(n log n)

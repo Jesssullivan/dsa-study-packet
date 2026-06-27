@@ -13,7 +13,6 @@ Approach:
 When to use:
     Shortest path when you have a good heuristic (estimated distance to goal).
     Better than Dijkstra when goal is known — avoids exploring irrelevant nodes.
-    Mission-systems relevance: route optimization with destination-aware pruning.
     Use Manhattan distance for grids, great-circle distance for geospatial.
 
 Note:

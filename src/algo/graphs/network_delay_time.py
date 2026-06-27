@@ -13,7 +13,6 @@ Approach:
 When to use:
     "Can a signal/message reach all nodes, and how long?" — broadcast
     latency, all-nodes reachability. Run Dijkstra, answer is max(dist).
-    Aviation: minimum propagation delay across a network of stations.
 
 Complexity:
     Time:  O((V + E) log V)

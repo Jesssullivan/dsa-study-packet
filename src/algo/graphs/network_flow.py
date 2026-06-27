@@ -12,7 +12,6 @@ Approach:
 When to use:
     Maximum throughput — "max bandwidth", "maximum matching", "supply
     chain optimization". Model as source -> sink capacity network.
-    Aviation: air traffic flow management, gate assignment optimization.
 
 Complexity:
     Time:  O(V * E^2)
