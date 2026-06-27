@@ -9,46 +9,16 @@ Run automatically by mkdocs-gen-files during `mkdocs build`.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import mkdocs_gen_files
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from core42 import CORE_42
+
 ROOT = Path(__file__).resolve().parent.parent
 PROGRESS_FILE = ROOT / ".challenges" / "progress.md"
-
-# The core 42, grouped by topic (matches challenges/index.md)
-CORE_42: dict[str, list[str]] = {
-    "arrays": ["two_sum", "group_anagrams", "product_except_self"],
-    "two_pointers": ["three_sum", "trapping_rain_water"],
-    "sliding_window": ["min_window_substring", "longest_substring_no_repeat"],
-    "stacks_queues": ["valid_parentheses", "daily_temperatures"],
-    "searching": ["binary_search", "search_rotated_array"],
-    "linked_lists": ["reverse_linked_list", "lru_cache"],
-    "trees": ["validate_bst", "level_order_traversal", "trie"],
-    "graphs": [
-        "number_of_islands",
-        "topological_sort",
-        "course_schedule",
-        "dijkstra",
-        "a_star_search",
-        "bellman_ford",
-        "minimum_spanning_tree",
-    ],
-    "dp": [
-        "coin_change",
-        "edit_distance",
-        "knapsack",
-        "longest_increasing_subseq",
-        "longest_common_subseq",
-    ],
-    "heaps": ["kth_largest", "merge_k_sorted_lists"],
-    "backtracking": ["subsets", "combination_sum", "n_queens"],
-    "greedy": ["merge_intervals", "jump_game"],
-    "strings": ["valid_palindrome", "longest_palindromic_substring"],
-    "recursion": ["generate_parentheses", "flatten_nested_list"],
-    "bit_manipulation": ["single_number"],
-    "sorting": ["quickselect"],
-}
 
 
 def _parse_progress() -> dict[str, str]:
@@ -145,6 +115,7 @@ def main() -> None:
     lines.append("")
     lines.append("```bash")
     lines.append("just challenge-progress  # CLI view")
+    lines.append("just study-spaced        # next problems due (spaced repetition)")
     lines.append("just challenge-reset     # clear all progress")
     lines.append("```")
     lines.append("")
