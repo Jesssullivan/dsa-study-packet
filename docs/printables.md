@@ -63,12 +63,12 @@ markdown (`reference-sheets/*.md`) compiles to standalone PDFs with
 | 01 | [Python Standard Library](reference/01-python-stdlib.md) | `collections`, `itertools`, `functools`, `bisect`, `heapq` — the built-ins you reach for first |
 | 02 | [Data Structures](reference/02-data-structures.md) | Operations and Big-O for every Python built-in type, plus trees, graphs, and heaps |
 | 03 | [Algorithm Templates](reference/03-algorithm-templates.md) | Copy-ready templates: binary search, BFS/DFS, sliding window, backtracking, DP, and more |
-| 03b | [Python 3.14 & Modern Patterns](reference/03-python-314.md) | PEP 750 t-strings, PEP 649 lazy annotations, PEP 695 type syntax, Hypothesis, advanced typing |
 | 04 | [Big-O Complexity](reference/04-big-o-complexity.md) | Time complexities ranked, input-size rules of thumb, amortized analysis |
 | 05 | [Common Patterns](reference/05-common-patterns.md) | The compact problem-signal → pattern table — what to try first |
 | 06 | [System Design](reference/06-system-design.md) | Load balancing, caching, message queues, database scaling, API design |
 | 07 | [Interview Day Guide](reference/07-interview-day-guide.md) | Day-of logistics, communication framework, timing strategy, and what to have open |
 | 08 | [Cross-Reference Guide](reference/08-cross-reference-guide.md) | Master lookup: problem description → implementation, decision tree, keyword cheat sheet |
+| 09 | [Python 3.14 & Modern Patterns](reference/09-python-314-and-modern-patterns.md) | PEP 750 t-strings, PEP 649 lazy annotations, PEP 695 type syntax, Hypothesis, advanced typing |
 
 !!! info "Where the sheet PDFs land"
     `just pdf-all` writes one PDF per sheet to `reference-sheets/pdf/`

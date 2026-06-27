@@ -171,9 +171,9 @@ Need nearest in 2D/3D?      --> KD-tree or geohash
 
 | Concept Module | Study When... | Key Functions / Classes | Cross-References |
 |---|---|---|---|
-| `t_strings.py` | Learning Python 3.14 features, preventing injection | `sql_safe()`, `html_safe()`, `structured_log()`, `render()` | PEP 750, ref sheet 03 (Python 3.14) |
-| `advanced_typing.py` | Writing typed Python, understanding Protocol vs ABC | `Drawable` Protocol, `Stack[T]`, `Container[T]`, `@overload`, `TypeGuard` | PEP 544/612/647/695/696, ref sheet 03 |
-| `hypothesis_patterns.py` | Learning property-based testing, finding edge cases | `SortedList`, `BoundedCounter` | Hypothesis docs, ref sheet 03, `tests/concepts/test_hypothesis_patterns.py` |
+| `t_strings.py` | Learning Python 3.14 features, preventing injection | `sql_safe()`, `html_safe()`, `structured_log()`, `render()` | PEP 750, ref sheet 09 (Python 3.14) |
+| `advanced_typing.py` | Writing typed Python, understanding Protocol vs ABC | `Drawable` Protocol, `Stack[T]`, `Container[T]`, `@overload`, `TypeGuard` | PEP 544/612/647/695/696, ref sheet 09 |
+| `hypothesis_patterns.py` | Learning property-based testing, finding edge cases | `SortedList`, `BoundedCounter` | Hypothesis docs, ref sheet 09, `tests/concepts/test_hypothesis_patterns.py` |
 | `fft_dct.py` | Signal processing, frequency analysis, sensor data | `compute_fft()`, `filter_signal()`, `compute_dct()`, `spectral_analysis()` | Radar, telemetry, radio, and other sensor streams |
 | `modern_flask.py` | Web API patterns, app factory, testing | `create_app()`, `api_bp` Blueprint, `ValidationError` | System design round, API questions |
 | `validation.py` | Data validation, API boundaries, Pydantic v2 vs Zod | `User` model, `Address`, `Shape` discriminated union, `serialize_user()` | Practical problem solving round |
@@ -407,9 +407,9 @@ Work through every implementation in order:
 | `01-python-stdlib.md` | Python built-in functions, data types, standard library |
 | `02-data-structures.md` | Detailed data structure theory and operations |
 | `03-algorithm-templates.md` | Pseudocode templates for each algorithm family |
-| `03-python-314-and-modern-patterns.md` | Python 3.14 features, t-strings, typing, Hypothesis |
 | `04-big-o-complexity.md` | Complexity analysis, input size -> acceptable complexity |
 | `05-common-patterns.md` | Problem signal -> pattern mapping (compact version) |
 | `06-system-design.md` | System design interview framework |
 | `07-interview-day-guide.md` | Day-of logistics, communication framework, timing |
 | **08-cross-reference-guide.md** | You are here -- the master lookup |
+| `09-python-314-and-modern-patterns.md` | Python 3.14 features, t-strings, typing, Hypothesis |
