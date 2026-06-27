@@ -99,6 +99,12 @@ markdown_extensions:
       custom_checkbox: true
   - pymdownx.tilde
 
+extra_css:
+  - assets/css/visualizer.css
+
+extra_javascript:
+  - assets/js/visualizer.js
+
 extra:
   meta:
     - name: robots

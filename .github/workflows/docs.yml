@@ -39,6 +39,8 @@ jobs:
           tectonic booklet.tex
           mkdir -p docs/assets
           cp booklet.pdf docs/assets/booklet.pdf
+      - name: Generate visualizer traces
+        run: uv run python scripts/gen_traces.py
       - name: Build site (strict)
         run: uv run --extra docs python -m mkdocs build --strict
       - uses: actions/configure-pages@v5

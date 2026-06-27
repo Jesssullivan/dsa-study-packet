@@ -24,6 +24,10 @@ import mkdocs_gen_files
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from strip_solution import strip_solution
 
+# Algorithms with a step-visualizer trace (scripts/gen_traces.py). Embedding is
+# gated on this set; adding an algorithm is pure trace data, not code here.
+VIZ_TRACES = {"binary_search"}
+
 # ── Paths ────────────────────────────────────────────────────────────
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -239,6 +243,16 @@ def _gen_problem_page(
             "|---|---|",
             f'| **Time** | `{info["time"]}` |',
             f'| **Space** | `{info["space"]}` |',
+            "",
+        ]
+
+    # Step visualizer (data-driven; only for problems with a trace)
+    if problem in VIZ_TRACES:
+        lines += [
+            "## Visualize",
+            "",
+            f'<div class="algo-viz" data-trace="../../../assets/traces/{problem}.json">'
+            "Loading visualizer…</div>",
             "",
         ]
 

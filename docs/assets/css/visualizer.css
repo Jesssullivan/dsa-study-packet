@@ -1,0 +1,23 @@
+.algo-viz { border: 1px solid var(--md-default-fg-color--lightest, #ddd); border-radius: 8px; padding: .75rem 1rem; margin: 1rem 0; }
+.viz-header { font-size: .85rem; margin-bottom: .5rem; }
+.viz-input { color: var(--md-default-fg-color--light, #666); font-family: var(--md-code-font-family, monospace); }
+.viz-stage { display: flex; flex-direction: column; gap: .9rem; min-height: 3rem; }
+.viz-name { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--md-default-fg-color--light, #888); margin-bottom: .25rem; }
+.viz-array { display: flex; flex-wrap: wrap; gap: 3px; }
+.viz-cell { position: relative; min-width: 2.2rem; padding: .35rem .25rem 1rem; text-align: center; border: 1px solid var(--md-default-fg-color--lighter, #ccc); border-radius: 4px; background: var(--md-default-bg-color, #fff); }
+.viz-cell.viz-hi { background: var(--md-accent-fg-color, #3182ce); color: #fff; border-color: var(--md-accent-fg-color, #3182ce); }
+.viz-val { display: block; font-weight: 600; }
+.viz-idx { position: absolute; bottom: 1px; left: 0; right: 0; font-size: .6rem; opacity: .55; }
+.viz-ptr { position: absolute; top: -1.15rem; left: 0; right: 0; font-size: .65rem; font-weight: 700; color: var(--md-primary-fg-color, #1a365d); }
+.viz-grid { border-collapse: collapse; }
+.viz-grid td { border: 1px solid var(--md-default-fg-color--lighter, #ccc); min-width: 1.9rem; height: 1.9rem; text-align: center; padding: .1rem .35rem; }
+.viz-grid td.viz-hi { background: var(--md-accent-fg-color, #3182ce); color: #fff; }
+.viz-vars { display: flex; flex-wrap: wrap; gap: .6rem; }
+.viz-var { font-family: var(--md-code-font-family, monospace); font-size: .8rem; }
+.viz-var-k { opacity: .7; } .viz-var-k::after { content: "="; }
+.viz-var-v { font-weight: 600; }
+.viz-caption { margin: .6rem 0; font-size: .85rem; min-height: 1.2rem; }
+.viz-controls { display: flex; align-items: center; gap: .3rem; }
+.viz-btn { cursor: pointer; border: 1px solid var(--md-default-fg-color--lighter, #ccc); background: var(--md-default-bg-color, #fff); color: inherit; border-radius: 4px; padding: .2rem .55rem; font-size: .9rem; }
+.viz-btn:disabled { opacity: .4; cursor: default; }
+.viz-counter { font-size: .75rem; opacity: .7; margin-left: .5rem; }
