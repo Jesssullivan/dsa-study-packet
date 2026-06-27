@@ -179,12 +179,16 @@ packet: pdf-booklet
 # Documentation (MkDocs)
 # ──────────────────────────────────────────────
 
+# Generate algorithm-visualizer traces (SSOT frame data)
+traces:
+    uv run python scripts/gen_traces.py
+
 # Serve docs locally with live reload
-docs:
+docs: traces
     uv run --extra docs mkdocs serve
 
 # Build docs site
-docs-build:
+docs-build: traces
     uv run --extra docs mkdocs build
 
 # Deploy docs to GitHub Pages
