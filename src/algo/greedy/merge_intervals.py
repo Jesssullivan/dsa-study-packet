@@ -13,7 +13,6 @@ Approach:
 When to use:
     Overlapping range consolidation — "merge intervals", "insert interval",
     "meeting room conflicts". Sort by start, sweep and merge.
-    Aviation: airspace reservation merging, calendar/schedule compression.
 
 Complexity:
     Time:  O(n log n)

@@ -13,8 +13,7 @@ Approach:
 When to use:
     Resource allocation with constraints — "maximize value under weight
     limit", "subset sum", "budget allocation". 0/1 variant for items
-    used at most once. Aviation: cargo loading optimization, fuel vs
-    payload tradeoff.
+    used at most once.
 
 Complexity:
     Time:  O(n * W)

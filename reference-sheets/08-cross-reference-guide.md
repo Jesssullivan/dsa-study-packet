@@ -189,45 +189,7 @@ Need nearest in 2D/3D?      --> KD-tree or geohash
 
 ---
 
-## Section 4: Mission-Systems Problem Mapping
-
-| Mission Challenge | Relevant Algorithms | Implementations |
-|---|---|---|
-| Flight route optimization | A*, Dijkstra, Bellman-Ford | `graphs/a_star_search.py`, `graphs/dijkstra.py`, `graphs/bellman_ford.py` |
-| Network or airspace planning | MST, Network flow | `graphs/minimum_spanning_tree.py`, `graphs/network_flow.py` |
-| Weather-constrained routing | Constraint satisfaction, TSP | `dp/constraint_satisfaction.py`, `dp/traveling_salesman_dp.py` |
-| Geospatial indexing (airports, waypoints) | Geohash, KD-tree | `graphs/geohash_grid.py`, `graphs/kd_tree.py` |
-| Real-time data streaming | Sliding window, heaps | `sliding_window/`, `heaps/task_scheduler.py` |
-| Sensor signal processing (ADS-B, radar) | FFT, DCT, filtering | `concepts/fft_dct.py` |
-| Dependency scheduling (builds, deploys) | Topological sort, course schedule | `graphs/topological_sort.py`, `graphs/course_schedule.py` |
-| API design & validation | Flask, Pydantic | `concepts/modern_flask.py`, `concepts/validation.py` |
-| Data pipeline optimization | Merge intervals, scheduling | `greedy/merge_intervals.py`, `greedy/interval_scheduling.py` |
-| Cache design (session, config) | LRU cache | `linked_lists/lru_cache.py` |
-| Network capacity planning | Max flow, MST | `graphs/network_flow.py`, `graphs/minimum_spanning_tree.py` |
-| Task prioritization with constraints | Heap + cooldown, greedy | `heaps/task_scheduler.py`, `greedy/jump_game.py` |
-
-### How to frame algorithm answers for mission systems
-
-When asked about an operational domain problem, connect to fundamentals:
-
-1. **"How would you route aircraft around weather?"**
-   - Model airspace as weighted graph, weather cells as infinite-weight edges
-   - A* with great-circle heuristic (`a_star_search.py`)
-   - Bellman-Ford if fuel costs can be negative via tailwinds (`bellman_ford.py`)
-
-2. **"Design a system to track nearby aircraft"**
-   - Geohash grid for O(1) cell lookup (`geohash_grid.py`)
-   - KD-tree for exact nearest-neighbor queries (`kd_tree.py`)
-   - Sliding window on streaming position updates (`sliding_window/`)
-
-3. **"Schedule maintenance tasks with dependencies"**
-   - Topological sort for ordering (`topological_sort.py`)
-   - Course schedule pattern for cycle detection (`course_schedule.py`)
-   - Interval scheduling for time-slot allocation (`interval_scheduling.py`)
-
----
-
-## Section 5: Quick Decision Tree
+## Section 4: Quick Decision Tree
 
 ```
 START: What does the problem ask for?
@@ -296,7 +258,7 @@ START: What does the problem ask for?
 
 ---
 
-## Section 6: Complexity Quick-Reference by Category
+## Section 5: Complexity Quick-Reference by Category
 
 Use this to sanity-check your solution's complexity during an interview.
 
@@ -372,7 +334,7 @@ Use this to sanity-check your solution's complexity during an interview.
 
 ---
 
-## Section 7: Pattern Recognition Cheat Sheet
+## Section 6: Pattern Recognition Cheat Sheet
 
 When you read a problem statement, look for these keywords and jump to the right section.
 
@@ -405,11 +367,11 @@ When you read a problem statement, look for these keywords and jump to the right
 
 ---
 
-## Section 8: Study Order Recommendations
+## Section 7: Study Order Recommendations
 
 ### If you have 2 hours (crunch mode)
 
-1. Skim this decision tree (Section 5) -- internalize the branching
+1. Skim this decision tree (Section 4) -- internalize the branching
 2. Review `arrays/two_sum.py` (hash map pattern)
 3. Review `sliding_window/min_window_substring.py` (window pattern)
 4. Review `dp/coin_change.py` (DP template)
@@ -434,7 +396,7 @@ Work through every implementation in order:
 4. Trees + graphs (day 4)
 5. DP + backtracking (day 5)
 6. Heaps, greedy, bit manipulation, sorting (day 6)
-7. Concept modules + mission-systems mapping (day 7)
+7. Concept modules (day 7)
 
 ---
 

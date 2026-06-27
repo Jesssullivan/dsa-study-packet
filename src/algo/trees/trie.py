@@ -10,9 +10,7 @@ Approach:
     in a dict keyed by character for O(1) branching.
 
 When to use:
-    Autocomplete, spell checking, IP routing, prefix matching. Mission-systems relevance:
-    airport code lookup (e.g., "BO" -> ["BOS", "BOI", "BOG"]), flight ID
-    prefix search, geospatial name indexing.
+    Autocomplete, spell checking, IP routing, prefix matching.
 
 Complexity:
     Time:  O(m) per insert/search/starts_with/delete where m = word length.

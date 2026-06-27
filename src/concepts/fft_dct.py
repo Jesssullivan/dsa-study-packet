@@ -1,7 +1,7 @@
 """FFT and DCT — frequency-domain signal processing with NumPy/SciPy.
 
-Mission-systems relevance:
-    ADS-B signal analysis, weather radar processing, sensor fusion — all
+Real-world relevance:
+    Audio/image compression, sensor analysis, and signal filtering all
     depend on extracting frequency content from time-domain signals.
 
 Core ideas:

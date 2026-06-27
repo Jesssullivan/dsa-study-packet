@@ -13,7 +13,7 @@ Approach:
 When to use:
     Visit-all-nodes optimization — "shortest route visiting every city",
     delivery/pickup routing, inspection tours. Bitmask DP (Held-Karp)
-    for exact solution when n <= 20. Aviation: multi-stop flight routing.
+    for exact solution when n <= 20.
 
 Complexity:
     Time:  O(n^2 * 2^n)

@@ -35,9 +35,7 @@ These are open-ended system design and algorithm decomposition prompts. Practice
 
 | Exercise | File | Domain |
 |----------|------|--------|
-| Flight Route Optimizer | `src/practice/decomposition/ex01_flight_route_optimizer.md` | Graph algorithms, weather constraints, A* |
 | Vehicle Tracking | `src/practice/decomposition/ex02_vehicle_tracking.md` | Geospatial indexing, real-time updates |
-| Geospatial Pipeline | `src/practice/decomposition/ex03_geospatial_pipeline.md` | Data ingestion, spatial queries, streaming |
 
 ### What they're evaluating
 

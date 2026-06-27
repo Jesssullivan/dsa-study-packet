@@ -15,7 +15,6 @@ When to use:
     Scheduling with cooldown constraints — "minimum time to complete all
     tasks with cooldown", "CPU scheduling", "rate-limited job execution".
     Max-heap ensures the most frequent task is scheduled first.
-    Aviation: runway scheduling with minimum separation times.
 
 Complexity:
     Time:  O(t) where t = total intervals (bounded by len(tasks) * (n+1))

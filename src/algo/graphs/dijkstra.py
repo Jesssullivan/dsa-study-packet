@@ -9,9 +9,8 @@ Approach:
     expand the nearest unvisited node and relax its outgoing edges.
 
 When to use:
-    Shortest path with NON-NEGATIVE weights. Flight routing, network latency,
-    road navigation. For negative weights use Bellman-Ford instead.
-    Mission-systems relevance: core of route and cost optimization.
+    Shortest path with NON-NEGATIVE weights. Network latency, road
+    navigation, logistics routing. For negative weights use Bellman-Ford instead.
 
 Complexity:
     Time:  O((V + E) log V)

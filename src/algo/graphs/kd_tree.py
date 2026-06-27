@@ -12,8 +12,7 @@ Approach:
 
 When to use:
     Nearest neighbor in multi-dimensional space — "closest point",
-    "k-nearest neighbors", range search in 2D/3D. Aviation: closest
-    waypoint/airport lookup, collision avoidance in 3D airspace.
+    "k-nearest neighbors", range search in 2D/3D.
     See also: geohash_grid for grid-based spatial indexing.
 
 Complexity:

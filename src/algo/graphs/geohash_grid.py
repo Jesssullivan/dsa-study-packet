@@ -14,8 +14,7 @@ Approach:
 When to use:
     Spatial indexing for proximity queries — "find nearby points",
     "group by geographic region". Prefix-matching on geohash strings
-    gives fast bounding-box lookups. Aviation: nearby airport/NAVAID
-    search, sector boundary queries. See also: kd_tree for exact NN.
+    gives fast bounding-box lookups. See also: kd_tree for exact NN.
 
 Complexity:
     Encode/Decode: O(precision)

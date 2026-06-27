@@ -11,7 +11,6 @@ Approach:
 When to use:
     O(1) cache with eviction — "design LRU/LFU cache", bounded-memory
     caching with recency tracking. Pattern: hash map + doubly linked list.
-    Aviation: caching decoded METAR/TAF data, recent flight plan lookups.
 
 Complexity:
     Time:  O(1) for both get and put

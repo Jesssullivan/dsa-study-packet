@@ -11,7 +11,7 @@ Approach:
 When to use:
     Sorted array lookup or any monotonic predicate search — "find target",
     "first/last occurrence", "search insert position". Foundation for
-    bisect-based optimizations. Aviation: altitude/waypoint lookup tables.
+    bisect-based optimizations.
 
 Complexity:
     Time:  O(log n)

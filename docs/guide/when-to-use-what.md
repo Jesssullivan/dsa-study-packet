@@ -217,19 +217,3 @@ Need merge/find groups?    --> Union-Find
 Need nearest in 2D/3D?     --> KD-tree or geohash
 ```
 
----
-
-## Mission-Systems Domain Mapping
-
-When an interviewer frames a problem in aviation terms, translate to fundamentals:
-
-| Aviation Problem | Algorithm | Implementation |
-|---|---|---|
-| Route aircraft around weather | A*, weighted graph | `graphs/a_star_search.py` |
-| Track nearby aircraft | Geohash, KD-tree | `graphs/geohash_grid.py`, `graphs/kd_tree.py` |
-| Schedule maintenance with deps | Topological sort | `graphs/topological_sort.py` |
-| Optimize fuel across routes | Dijkstra, Bellman-Ford | `graphs/dijkstra.py`, `graphs/bellman_ford.py` |
-| Real-time position streaming | Sliding window | `sliding_window/` |
-| Network or airspace planning | MST, network flow | `graphs/minimum_spanning_tree.py`, `graphs/network_flow.py` |
-| Signal processing (ADS-B, radar) | FFT, DCT | `concepts/fft_dct.py` |
-| API validation | Pydantic, Flask | `concepts/validation.py`, `concepts/modern_flask.py` |
