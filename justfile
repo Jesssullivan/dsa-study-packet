@@ -191,10 +191,6 @@ docs: traces
 docs-build: traces
     uv run --extra docs mkdocs build
 
-# Deploy docs to GitHub Pages
-docs-deploy:
-    uv run --extra docs mkdocs gh-deploy --force
-
 # ──────────────────────────────────────────────
 # Challenge mode
 # ──────────────────────────────────────────────
@@ -249,15 +245,3 @@ study-spaced n="5":
 challenge-reset:
     rm -f .challenges/progress.md
     @echo "Progress cleared."
-
-# ──────────────────────────────────────────────
-# Release / changelog
-# ──────────────────────────────────────────────
-
-# Generate changelog with git-cliff
-changelog:
-    git-cliff --output CHANGELOG.md
-
-# Print unreleased changes
-changelog-preview:
-    git-cliff --unreleased

@@ -1,4 +1,4 @@
-# DSA Study Guide
+# DSA Study Packet
 
 Company-neutral study material for technical interviews that expect whiteboarding,
 algorithm fluency, system design discussion, and printable non-electronic notes.
