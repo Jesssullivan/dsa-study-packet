@@ -1,0 +1,54 @@
+load("@rules_tectonic//tectonic:defs.bzl", "tectonic_pdf")
+
+package(default_visibility = ["//visibility:public"])
+
+# Worked example of the overlay pattern: wrap the neutral //:booklet PDF with
+# company / site / people-specific front + back matter, composed by Bazel.
+#
+# Two steps:
+#   1) stage the .tex inputs + the compiled neutral booklet flat in one dir, so
+#      \input{} and \includepdf{} resolve by bare filename, and validate the
+#      booklet is a real PDF;
+#   2) compile the master with tectonic into the final packet PDF.
+#
+# Production repos can factor steps 1-2 into a macro (a private superset repo
+# would use its own study_packet_lane() macro for exactly this). Kept inline
+# here so the whole pattern is visible in one file.
+genrule(
+    name = "staged_srcs",
+    srcs = [
+        "study_packet_example.tex",
+        "front_matter.tex",
+        "back_matter.tex",
+        "preamble.tex",
+        "//:booklet",
+    ],
+    outs = [
+        "staged/study_packet_example.tex",
+        "staged/front_matter.tex",
+        "staged/back_matter.tex",
+        "staged/preamble.tex",
+        "staged/booklet.pdf",
+    ],
+    cmd = "\n".join([
+        "mkdir -p $(RULEDIR)/staged",
+        "cp $(location study_packet_example.tex) $(RULEDIR)/staged/study_packet_example.tex",
+        "cp $(location front_matter.tex) $(RULEDIR)/staged/front_matter.tex",
+        "cp $(location back_matter.tex) $(RULEDIR)/staged/back_matter.tex",
+        "cp $(location preamble.tex) $(RULEDIR)/staged/preamble.tex",
+        "cp $(location //:booklet) $(RULEDIR)/staged/booklet.pdf",
+        "head -c 5 $(RULEDIR)/staged/booklet.pdf | grep -q '%PDF' || { echo 'ERROR: booklet.pdf is not a valid PDF' >&2; exit 1; }",
+    ]),
+)
+
+tectonic_pdf(
+    name = "study_packet_example",
+    src = "staged/study_packet_example.tex",
+    deps = [
+        "staged/preamble.tex",
+        "staged/front_matter.tex",
+        "staged/back_matter.tex",
+    ],
+    data = ["staged/booklet.pdf"],
+    reruns = 2,
+)
