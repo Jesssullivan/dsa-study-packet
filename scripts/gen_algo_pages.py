@@ -437,7 +437,6 @@ def _gen_summary(
     lines.append("    * [Learning Paths](guide/learning-paths.md)")
     lines.append("    * [When to Use What](guide/when-to-use-what.md)")
     lines.append("    * [Source of Truth](guide/source-of-truth.md)")
-    lines.append("    * [Authoring & Overlay Architecture](guide/authoring-and-overlay-architecture.md)")
 
     lines.append("")
     return "\n".join(lines)

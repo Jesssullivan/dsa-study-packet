@@ -68,20 +68,44 @@ def strip_solution(source: str) -> str:
     return "".join(lines)
 
 
+def truncate_module_docstring(source: str) -> str:
+    """Cold mode: cut Approach/When to use/Complexity from the module docstring."""
+    tree = ast.parse(source)
+    first = tree.body[0] if tree.body else None
+    if not (
+        isinstance(first, ast.Expr)
+        and isinstance(first.value, ast.Constant)
+        and isinstance(first.value.value, str)
+    ):
+        return source
+    doc = first.value.value
+    cuts = [i for m in ("Approach:", "When to use:", "Complexity:") if (i := doc.find(m)) != -1]
+    if not cuts:
+        return source
+    lines = source.splitlines(keepends=True)
+    end = first.end_lineno or first.lineno
+    lines[first.lineno - 1 : end] = [f'"""{doc[: min(cuts)].rstrip()}\n"""\n']
+    return "".join(lines)
+
+
 def main() -> None:
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <source_file>")
+    args = [a for a in sys.argv[1:] if a != "--cold"]
+    cold = "--cold" in sys.argv[1:]
+    if len(args) != 1:
+        print(f"Usage: {sys.argv[0]} [--cold] <source_file>")
         sys.exit(1)
 
-    path = Path(sys.argv[1])
+    path = Path(args[0])
     if not path.exists():
         print(f"Error: {path} not found")
         sys.exit(1)
 
     source = path.read_text()
     stripped = strip_solution(source)
+    if cold:
+        stripped = truncate_module_docstring(stripped)
     path.write_text(stripped)
-    print(f"Stripped: {path}")
+    print(f"Stripped{' (cold)' if cold else ''}: {path}")
 
 
 if __name__ == "__main__":

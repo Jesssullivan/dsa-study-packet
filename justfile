@@ -175,6 +175,66 @@ pdf-booklet:
 # Build the latest printable study packet from source code and notes
 packet: pdf-booklet
 
+# --------------------------------------------------
+# GloriousFlywheel cache-first Bazel (sole entrypoint)
+# --------------------------------------------------
+# `import? "justfile.flywheel"` (added by `flywheel-frontdoor-kit --patch-justfile`)
+# provides flywheel-doctor/verify/enroll/consumer-env + the gloriousflywheel-bazel
+# wrapper recipes. The recipes below are the repo-local cache-first front door:
+# they delegate to the wrapper when BAZEL_REMOTE_CACHE is attached and degrade to
+# a local disk_cache build otherwise. Never call raw bazel -- always `just remote-*`.
+
+# Cache-first compile of a target set (default //:booklet, the neutral packet).
+remote-compile *targets:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
+    targets="{{ targets }}"; [ -n "$targets" ] || targets="//:booklet"
+    if [ -n "${BAZEL_REMOTE_CACHE:-}" ]; then
+        exec just flywheel-build $targets
+    fi
+    echo "compatibility-local-only (BAZEL_REMOTE_CACHE unset) -> local disk_cache build: $targets"
+    exec "${BAZEL_BIN:-bazelisk}" build $targets
+
+# Cache-first build (default //:booklet); thin alias over remote-compile.
+remote-build *targets:
+    @just remote-compile {{ targets }}
+
+# Cache-first bazel test (default //...). `just test` runs the real uv/pytest suite.
+remote-test *targets:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
+    targets="{{ targets }}"; [ -n "$targets" ] || targets="//..."
+    if [ -n "${BAZEL_REMOTE_CACHE:-}" ]; then
+        exec just flywheel-test $targets
+    fi
+    echo "compatibility-local-only (BAZEL_REMOTE_CACHE unset) -> local bazel test: $targets"
+    exec "${BAZEL_BIN:-bazelisk}" test $targets
+
+# GloriousFlywheel attachment/contract gate (no build). Exits 0 when unattached.
+remote-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
+    if [ -z "${BAZEL_REMOTE_CACHE:-}" ]; then
+        echo "compatibility-local-only: BAZEL_REMOTE_CACHE unset; nothing to verify (ok)."
+        exit 0
+    fi
+    just flywheel-doctor
+    just flywheel-verify
+
+# Build the overlay-pattern demo (examples/overlay-demo) -> wrapped PDF
+# Cache-first via remote-build (no raw bazel); booklet.tex is regenerated first.
+overlay-demo:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Generating booklet.tex..."
+    uv run python scripts/gen_booklet.py
+    echo "Composing overlay demo via the cache-first front door..."
+    just remote-build //examples/overlay-demo:study_packet_example
+    echo "-> bazel-bin/examples/overlay-demo/study_packet_example.pdf"
+
 # ──────────────────────────────────────────────
 # Documentation (MkDocs)
 # ──────────────────────────────────────────────
@@ -245,3 +305,22 @@ study-spaced n="5":
 challenge-reset:
     rm -f .challenges/progress.md
     @echo "Progress cleared."
+
+# Interview mode: cold problem — statement only (no Approach/Complexity), no auto-tests
+interview topic problem:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="src/algo/{{ topic }}/{{ problem }}.py"
+    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
+    if [ ! -f "$src" ]; then echo "Error: $src not found"; exit 1; fi
+    mkdir -p ".challenges/{{ topic }}"
+    if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
+    uv run python scripts/strip_solution.py --cold "$src" >/dev/null
+    awk 'c<2 {print} /"""/ {c++}' "$src"
+    echo "Interview (cold): CLARP at the board first, then implement in $src"
+    echo "  Verify: just study {{ topic }}   Restore: just solution {{ topic }} {{ problem }}"
+    echo "  Log:    just rep \"{{ topic }}/{{ problem }} C_ L_ A_ R_ P_ <one fix>\""
+
+# Log one practice rep (appends to gitignored .challenges/reps.md)
+rep line:
+    @mkdir -p .challenges && echo "- $(date +%Y-%m-%d) {{ line }}" >> .challenges/reps.md && tail -1 .challenges/reps.md
