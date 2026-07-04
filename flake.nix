@@ -4,13 +4,19 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    # GloriousFlywheel front-door tools (flywheel-doctor/enroll/verify,
+    # gloriousflywheel-bazel). Consumed as a flake so the tools never drift
+    # from upstream; the kit files justfile.flywheel/.bazelrc.flywheel are
+    # installed copies by design (endpoint-free).
+    gloriousflywheel.url = "github:tinyland-inc/GloriousFlywheel";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, gloriousflywheel }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
         python = pkgs.python314;
+        gfTools = gloriousflywheel.packages.${system}.gloriousflywheel-frontdoor-tools;
       in
       {
         devShells.default = pkgs.mkShell {
@@ -25,6 +31,7 @@
             pkgs.tectonic
             pkgs.entr
             pkgs.watchexec
+            gfTools
           ];
 
           shellHook = ''
