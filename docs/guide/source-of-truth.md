@@ -5,7 +5,9 @@ title: Source of Truth
 # Source of Truth
 
 This project treats source code, tests, and authored notes as durable study
-material. Generated docs and PDFs should be reproducible from those inputs.
+material. Generated docs and PDFs must be reproducible from those inputs, and
+employer-specific interview prep must never enter this tree. This page is the
+whole contract.
 
 ## Authored Material
 
@@ -15,49 +17,65 @@ material. Generated docs and PDFs should be reproducible from those inputs.
 | `tests/` | Examples and property-based correctness checks |
 | `src/concepts/` | Technical concept modules |
 | `src/practice/` | Code-reading and decomposition exercises |
-| `reference-sheets/` | Printable notes and quick-reference sheets |
-| `reference-sheets/appendix-topics.json` | Structured appendix topics (concurrency, hashing internals, amortized analysis, recursion→iteration, numeric pitfalls) rendered into the booklet compile-safely |
+| `reference-sheets/` | Printable notes, quick-reference sheets, and the practice method (sheets 10–11) |
+| `reference-sheets/appendix-topics.json` | Structured appendix topics rendered into the booklet compile-safely |
 
 ## Generated Material
 
 | Output | Command |
 |--------|---------|
-| `booklet.tex` | `uv run python scripts/gen_booklet.py` |
-| `booklet.pdf` | `just packet` |
-| `docs/assets/booklet.pdf` | `just packet` |
+| `booklet.tex` / `booklet.pdf` / `docs/assets/booklet.pdf` | `just packet` |
+| `reference-sheets/pdf/*.pdf` | `just pdf-all` |
 | `site/` | `just docs-build` |
 
-## Packet Workflow
+## Three Layers
 
-Run this before a study session or interview loop:
+| Layer | What | Where | Public? |
+|-------|------|-------|---------|
+| **L1 — knowledge** | algorithms, tests, concepts, reference sheets 01–09 | this repo | ✅ |
+| **L2 — practice method** | sheets 10–11, `just interview` / `just rep`, spaced repetition | this repo | ✅ |
+| **L3 — private overlay** | employer/panel front & back matter, people, dates, tailored positioning, personal rep logs | a private downstream repo | ⛔ never here |
 
-```bash
-just packet
+The distinction that keeps this publishable: L2 is a *method* ("how to stay
+calm and narrate at a whiteboard" — a general, teachable skill); L3 is a
+*dossier* (who is on Tuesday's panel). Method publishes; dossier never touches
+this tree. **If a sentence only makes sense for one employer, it is L3.**
+
+## The Graph Edge Is One-Way
+
+```
+private superset repo                    THIS REPO (public)
+─────────────────────                    ──────────────────
+bazel_dep + path/git override   ──────▶  module(name = "dsa_study_packet")
+\includepdf{@dsa_study_packet            //:booklet  (neutral PDF)
+            //:booklet}
++ private front/back matter (L3)
+→ private //:study_packets
 ```
 
-That command regenerates the LaTeX booklet from current code and notes,
-compiles the printable PDF, and refreshes the PDF embedded in the docs site.
+The private repo depends on this one; this repo knows nothing about any
+downstream. Composition is **overlay, not bundle**: the neutral booklet is
+compiled *here* from *this* tree (so it cannot contain employer text), and a
+private lane `\includepdf`s the finished PDF between its own front and back
+matter. The two bodies of text only ever meet as adjacent pages in a private
+output — never in source. Delete the private repo and this SSOT is unchanged
+and complete. `examples/overlay-demo/` is a self-contained, fork-me
+demonstration of the pattern with placeholder content.
 
-## Public Boundary
+## The Boundary Is Enforced
 
-This repository is the public-safe, company-neutral packet. Keep employer
-names, interview dates, panel notes, recruiter details, private strategy, and
-tailored positioning out of this tree.
+`scripts/check_public_boundary.py` (`just public-boundary`) fails if any
+tracked file contains a forbidden marker: tracked SOPS files, legacy secret
+tripwires, the private downstream repo's name, or the employer markers this
+packet was ever tailored for. Neutrality is a machine check, not a promise.
+Personal rep scores (`.challenges/reps.md`) are gitignored by default —
+publish aggregates deliberately, or not at all.
 
-Private downstream repositories can depend on `@dsa_study_packet//:booklet`
-and compose the neutral PDF with job-specific front or back matter. Those
-private supersets own employer-specific context; this repository owns only the
-generic study material.
+## Runbook
 
-For the full method — the three-layer model, the one-way graph edge,
-"overlay not bundle," the enforced boundary, and the runbook for adding
-material without crossing it — see
-[Authoring & Overlay Architecture](authoring-and-overlay-architecture.md).
-
-## Downstream Composition (Bazel)
-
-This repo is also a Bazel module (`dsa_study_packet`). `bazel build //:booklet`
-compiles the SSOT `booklet.tex` into a cacheable, RBE-friendly PDF graph node.
-Private superset repos can depend on `@dsa_study_packet//:booklet` and
-`\includepdf` it between company-specific front and back matter. Refresh the
-neutral content with `just packet`; downstream lanes pick it up on rebuild.
+| I want to… | Do this | Layer |
+|------------|---------|-------|
+| Add/extend a study or practice sheet | `reference-sheets/NN-*.md` + one-line `docs/reference/NN-*.md` wrapper; nav + PDF pick it up | L1/L2 |
+| Add an algorithm | `src/algo/<topic>/<problem>.py` + tests; booklet and site regenerate | L1 |
+| Prep for a specific employer/panel | Create a lane in the private downstream repo; author front/back matter there | L3 |
+| Keep practice tapes / mock scripts / rep scores | Private repo or gitignored local dir — never tracked here | L3 |

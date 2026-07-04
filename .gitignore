@@ -48,5 +48,22 @@ booklet.tex
 booklet.pdf
 docs/assets/booklet.pdf
 
-# Challenge mode
+# Secrets
+.env
+.env.*
+!.env.example
+*.sops.yaml
+*.sops.json
+.sops.yaml
+
+# Challenge mode (incl. personal rep scores — publish aggregates deliberately, never raw)
 .challenges/
+
+# Bazel
+/bazel-*
+user.bazelrc
+MODULE.bazel.lock
+.gstack/
+
+# Generated visualizer traces
+docs/assets/traces/

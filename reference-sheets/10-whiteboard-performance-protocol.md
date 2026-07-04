@@ -10,6 +10,9 @@ observable signals of how you work.** Panic makes you go silent and chase the
 answer; the fix is to run a loud, visible *process* you can execute even while
 scared. The process is a checklist. You can run a checklist with shaking hands.
 
+This sheet is the **method**. The day-by-day calendar and daily loop live in
+[sheet 11](11-14-day-whiteboard-ramp.md).
+
 ---
 
 ## 1. What is actually being scored
@@ -83,7 +86,6 @@ is a failing one.** The panic is not the problem — going quiet is.
 
 ## 4. Asking questions & working synchronously (the collaboration signal)
 
-You said you're unsure how to ask questions or show you can work with others.
 These are the exact scripts. Use them verbatim until they're yours.
 
 **Clarifying (before coding — always ask ≥2):**
@@ -108,22 +110,12 @@ These are the exact scripts. Use them verbatim until they're yours.
 
 ---
 
-## 5. The daily practice loop (2–3 hrs, at a physical whiteboard, on camera)
+## 5. Self-review rubric (grade each rep 0–2)
 
-Knowledge reps live in `just challenge` + `scripts/study_schedule.py`. This is
-the **performance** rep — same problems, done standing up, out loud, recorded.
-
-**Per problem (20–25 min):**
-1. Pick the next drill: `uv run python scripts/study_schedule.py 1`.
-2. **Set a phone recording you.** The camera *is* the training stressor — it
-   manufactures the "someone is watching" pressure you need to desensitize to.
-3. Stand at the board. Run **CLARP out loud**, start to finish, no editor.
-4. Only after you've finished on the board, type it into the challenge to check:
-   `just challenge <topic> <problem>` → implement → tests.
-5. **Watch 2 minutes of the tape.** Score yourself on the rubric below. Note ONE
-   thing to fix next rep. Don't re-watch the whole thing — one fix at a time.
-
-**Self-review rubric (grade each 0–2):**
+The daily loop and calendar live in sheet 11. After each rep, watch **two
+minutes** of the tape — no more — and score yourself. The camera is the
+training stressor: it manufactures the "someone is watching" pressure you are
+desensitizing to.
 
 | Signal | 0 | 1 | 2 |
 |--------|---|---|---|
@@ -134,42 +126,27 @@ the **performance** rep — same problems, done standing up, out loud, recorded.
 | Composure | visible spiral | recovered slowly | named it, breathed, continued |
 
 Target: not a perfect 10, just **+1 on your weakest row each day.** Two weeks of
-+1 is a transformed interview.
++1 is a transformed interview. Log one line per rep (`just rep "…"`) and note
+ONE thing to fix next rep.
 
 ---
 
-## 6. Two-week ramp (≈2–3 hrs/day)
-
-**Week 1 — build the reflex (correctness + narration).**
-- Days 1–2: CLARP on *easy* problems only (arrays, two-pointers, stacks). Goal is the *loop*, not hard problems. Record every rep.
-- Days 3–4: add sliding-window, binary-search, BFS/DFS. Practice §3 panic first-aid deliberately — *induce* a blank and recover on tape.
-- Days 5–6: trees + heaps. Do 2 reps/day with a **live human watching** (the camera graduates to a person). See §7.
-- Day 7: rest or one light review rep. Rest is training.
-
-**Week 2 — pressure + breadth (collaboration + hard cases).**
-- Days 8–9: graphs + DP (your two heaviest topics — most reps here). Every rep with a hint-giver who interrupts you.
-- Days 10–11: mixed random draws (`study_schedule.py 3`), full 35-min mock format, cold. If your targets differ by language (e.g. a Python/pseudocode round vs. a Python/C++ round), do a few reps writing the same solution in both.
-- Day 12: a full mock panel — back-to-back problems, on camera, with a person.
-- Days 13–14: taper. Re-watch your *best* tapes (not worst) to lock in the felt sense of a good rep. Light reps only. Arrive rested, not crammed.
-
----
-
-## 7. Get a human in the loop
+## 6. Get a human in the loop
 
 The camera desensitizes you to being observed; a person desensitizes you to
 being *interrupted and judged*. Both are the real stressor, split in two.
 
 - **A friendly practice partner** (e.g. a family member willing to Zoom) is
-  perfect for Week 1 → early Week 2: they don't need to know the CS. Their job is
-  to *watch you present and interrupt with "why did you do that?"* — that alone
-  trains composure and narration. Hand them the §5 rubric to grade you.
-- **A technical mock** (peer, or an AI interviewer) for late Week 2: someone who
-  can throw a real hint or a follow-up constraint mid-problem.
+  perfect early on: they don't need to know the CS. Their job is to *watch you
+  present and interrupt with "why did you do that?"* — that alone trains
+  composure and narration. Hand them the §5 rubric to grade you.
+- **A technical mock** (peer, or an AI interviewer) once the reflex exists:
+  someone who can throw a real hint or a follow-up constraint mid-problem.
 - Rotate stressors so no single format stays scary.
 
 ---
 
-## 8. Interview-morning version (the one-page panic card)
+## 7. Interview-morning version (the one-page panic card)
 
 1. Board-dump templates + CLARP headers in the corner first thing.
 2. One slow breath (in 4, out 6) before you touch the marker.
