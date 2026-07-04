@@ -36,6 +36,7 @@ class TestLevelOrder:
         tree = TreeNode(1, None, TreeNode(3, TreeNode(5), None))
         assert level_order(tree) == [[1], [3], [5]]
 
+
 def _levels_by_dfs(
     node: TreeNode | None, depth: int, acc: dict[int, list[int]]
 ) -> None:
@@ -45,10 +46,12 @@ def _levels_by_dfs(
     _levels_by_dfs(node.left, depth + 1, acc)
     _levels_by_dfs(node.right, depth + 1, acc)
 
+
 def _all_values(node: TreeNode | None) -> list[int]:
     if node is None:
         return []
     return [node.val, *_all_values(node.left), *_all_values(node.right)]
+
 
 _random_trees = st.recursive(
     st.none() | st.builds(TreeNode, st.integers(min_value=-50, max_value=50)),
@@ -60,6 +63,7 @@ _random_trees = st.recursive(
     ),
     max_leaves=20,
 )
+
 
 class TestLevelOrderProperties:
     @given(tree=_random_trees)

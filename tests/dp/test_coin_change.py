@@ -25,6 +25,7 @@ class TestCoinChange:
     def test_large_denomination(self) -> None:
         assert coin_change([1, 2, 5], 100) == 20
 
+
 def _coin_change_bfs(coins: list[int], amount: int) -> int:
     """Independent oracle: minimum coins via breadth-first search over sums.
 
@@ -52,6 +53,7 @@ def _coin_change_bfs(coins: list[int], amount: int) -> int:
         frontier = nxt
     return -1
 
+
 @given(
     coins=st.lists(
         st.integers(min_value=1, max_value=20),
@@ -64,6 +66,7 @@ def _coin_change_bfs(coins: list[int], amount: int) -> int:
 def test_coin_change_matches_bfs_oracle(coins: list[int], amount: int) -> None:
     """coin_change must equal an independent BFS shortest-coins oracle."""
     assert coin_change(coins, amount) == _coin_change_bfs(coins, amount)
+
 
 @given(
     coins=st.lists(
@@ -81,6 +84,7 @@ def test_coin_change_minus_one_iff_unmakeable(coins: list[int], amount: int) -> 
     for a in range(1, amount + 1):
         reachable[a] = any(c <= a and reachable[a - c] for c in coins)
     assert (coin_change(coins, amount) == -1) == (not reachable[amount])
+
 
 @given(
     coins=st.lists(

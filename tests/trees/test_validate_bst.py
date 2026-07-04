@@ -51,13 +51,16 @@ class TestIsValidBST:
         )
         assert is_valid_bst(tree) is True
 
+
 def _inorder_vals(node: TreeNode | None) -> list[int]:
     if node is None:
         return []
     return [*_inorder_vals(node.left), node.val, *_inorder_vals(node.right)]
 
+
 def _strictly_increasing(xs: list[int]) -> bool:
     return all(a < b for a, b in pairwise(xs))
+
 
 def _build_balanced_bst(vals: list[int]) -> TreeNode | None:
     if not vals:
@@ -69,6 +72,7 @@ def _build_balanced_bst(vals: list[int]) -> TreeNode | None:
         _build_balanced_bst(vals[mid + 1 :]),
     )
 
+
 _random_trees = st.recursive(
     st.none() | st.builds(TreeNode, st.integers(min_value=-50, max_value=50)),
     lambda children: st.builds(
@@ -79,6 +83,7 @@ _random_trees = st.recursive(
     ),
     max_leaves=20,
 )
+
 
 class TestIsValidBSTProperties:
     @given(tree=_random_trees)
@@ -95,9 +100,7 @@ class TestIsValidBSTProperties:
             unique=True,
         ),
     )
-    def test_balanced_bst_from_sorted_distinct_is_valid(
-        self, vals: list[int]
-    ) -> None:
+    def test_balanced_bst_from_sorted_distinct_is_valid(self, vals: list[int]) -> None:
         """A balanced tree built from sorted distinct values is always a BST."""
         tree = _build_balanced_bst(sorted(vals))
         assert is_valid_bst(tree) is True

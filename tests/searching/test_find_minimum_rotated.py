@@ -41,6 +41,7 @@ class TestFindMin:
         rotated = data[k:] + data[:k]
         assert find_min(rotated) == min(data)
 
+
 @given(
     data=st.lists(
         st.integers(min_value=-500, max_value=500),
@@ -59,6 +60,7 @@ def test_find_min_unrotates_to_sorted(data: list[int], pivot: int) -> None:
     idx = rotated.index(m)
     assert rotated[idx:] + rotated[:idx] == data
 
+
 @given(
     data=st.lists(
         st.integers(min_value=-500, max_value=500),
@@ -69,9 +71,7 @@ def test_find_min_unrotates_to_sorted(data: list[int], pivot: int) -> None:
     p1=st.integers(min_value=0, max_value=1000),
     p2=st.integers(min_value=0, max_value=1000),
 )
-def test_find_min_invariant_across_rotations(
-    data: list[int], p1: int, p2: int
-) -> None:
+def test_find_min_invariant_across_rotations(data: list[int], p1: int, p2: int) -> None:
     """find_min returns the same value regardless of how far the array is rotated."""
     data.sort()
     n = len(data)

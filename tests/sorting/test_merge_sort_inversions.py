@@ -39,6 +39,7 @@ class TestCountInversions:
         )
         assert count_inversions(data) == expected
 
+
 def _inversions_via_bubble_sort(nums: list[int]) -> int:
     """Independent oracle: inversion count equals adjacent swaps in bubble sort."""
     arr = list(nums)
@@ -51,12 +52,14 @@ def _inversions_via_bubble_sort(nums: list[int]) -> int:
                 swaps += 1
     return swaps
 
+
 @given(
     data=st.lists(st.integers(min_value=-50, max_value=50), min_size=0, max_size=30),
 )
 def test_inversions_match_bubble_sort_swaps(data: list[int]) -> None:
     """Inversion count equals the number of adjacent swaps bubble sort performs."""
     assert count_inversions(data) == _inversions_via_bubble_sort(data)
+
 
 @given(
     data=st.lists(

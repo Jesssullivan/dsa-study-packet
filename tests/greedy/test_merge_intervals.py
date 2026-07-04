@@ -28,12 +28,14 @@ class TestMergeIntervals:
         result = merge_intervals([[1, 2], [2, 3]])
         assert result == [[1, 3]]
 
+
 def _covered(intervals: list[list[int]]) -> set[int]:
     """Integer point-set covered by a list of inclusive intervals."""
     points: set[int] = set()
     for start, end in intervals:
         points.update(range(start, end + 1))
     return points
+
 
 class TestMergeIntervalsProperties:
     @given(
@@ -45,9 +47,7 @@ class TestMergeIntervalsProperties:
             max_size=20,
         ),
     )
-    def test_disjoint_sorted_same_coverage(
-        self, raw: list[tuple[int, int]]
-    ) -> None:
+    def test_disjoint_sorted_same_coverage(self, raw: list[tuple[int, int]]) -> None:
         """Output is well-formed, strictly separated, and covers the same points."""
         intervals = [[start, start + length] for start, length in raw]
         merged = merge_intervals(intervals)
