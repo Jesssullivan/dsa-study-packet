@@ -49,6 +49,11 @@ and compose the neutral PDF with job-specific front or back matter. Those
 private supersets own employer-specific context; this repository owns only the
 generic study material.
 
+For the full method — the three-layer model, the one-way graph edge,
+"overlay not bundle," the enforced boundary, and the runbook for adding
+material without crossing it — see
+[Authoring & Overlay Architecture](authoring-and-overlay-architecture.md).
+
 ## Downstream Composition (Bazel)
 
 This repo is also a Bazel module (`dsa_study_packet`). `bazel build //:booklet`

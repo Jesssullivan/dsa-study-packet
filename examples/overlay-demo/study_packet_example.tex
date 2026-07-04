@@ -1,0 +1,25 @@
+%!TEX program = xelatex
+%==============================================================================
+% OVERLAY DEMO — master file. Composes:
+%   preamble.tex      shared styling (self-contained)
+%   front_matter.tex  your company / site / people context (prepended)
+%   booklet.pdf       the neutral DSA packet (embedded verbatim via pdfpages)
+%   back_matter.tex   your extras (appended)
+% Build: just overlay-demo
+%   (wraps: bazel build //examples/overlay-demo:study_packet_example)
+%==============================================================================
+
+\input{preamble.tex}
+
+\hypersetup{pdftitle={Example Study Packet — Overlay Demo}}
+
+\begin{document}
+
+\input{front_matter.tex}
+
+\cleardoublepage
+\includepdf[pages=-]{booklet.pdf}
+
+\input{back_matter.tex}
+
+\end{document}

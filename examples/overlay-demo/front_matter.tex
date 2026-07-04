@@ -1,0 +1,88 @@
+%==============================================================================
+% FRONT MATTER — a worked EXAMPLE of a company / site / people overlay.
+% Everything here is placeholder (lorem ipsum + fictional names). Replace it
+% with your own interview context. The neutral algorithms booklet is embedded
+% verbatim after this section by the master file.
+%==============================================================================
+
+\begin{center}
+    \begin{tikzpicture}\fill[primary] (0,0) rectangle (\textwidth, 0.10);\end{tikzpicture}
+
+    \vspace{0.45em}
+    {\Huge\bfseries\sffamily\color{primary} Example Study Packet}
+
+    \vspace{0.35em}
+    {\large\color{secondary} Acme Robotics \,\textemdash\, On-site Panel \,\textemdash\, EXAMPLE}
+
+    \vspace{0.25em}
+    {\color{muted} 123 Example Way, Anytown \;$\cdot$\; (replace with real logistics)}
+
+    \vspace{0.3em}
+    {\small\itshape\color{muted} A company-specific superset of the neutral DSA study packet, embedded in full after this section.}
+
+    \vspace{0.4em}
+    \begin{tikzpicture}\fill[accent] (0,0) rectangle (\textwidth, 0.05);\end{tikzpicture}
+\end{center}
+
+\vspace{0.4em}
+
+\noindent\textbf{How to use this file.} This is a worked \emph{example} of the overlay pattern. Everything below is placeholder. Replace it with your own interview context: the panel, the themes you expect, a per-conversation plan, questions to ask, and your personal claim ``guardrails.'' The algorithms booklet follows automatically.
+
+\section{The Room — Panel \& People}
+
+% One row per interviewer. Keep the "Read" column to one scannable line.
+\renewcommand{\arraystretch}{1.2}
+\noindent\begin{tabularx}{\textwidth}{@{}l >{\bfseries\color{secondary}}l X@{}}
+\toprule
+\textbf{\color{primary}Slot} & \textmd{\color{primary}Interviewer} & \textbf{Read} \\
+\midrule
+10:00 & Riley Chen & Principal Engineer. Lorem ipsum dolor sit amet, consectetur adipiscing. \\
+10:00 & Jordan Park & Group Lead, platform. Sed do eiusmod tempor incididunt ut labore. \\
+10:30 & Sam Rivera & Staff SWE, data. Ut enim ad minim veniam, quis nostrud. \\
+11:00 & Casey Wells & Engineering Manager. Duis aute irure dolor in reprehenderit. \\
+\bottomrule
+\end{tabularx}
+
+\section{Themes You Expect}
+
+% What does the panel collectively signal? Map each theme to your evidence.
+\begin{itemize}
+  \item \textbf{Theme one.} Lorem ipsum dolor sit amet \textemdash\ map to your strongest project.
+  \item \textbf{Theme two.} Consectetur adipiscing elit \textemdash\ map to a second piece of evidence.
+  \item \textbf{Theme three.} Sed do eiusmod tempor \textemdash\ the thing to rehearse cold.
+\end{itemize}
+
+\section{Per-Slot Game Plan}
+
+\subsection{10:00 — Riley Chen + Jordan Park}
+\begin{itemize}
+  \item Lead with: lorem ipsum dolor sit amet.
+  \item Likely probes: consectetur adipiscing elit, sed do eiusmod.
+\end{itemize}
+
+\subsection{10:30 — Sam Rivera}
+\begin{itemize}
+  \item Lead with: ut enim ad minim veniam.
+  \item Likely probes: quis nostrud exercitation ullamco laboris.
+\end{itemize}
+
+\section{Questions to Ask}
+\begin{itemize}
+  \item (Riley) Lorem ipsum dolor sit amet consectetur?
+  \item (Jordan) Sed do eiusmod tempor incididunt ut labore?
+  \item (Sam) Ut enim ad minim veniam, quis nostrud?
+\end{itemize}
+
+\section{Guardrails — claim discipline}
+
+% Pre-commit to honest verbs so you don't over-claim under pressure.
+\begin{itemize}
+  \guard{Project X}{say ``built and shipped,'' not ``invented.''}
+  \guard{Scale}{cite the real number; don't round up.}
+  \guard{Credentials}{state your actual status precisely.}
+\end{itemize}
+
+\vspace{0.5em}
+\begin{center}\small\itshape\color{muted}
+Replace everything above with your real context, then rebuild: \texttt{just overlay-demo}.
+\end{center}
