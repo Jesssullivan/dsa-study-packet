@@ -32,6 +32,7 @@ class TestCombinationSum:
         for combo in result:
             assert sum(combo) == 5
 
+
 def _combos_oracle(candidates: list[int], target: int) -> set[tuple[int, ...]]:
     """Independent coins-outer DP enumerating unique sorted combinations.
 
@@ -47,6 +48,7 @@ def _combos_oracle(candidates: list[int], target: int) -> set[tuple[int, ...]]:
             for combo in dp[s - c]:
                 dp[s].add((*combo, c))
     return dp[target]
+
 
 class TestCombinationSumProperties:
     @given(

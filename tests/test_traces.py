@@ -27,4 +27,6 @@ def test_each_trace_matches_implementation() -> None:
         assert trace.get("frames"), f"{name}: trace has no frames"
         v = trace["verify"]
         impl = getattr(importlib.import_module(v["import"]), v["func"])
-        assert impl(*v["args"]) == v["expected"], f"{name}: narration drifted from implementation"
+        assert impl(*v["args"]) == v["expected"], (
+            f"{name}: narration drifted from implementation"
+        )

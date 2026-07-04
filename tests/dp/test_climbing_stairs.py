@@ -30,6 +30,7 @@ class TestClimbStairs:
     def test_fibonacci_recurrence(self, n: int) -> None:
         assert climb_stairs(n) == climb_stairs(n - 1) + climb_stairs(n - 2)
 
+
 def _climb_enumerate(n: int) -> int:
     """Independent oracle: exhaustive count of 1/2-step sequences summing to n."""
     count = 0
@@ -46,10 +47,12 @@ def _climb_enumerate(n: int) -> int:
     rec(n)
     return count
 
+
 @given(n=st.integers(min_value=0, max_value=18))
 def test_climb_matches_brute_force_enumeration(n: int) -> None:
     """climb_stairs equals an exhaustive enumeration of 1/2-step paths."""
     assert climb_stairs(n) == _climb_enumerate(n)
+
 
 @given(n=st.integers(min_value=0, max_value=60))
 def test_climb_matches_binomial_sum(n: int) -> None:

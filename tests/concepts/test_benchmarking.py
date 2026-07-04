@@ -95,9 +95,7 @@ class TestBench:
         ms = bench("sum", lambda: sum(range(100)), runs=3)
         assert ms >= 0
 
-    def test_prints_median_label(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_prints_median_label(self, capsys: pytest.CaptureFixture[str]) -> None:
         bench("my-fn", lambda: None, runs=5)
         captured = capsys.readouterr()
         assert "[bench] my-fn:" in captured.out
@@ -150,9 +148,7 @@ class TestTopKBenchDemo:
     """Interview-style benchmarking of top_k_frequent vs heap approach."""
 
     @pytest.mark.bench
-    def test_compare_bucket_vs_sorted(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_compare_bucket_vs_sorted(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Compare O(n) bucket sort against O(n log n) sorted approach."""
         from collections import Counter
 
@@ -171,9 +167,7 @@ class TestTopKBenchDemo:
         assert all(v >= 0 for v in results.values())
 
     @pytest.mark.bench
-    def test_scaling_is_linear(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_scaling_is_linear(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Empirically verify O(n) scaling for bucket sort top-k."""
         data = bench_scaling(
             lambda n: top_k_frequent(list(range(n)) * 3, 10),
@@ -193,9 +187,7 @@ class TestKthLargestBenchDemo:
     """Interview-style benchmarking of heap-based kth largest."""
 
     @pytest.mark.bench
-    def test_compare_heap_vs_sorted(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_compare_heap_vs_sorted(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Compare O(n log k) heap against O(n log n) full sort."""
         data = list(range(10_000))
 

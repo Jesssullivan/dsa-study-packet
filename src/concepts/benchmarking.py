@@ -25,6 +25,7 @@ After implementing a solution, add 3--5 lines of timing to demonstrate you
 understand performance *empirically*, not just theoretically::
 
     import time
+
     start = time.perf_counter_ns()
     result = top_k_frequent(data, k)
     ms = (time.perf_counter_ns() - start) / 1_000_000
@@ -199,10 +200,12 @@ def bench_compare(
 
     Usage::
 
-        bench_compare({
-            "bucket O(n)":     lambda: top_k_frequent(data, 10),
-            "heap O(n log k)": lambda: heapq.nlargest(10, data),
-        })
+        bench_compare(
+            {
+                "bucket O(n)": lambda: top_k_frequent(data, 10),
+                "heap O(n log k)": lambda: heapq.nlargest(10, data),
+            }
+        )
         # prints:
         #   bucket O(n)            0.053ms  (  1.0x)
         #   heap O(n log k)        0.087ms  (  1.6x)
