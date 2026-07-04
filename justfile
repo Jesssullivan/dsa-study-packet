@@ -324,3 +324,5 @@ interview topic problem:
 # Log one practice rep (appends to gitignored .challenges/reps.md)
 rep line:
     @mkdir -p .challenges && echo "- $(date +%Y-%m-%d) {{ line }}" >> .challenges/reps.md && tail -1 .challenges/reps.md
+
+import? "justfile.flywheel"
