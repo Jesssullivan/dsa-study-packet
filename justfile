@@ -49,12 +49,14 @@ lint:
     uv run ruff check src/ tests/ scripts/
     uv run mypy
     uv run python scripts/check_public_boundary.py
+    uv run python scripts/check_doc_counts.py
     uv run python scripts/check_no_stubs.py
     uv run python scripts/validate_appendix_schema.py
 
 # Check that private prep material has not entered the public packet tree
 public-boundary:
     uv run python scripts/check_public_boundary.py
+    uv run python scripts/check_doc_counts.py
 
 # Format code with ruff
 fmt:
@@ -196,9 +198,17 @@ remote-compile *targets:
     echo "compatibility-local-only (BAZEL_REMOTE_CACHE unset) -> local disk_cache build: $targets"
     exec "${BAZEL_BIN:-bazelisk}" build $targets
 
-# Cache-first build (default //:booklet); thin alias over remote-compile.
+# Cache-first build (default //:booklet); regenerate generated TeX when the
+# neutral packet is in the requested target set.
 remote-build *targets:
-    @just remote-compile {{ targets }}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    targets="{{ targets }}"
+    if [ -z "$targets" ] || [[ " $targets " == *" //:booklet "* ]]; then
+        echo "Generating booklet.tex..."
+        uv run python scripts/gen_booklet.py
+    fi
+    exec just remote-compile $targets
 
 # Cache-first bazel test (default //...). `just test` runs the real uv/pytest suite.
 remote-test *targets:
@@ -300,6 +310,18 @@ challenge-progress:
 # Spaced-repetition: show the next problems due for drilling (default 5)
 study-spaced n="5":
     @uv run python scripts/study_schedule.py {{ n }}
+
+# Print the current generated study-packet catalog.
+catalog:
+    @uv run python scripts/catalog.py
+
+# Print one sheet-11 practice day as a timed block.
+practice-day day="12":
+    @uv run python scripts/practice_day.py {{ day }}
+
+# Tonight's productionized Day 12 block.
+study-tonight:
+    @uv run python scripts/practice_day.py 12
 
 # Reset challenge progress (clear all completions)
 challenge-reset:
