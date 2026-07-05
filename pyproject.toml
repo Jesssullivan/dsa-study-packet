@@ -22,7 +22,6 @@ docs = [
   "mkdocs>=1.6",
   "mkdocs-material>=9.6",
   "mkdocstrings[python]>=0.27",
-  "mkdocs-awesome-pages-plugin>=2.10",
   # Cap below the 2026-03 releases of these three plugins: they added a hard
   # `properdocs` dependency and inject a "switch to ProperDocs" ad into every
   # build. These pins keep the build quiet and drop the unwanted transitive.
