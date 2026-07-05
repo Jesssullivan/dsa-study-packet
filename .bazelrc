@@ -10,6 +10,11 @@
 
 common --enable_bzlmod
 build --incompatible_strict_action_env
+# Pass the devshell's SOURCE_DATE_EPOCH through to actions so the Bazel-compiled
+# booklet is byte-reproducible and matches `just packet` (both use tectonic in
+# the same nix devshell, which pins SOURCE_DATE_EPOCH). Without this,
+# strict_action_env strips it and the two compile paths embed different dates.
+build --action_env=SOURCE_DATE_EPOCH
 build --disk_cache=~/.cache/bazel/dsa-study-packet
 test --test_output=errors
 

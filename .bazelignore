@@ -1,0 +1,10 @@
+# Keep Bazel wildcards (//...) from descending into vendored / generated trees.
+# .direnv holds flake-input BUILD files (GloriousFlywheel OpenTofu) that break loading.
+.direnv
+bazel-out
+bazel-bin
+bazel-testlogs
+.venv
+.git
+.gstack
+site
