@@ -299,7 +299,10 @@ challenge-done topic problem:
     if ! grep -q "{{ topic }}/{{ problem }}" "$progress" 2>/dev/null; then
         echo "$entry" >> "$progress"
     else
-        sed -i '' "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress"
+        # BSD (macOS) sed needs `-i ''`; GNU (Linux) sed rejects it. Try the BSD
+        # form, fall back to the GNU form — same idiom as the `new` recipe above.
+        sed -i '' "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress" 2>/dev/null \
+            || sed -i "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress"
     fi
     echo "Marked complete: {{ topic }}/{{ problem }}"
 
