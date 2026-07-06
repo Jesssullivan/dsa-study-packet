@@ -13,9 +13,11 @@ human-readable rationale, hour-by-hour block, and citations live in
 [`docs/guide/interview-practice-evidence.md`](docs/guide/interview-practice-evidence.md);
 the method is `reference-sheets/10`; the 14-day calendar is `reference-sheets/11`.
 
-Core recipes: `just study-spaced N` (interleaved draws) · `just interview <t> <p>`
-(cold present, solution stripped) · `just study <t>` (watch tests) ·
-`just rep "…"` (log a rep) · `just challenge-done <t> <p>` (spaced repetition).
+Core recipes: `just study-tonight` (Day 12 block) · `just practice-day N`
+(sheet-11 day conductor) · `just study-spaced N` (interleaved draws) ·
+`just interview <t> <p>` (cold present, solution stripped) · `just study <t>`
+(watch tests) · `just rep "…"` (log a rep) · `just challenge-done <t> <p>`
+(spaced repetition).
 
 ## Build
 `just` is the sole front door. `just packet` (booklet PDF) · `just docs` (site) ·

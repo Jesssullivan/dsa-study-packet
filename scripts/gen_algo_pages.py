@@ -175,9 +175,37 @@ def _title_from_filename(filename: str) -> str:
     >>> _title_from_filename("two_sum")
     'Two Sum'
     >>> _title_from_filename("lru_cache")
-    'Lru Cache'
+    'LRU Cache'
     """
+    special = {
+        "a_star_search": "A* Search",
+        "dp": "DP",
+        "fft_dct": "FFT / DCT",
+        "kd_tree": "KD-Tree",
+        "lru_cache": "LRU Cache",
+        "t_strings": "T-Strings",
+        "traveling_salesman_dp": "Traveling Salesman DP",
+        "validate_bst": "Validate BST",
+    }
+    if filename in special:
+        return special[filename]
     return filename.replace("_", " ").title()
+
+
+def _doc_title(path: Path) -> str:
+    """Read a MkDocs page title from YAML frontmatter, falling back to filename."""
+    try:
+        text = path.read_text()
+    except FileNotFoundError:
+        return _title_from_filename(path.stem)
+
+    for line in text.splitlines()[1:20]:
+        if line.strip() == "---":
+            break
+        match = re.match(r"title:\s*[\"']?(.+?)[\"']?\s*$", line)
+        if match:
+            return match.group(1)
+    return _title_from_filename(path.stem)
 
 
 def _topic_title(topic: str) -> str:
@@ -415,12 +443,11 @@ def _gen_summary(
     # Reference section — link to docs/reference/ wrapper pages (not source sheets)
     lines.append("* Reference")
     lines.append("    * [Overview](reference/index.md)")
-    ref_docs = sorted(Path("docs/reference").glob("*.md"))
+    ref_docs = sorted((ROOT / "docs" / "reference").glob("*.md"))
     for f in ref_docs:
         if f.name == "index.md":
             continue
-        name = f.stem.split("-", 1)[-1].replace("-", " ").title() if "-" in f.stem else f.stem
-        lines.append(f"    * [{name}](reference/{f.name})")
+        lines.append(f"    * [{_doc_title(f)}](reference/{f.name})")
 
     # Practice and Challenges
     lines.append("* [Practice](practice/index.md)")
@@ -433,10 +460,19 @@ def _gen_summary(
 
     # Guide
     lines.append("* Guide")
-    lines.append("    * [Getting Started](guide/getting-started.md)")
-    lines.append("    * [Learning Paths](guide/learning-paths.md)")
-    lines.append("    * [When to Use What](guide/when-to-use-what.md)")
-    lines.append("    * [Source of Truth](guide/source-of-truth.md)")
+    guide_order = {
+        "getting-started.md": 10,
+        "learning-paths.md": 20,
+        "interview-practice-evidence.md": 30,
+        "when-to-use-what.md": 40,
+        "source-of-truth.md": 50,
+    }
+    guide_docs = sorted(
+        (ROOT / "docs" / "guide").glob("*.md"),
+        key=lambda f: (guide_order.get(f.name, 100), f.name),
+    )
+    for f in guide_docs:
+        lines.append(f"    * [{_doc_title(f)}](guide/{f.name})")
 
     lines.append("")
     return "\n".join(lines)

@@ -1,8 +1,8 @@
 """CI guard: fail if hand-typed doc counts drift from the code SSOT.
 
-Same spirit as check_public_boundary.py — a cheap gate so the site's stated
-counts (core drills, reference sheets, concept modules) can never silently
-disagree with the source tree. Fix the doc text (or the SSOT) when this fails.
+The public docs are allowed to avoid counts entirely. If they do state a count,
+it must match the source tree; the generated `just catalog` surface must always
+match.
 """
 
 from __future__ import annotations
@@ -14,9 +14,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+import catalog  # noqa: E402
 from core42 import CORE_42  # noqa: E402
 
-NUMBER_WORD = {9: "Nine", 10: "Ten", 11: "Eleven", 12: "Twelve", 13: "Thirteen", 14: "Fourteen"}
+NUMBER_WORD = {
+    7: "Seven",
+    8: "Eight",
+    9: "Nine",
+    10: "Ten",
+    11: "Eleven",
+    12: "Twelve",
+    13: "Thirteen",
+    14: "Fourteen",
+}
 
 
 def ssot_counts() -> dict[str, int]:
@@ -36,6 +46,8 @@ DIGIT_CHECKS = [
     ("docs/index.md", "core algorithms", "drills"),
     ("docs/index.md", "Concept Modules", "concepts"),
     ("docs/index.md", "Reference Sheets", "sheets"),
+    ("README.md", "core drills", "drills"),
+    ("README.md", "Reference Sheets", "sheets"),
 ]
 WORD_CHECKS = [
     ("docs/reference/index.md", "sheets"),
@@ -47,21 +59,36 @@ def main() -> int:
     c = ssot_counts()
     fails: list[str] = []
 
+    catalog_counts = {
+        "drills": catalog.core_count(),
+        "impls": catalog.implementation_count(),
+        "concepts": catalog.concept_count(),
+        "sheets": catalog.reference_sheet_count(),
+    }
+    if catalog_counts != c:
+        fails.append(f"just catalog counts {catalog_counts} but SSOT = {c}")
+
     for rel, kw, key in DIGIT_CHECKS:
         text = (ROOT / rel).read_text()
         want = c[key]
-        m = re.search(rf"(\d+)\s+{re.escape(kw)}", text)
-        if not m:
-            fails.append(f'{rel}: no "<n> {kw}" phrase found (SSOT expects {want})')
-        elif int(m.group(1)) != want:
-            fails.append(f'{rel}: says "{m.group(1)} {kw}" but SSOT = {want}')
+        for m in re.finditer(rf"(\d+)\s+{re.escape(kw)}", text):
+            if int(m.group(1)) != want:
+                fails.append(f'{rel}: says "{m.group(1)} {kw}" but SSOT = {want}')
 
     for rel, key in WORD_CHECKS:
         text = (ROOT / rel).read_text()
         want = c[key]
-        word = NUMBER_WORD.get(want, str(want))
-        if not re.search(rf"\b{word}\b", text, re.IGNORECASE):
-            fails.append(f'{rel}: expected the word "{word}" (SSOT sheets = {want}); count drifted')
+        for value, word in NUMBER_WORD.items():
+            if value == want:
+                continue
+            if re.search(
+                rf"\b{word}\b[^\n.]*\b(sheets|handouts)\b",
+                text,
+                re.IGNORECASE,
+            ):
+                fails.append(
+                    f'{rel}: says "{word}" sheets/handouts but SSOT = {want}'
+                )
 
     if fails:
         print("Doc-count drift (docs disagree with the code SSOT):", file=sys.stderr)
@@ -70,7 +97,7 @@ def main() -> int:
         print(f"  SSOT counts: {c}", file=sys.stderr)
         return 1
 
-    print(f"Doc counts consistent with SSOT: {c}")
+    print(f"Doc count guard passed; generated catalog matches SSOT: {c}")
     return 0
 
 

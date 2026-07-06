@@ -9,6 +9,19 @@ shows you unfamiliar code and asks you to analyze it.
 
 ---
 
+## Tonight's Block
+
+Use the sheet-11 conductor from the terminal; it prints the timed block, current
+spaced-repetition draws, and the stop condition.
+
+```bash
+just study-tonight        # Day 12
+just practice-day 12      # same block, explicit day
+just practice-day 13      # taper day when ready
+```
+
+---
+
 ## Code Reading Exercises
 
 These files contain intentionally buggy or suboptimal code. Your job: identify all issues, propose fixes, and estimate the complexity impact of each fix.

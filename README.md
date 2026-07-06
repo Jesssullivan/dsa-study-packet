@@ -18,6 +18,7 @@ just lint           # ruff + mypy strict + public-boundary guard
 just docs           # local MkDocs site (drills, visualizer, progress)
 just packet         # printable TeX -> PDF booklet
 just pdf-all        # every reference sheet -> PDF
+just study-tonight  # Day 12 block: print it, run it, stop building
 ```
 
 ## The daily drill (board ↔ IDE)
@@ -38,28 +39,12 @@ The two-week day-by-day ramp is
 [sheet 11](reference-sheets/11-14-day-whiteboard-ramp.md).
 `just challenge` (statement + approach visible) remains as learning mode.
 
-## Core 42
+## Drill Catalog
 
-| Topic | # | Drill set |
-|-------|---|-----------|
-| arrays | 3 | two_sum, group_anagrams, product_except_self |
-| two_pointers | 2 | three_sum, trapping_rain_water |
-| sliding_window | 2 | min_window_substring, longest_substring_no_repeat |
-| stacks_queues | 2 | valid_parentheses, daily_temperatures |
-| searching | 2 | binary_search, search_rotated_array |
-| linked_lists | 2 | reverse_linked_list, lru_cache |
-| trees | 3 | validate_bst, level_order_traversal, trie |
-| graphs | 7 | dijkstra, a_star, bellman_ford, topo_sort, islands, MST, course_schedule |
-| dp | 5 | coin_change, edit_distance, knapsack, LIS, LCS |
-| heaps | 2 | kth_largest, merge_k_sorted_lists |
-| backtracking | 3 | subsets, combination_sum, n_queens |
-| greedy | 2 | merge_intervals, jump_game |
-| strings | 2 | valid_palindrome, longest_palindromic_substring |
-| recursion | 2 | generate_parentheses, flatten_nested_list |
-| bit_manipulation | 1 | single_number |
-| sorting | 1 | quickselect |
-
-Further implementations stay in the repo as extended practice and reference.
+The core drill set lives in [`scripts/core42.py`](scripts/core42.py), not in a
+hand-maintained README table. Run `just catalog` for the current topic counts
+and drill list. Further implementations stay in the repo as extended practice
+and reference.
 
 ## The overlay pattern
 
