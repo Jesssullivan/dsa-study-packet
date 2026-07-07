@@ -1,4 +1,11 @@
-"""Fail if private prep material leaks into the public packet tree."""
+"""Fail if private prep material leaks into the public packet tree.
+
+This public guard enforces *structural* rules only: secret-shaped content and
+secret-file paths that are never public-safe, regardless of whose they are.
+Name-specific tripwires (employers, panels, private repo names) are enforced
+from the private downstream repo, which scans this tree with its own marker
+list — so the public guard cannot itself disclose what it guards against.
+"""
 
 from __future__ import annotations
 
@@ -16,26 +23,16 @@ FORBIDDEN_PATH_SUFFIXES = (
     ".sops.json",
 )
 
+# Tracked dotenv files are never public-safe; documented examples are.
+ALLOWED_ENV_BASENAMES = frozenset({".env.example", ".env.sample", ".env.template"})
+
 FORBIDDEN_CONTENT = (
     ("old Codespaces token name", re.compile(re.escape("GH_" + "CODESPACES_TOKEN"))),
-    (
-        "old age recipient",
-        re.compile(
-            re.escape(
-                "age1" + "wc2s9pfju7haufdw0at0pm2cxx9rs9qmj80nf0nzy82w0fr0gp3skzfgds"
-            )
-        ),
-    ),
-    (
-        "legacy company-specific repo name",
-        re.compile(re.escape("DSA-study-" + "A" + "SI")),
-    ),
-    ("private resume repo name", re.compile(r"\bspear[_-]resumes\b")),
-    ("private employer marker", re.compile(r"\b" + "MI" + r"TRE\b")),
-    ("private employer marker", re.compile(r"\b" + "SCE" + r"PTER\b")),
-    ("private employer marker", re.compile(r"\b" + "A" + r"SI\b")),
-    ("private employer marker", re.compile(r"\b" + "C" + r"RA\b")),
-    ("private employer marker", re.compile(r"\b" + "S" + r"TR\b")),
+    ("age recipient", re.compile(r"\bage1[0-9a-z]{58}\b")),
+    ("age secret key", re.compile(r"AGE-SECRET-KEY-1[0-9A-Z]+")),
+    ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b")),
+    ("GitHub fine-grained token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{22,}\b")),
+    ("private key block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
 )
 
 
@@ -66,6 +63,12 @@ def main() -> int:
         lowered = rel.lower()
         if lowered.endswith(FORBIDDEN_PATH_SUFFIXES):
             failures.append(f"{rel}: tracked SOPS secret file is not public-safe")
+
+        basename = lowered.rsplit("/", 1)[-1]
+        if (
+            basename == ".env" or basename.startswith(".env.")
+        ) and basename not in ALLOWED_ENV_BASENAMES:
+            failures.append(f"{rel}: tracked dotenv file is not public-safe")
 
         if rel == SELF:
             continue

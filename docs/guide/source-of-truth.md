@@ -65,9 +65,12 @@ demonstration of the pattern with placeholder content.
 ## The Boundary Is Enforced
 
 `scripts/check_public_boundary.py` (`just public-boundary`) fails if any
-tracked file contains a forbidden marker: tracked SOPS files, legacy secret
-tripwires, the private downstream repo's name, or the employer markers this
-packet was ever tailored for. Neutrality is a machine check, not a promise.
+tracked file contains secret-shaped content or secret-file paths: tracked SOPS
+or dotenv files, age keys, GitHub tokens, private-key blocks, legacy secret
+tripwires. Name-specific tripwires (employers, panels, private repo names) are
+deliberately **not** listed here — the private downstream repo scans this tree
+with its own marker list, so the public guard cannot itself disclose what it
+guards against. Neutrality is a machine check, not a promise.
 Personal rep scores (`.challenges/reps.md`) are gitignored by default —
 publish aggregates deliberately, or not at all.
 
