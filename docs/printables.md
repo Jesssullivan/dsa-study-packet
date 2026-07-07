@@ -72,11 +72,24 @@ markdown (`reference-sheets/*.md`) compiles to standalone PDFs with
 | 10 | [Whiteboard Performance & Panic Protocol](reference/10-whiteboard-performance-protocol.md) | CLARP, panic recovery, collaboration scripts, self-review rubric |
 | 11 | [14-Day Whiteboard Ramp](reference/11-14-day-whiteboard-ramp.md) | Day-by-day four-hour study loop for board + IDE practice |
 
-!!! info "Where the sheet PDFs land"
-    `just pdf-all` writes one PDF per sheet to `reference-sheets/pdf/`
-    (for example `reference-sheets/pdf/01-python-stdlib.pdf`). These are
-    local build outputs — they are not served by this site, so build them on
-    the machine you print from. `just pdf <file>` converts a single sheet.
+!!! success "Download the sheet PDFs"
+    Every sheet is served here as a print-ready PDF, rebuilt on each deploy from
+    the same source markdown. Grab the ones you want:
+
+    - [01 — Python Standard Library](assets/sheets/01-python-stdlib.pdf)
+    - [02 — Data Structures](assets/sheets/02-data-structures.pdf)
+    - [03 — Algorithm Templates](assets/sheets/03-algorithm-templates.pdf)
+    - [04 — Big-O Complexity](assets/sheets/04-big-o-complexity.pdf)
+    - [05 — Common Patterns](assets/sheets/05-common-patterns.pdf)
+    - [06 — System Design](assets/sheets/06-system-design.pdf)
+    - [07 — Interview Day Guide](assets/sheets/07-interview-day-guide.pdf)
+    - [08 — Cross-Reference Guide](assets/sheets/08-cross-reference-guide.pdf)
+    - [09 — Python 3.14 & Modern Patterns](assets/sheets/09-python-314-and-modern-patterns.pdf)
+    - [10 — Whiteboard Performance & Panic Protocol](assets/sheets/10-whiteboard-performance-protocol.pdf)
+    - [11 — 14-Day Whiteboard Ramp](assets/sheets/11-14-day-whiteboard-ramp.pdf)
+
+    Building locally? `just pdf-all` writes the same set to
+    `reference-sheets/pdf/`, and `just pdf <file>` converts a single sheet.
 
 ---
 

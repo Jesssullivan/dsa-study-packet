@@ -543,7 +543,7 @@ def main() -> None:
     parts.append("")
 
     # Title
-    parts.append(r"\title{\textbf{DSA Study Guide}\\[0.5em]\large Printable Reference Packet}")
+    parts.append(r"\title{\textbf{The DSA Woodshed}\\[0.5em]\large Printable Reference Packet}")
     parts.append(r"\author{}")
     parts.append(r"\date{\today}")
     parts.append("")

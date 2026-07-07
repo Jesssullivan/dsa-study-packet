@@ -1,4 +1,4 @@
-# DSA Study Packet
+# The DSA Woodshed
 
 Company-neutral technical-interview training: algorithm implementations with
 tests, printable reference sheets, and a whiteboard **performance** method —

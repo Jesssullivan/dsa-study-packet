@@ -29,8 +29,20 @@ jobs:
         uses: wtfjoke/setup-tectonic@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install pandoc
+        uses: pandoc/actions/setup@v1
+      - name: Install just
+        uses: extractions/setup-just@v3
       - run: pip install uv
       - run: uv sync --extra docs
+      # System libraries for the mkdocs-material `social` plugin (Cairo/Pillow):
+      # OG-card rendering needs these before the strict build below.
+      - name: Install imaging system libraries (social plugin)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcairo2-dev libfreetype6-dev libffi-dev \
+            libjpeg-dev libpng-dev zlib1g-dev
       - name: Public boundary guard
         run: uv run python scripts/check_public_boundary.py
       - name: Doc-count drift guard
@@ -43,6 +55,14 @@ jobs:
           cp booklet.pdf docs/assets/booklet.pdf
       - name: Generate visualizer traces
         run: uv run python scripts/gen_traces.py
+      # Render every reference sheet to PDF (pandoc -> tectonic) and stage the
+      # set under docs/assets/sheets/ so the site serves them as downloads.
+      # Must run before the build so mkdocs picks the files up.
+      - name: Build and stage reference-sheet PDFs
+        run: |
+          just pdf-all
+          mkdir -p docs/assets/sheets
+          cp reference-sheets/pdf/*.pdf docs/assets/sheets/
       - name: Build site (strict)
         run: uv run --extra docs python -m mkdocs build --strict
       - uses: actions/configure-pages@v5

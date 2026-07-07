@@ -1,8 +1,9 @@
 # Welcome to the woodshed
 
-When this Codespace opens you should see a **split terminal**: the left pane is
-your interviewer (or guidance for getting one), the right pane is a shell with
-the crib sheet. If VS Code Desktop asks **"Allow Automatic Tasks?"** — click
+You're in **The DSA Woodshed** — where you slow down the one weak passage and
+run it clean. When this Codespace opens you should see a **split terminal**: the
+left pane is your interviewer (or guidance for getting one), the right pane is a
+shell with the crib sheet. If VS Code Desktop asks **"Allow Automatic Tasks?"** — click
 **Allow** (the browser client doesn't ask).
 
 Say the line and you're practicing:
