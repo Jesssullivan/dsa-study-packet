@@ -17,8 +17,10 @@ see [the contract](docs/guide/source-of-truth.md).
 
 1. **Click the badge** and wait for the terminal banner. The container builds
    in a couple of minutes — no setup, no secrets.
-2. **Say the line.** Open Copilot Chat in the sidebar — or run `claude` or
-   `codex` in the terminal — and say: **"Start my first practice rep."**
+2. **Say the line.** If you set an interviewer secret ([WELCOME.md](WELCOME.md)),
+   your interviewer is already running in the focused terminal pane — just say:
+   **"Start my first practice rep."** No secret? Open Copilot Chat in the
+   sidebar, or run `claude` or `codex` yourself, and say the same line.
 3. **Talk, don't grind.** The interviewer asks one placement question, then
    runs an untimed conversational rep: restate the problem, pick an example,
    think out loud. No clock, no score — minutes of silence are fine, and you
