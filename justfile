@@ -50,6 +50,7 @@ lint:
     uv run mypy
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
+    uv run python scripts/check_agent_instructions.py
     uv run python scripts/check_no_stubs.py
     uv run python scripts/validate_appendix_schema.py
 
@@ -57,6 +58,10 @@ lint:
 public-boundary:
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
+
+# Regenerate agent instruction surfaces from the AGENTS.md persona region
+gen-agents:
+    uv run python scripts/gen_agent_instructions.py
 
 # Format code with ruff
 fmt:
