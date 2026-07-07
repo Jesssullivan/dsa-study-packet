@@ -103,7 +103,7 @@ extra_css:
 extra_javascript:
   - assets/js/visualizer.js
 
-extra:
-  meta:
-    - name: robots
-      content: noindex, nofollow
+# Pre-launch de-indexing is handled by docs/robots.txt (MkDocs copies it to
+# the site root). An `extra.meta` robots block here is dead config — no
+# template or plugin consumes it — so none is kept. Remove docs/robots.txt
+# at public launch.
