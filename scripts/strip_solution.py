@@ -6,6 +6,12 @@ Replaces: function bodies with ``raise NotImplementedError``.
 
 Usage:
     python scripts/strip_solution.py src/algo/arrays/two_sum.py
+    python scripts/strip_solution.py --cold src/algo/arrays/two_sum.py
+    python scripts/strip_solution.py --print-statement src/algo/arrays/two_sum.py
+
+``--print-statement`` writes nothing; it prints the module docstring block
+(source lines 1 through the docstring's end) to stdout and leaves the file
+untouched. This is the cold-interview problem statement.
 """
 
 from __future__ import annotations
@@ -88,11 +94,36 @@ def truncate_module_docstring(source: str) -> str:
     return "".join(lines)
 
 
+def module_docstring_block(source: str) -> str:
+    """Return the module docstring block verbatim (source lines 1..docstring end).
+
+    Preserves original formatting exactly. Raises ``ValueError`` if the module
+    has no docstring. Unlike a triple-quote line count, this uses the AST node
+    span, so a single-line ``\"\"\"Statement.\"\"\"`` and a module whose body
+    contains later triple-quoted strings (e.g. function docstrings) both yield
+    the statement alone — never the solution below it.
+    """
+    tree = ast.parse(source)
+    first = tree.body[0] if tree.body else None
+    if not (
+        isinstance(first, ast.Expr)
+        and isinstance(first.value, ast.Constant)
+        and isinstance(first.value.value, str)
+    ):
+        msg = "module has no docstring"
+        raise ValueError(msg)
+    lines = source.splitlines(keepends=True)
+    end = first.end_lineno or first.lineno
+    return "".join(lines[:end])
+
+
 def main() -> None:
-    args = [a for a in sys.argv[1:] if a != "--cold"]
+    flags = {"--cold", "--print-statement"}
+    args = [a for a in sys.argv[1:] if a not in flags]
     cold = "--cold" in sys.argv[1:]
+    print_statement = "--print-statement" in sys.argv[1:]
     if len(args) != 1:
-        print(f"Usage: {sys.argv[0]} [--cold] <source_file>")
+        print(f"Usage: {sys.argv[0]} [--cold | --print-statement] <source_file>")
         sys.exit(1)
 
     path = Path(args[0])
@@ -101,6 +132,16 @@ def main() -> None:
         sys.exit(1)
 
     source = path.read_text()
+
+    if print_statement:
+        try:
+            block = module_docstring_block(source)
+        except ValueError as exc:
+            print(f"Error: {exc}: {path}")
+            sys.exit(1)
+        sys.stdout.write(block)
+        return
+
     stripped = strip_solution(source)
     if cold:
         stripped = truncate_module_docstring(stripped)
