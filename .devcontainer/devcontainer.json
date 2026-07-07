@@ -1,0 +1,40 @@
+{
+	"name": "dsa-study-packet — interview woodshedding",
+	"image": "mcr.microsoft.com/devcontainers/base:bookworm",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": { "version": "lts" },
+		"ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+	},
+	"onCreateCommand": "bash .devcontainer/setup.sh",
+	"updateContentCommand": "bash .devcontainer/setup.sh --sync",
+	"postCreateCommand": "bash .devcontainer/setup.sh --seed",
+	"postAttachCommand": "bash .devcontainer/welcome.sh",
+	"containerEnv": {
+		"UV_PYTHON_PREFERENCE": "only-managed"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"GitHub.copilot",
+				"GitHub.copilot-chat",
+				"anthropic.claude-code",
+				"ms-python.python",
+				"charliermarsh.ruff",
+				"nefrob.vscode-just-syntax"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+				"terminal.integrated.defaultProfile.linux": "bash"
+			}
+		}
+	},
+	"secrets": {
+		"ANTHROPIC_API_KEY": {
+			"description": "Optional: lets Claude Code act as your interviewer. Leave blank to use GitHub Copilot (no key needed) or practice solo."
+		},
+		"OPENAI_API_KEY": {
+			"description": "Optional: lets OpenAI Codex act as your interviewer. Leave blank to use GitHub Copilot (no key needed) or practice solo."
+		}
+	},
+	"remoteUser": "vscode"
+}

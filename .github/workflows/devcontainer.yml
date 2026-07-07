@@ -1,0 +1,51 @@
+name: devcontainer-smoke
+
+# Proves a stranger's Codespace works: the container builds on Linux with NO
+# secrets, and the core practice loop runs green end-to-end. challenge-done
+# runs TWICE on purpose — the second call exercises the re-mark sed branch
+# that once hid a BSD-only flag (#34).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".devcontainer/**"
+      - "justfile"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "scripts/strip_solution.py"
+      - ".github/workflows/devcontainer.yml"
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - "justfile"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "scripts/strip_solution.py"
+      - ".github/workflows/devcontainer.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build devcontainer and run the practice loop
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            set -euxo pipefail
+            export PATH="$HOME/.local/bin:$PATH"
+            uv --version
+            just --version
+            bash .devcontainer/welcome.sh
+            uv run pytest tests/arrays -q
+            just interview arrays two_sum
+            just challenge-done arrays two_sum
+            just challenge-done arrays two_sum
+            just solution arrays two_sum
+            just rep "smoke arrays/two_sum C2 L2 A2 R2 P2 h0 ci"
+            just study-spaced 3
+            just public-boundary

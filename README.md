@@ -9,7 +9,33 @@ Code, tests, and authored notes are the single source of truth; every artifact
 panel-specific prep lives in private downstream overlays, never in this repo —
 see [the contract](docs/guide/source-of-truth.md).
 
-## Quick start
+## Try it in one click
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
+
+No setup and no secrets required: the Codespace boots the whole toolchain, and
+GitHub Copilot can act as your interviewer (activate Copilot Free once at
+[github.com/settings/copilot](https://github.com/settings/copilot) if you
+haven't; the free tier is metered, so long sessions run best with one of the
+CLIs below). When the terminal banner appears, tell your agent:
+
+> Start my first practice rep.
+
+Prefer a different interviewer? The container also ships the Claude Code and
+Codex CLIs — run `claude` (paste-code login, or an `ANTHROPIC_API_KEY`
+Codespaces secret) or set `OPENAI_API_KEY` for Codex (its `codex login
+--device-auth` alternative first needs device-code login enabled in ChatGPT
+Settings → Security). No agent at all works too: the entire loop is plain
+`just` recipes (below), with the method on printable reference sheets.
+
+This is a template repository — **Use this template** gives you your own copy
+with a fresh, private practice log (`.challenges/` is gitignored). Forks that
+want faster boots can enable Codespaces prebuilds on their own account.
+
+## Local quick start (Nix power users)
+
+The maintainer's local flow uses the Nix devshell; the devcontainer above
+never touches it.
 
 ```bash
 direnv allow        # nix devshell + Python 3.14 venv
