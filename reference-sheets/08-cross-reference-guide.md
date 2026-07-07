@@ -1,4 +1,4 @@
-# Cross-Reference Guide — When to Use What
+# Cross-Reference Guide — Pattern → Implementation Map
 
 > **Purpose:** Master lookup for mapping problem descriptions, patterns, and real-world
 > scenarios to specific implementations in this repo. Start here when facing a new problem.
