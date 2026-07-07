@@ -36,6 +36,10 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# Tracked on purpose: the @AGENTS.md pointer stub for Claude Code
+# (overrides any local excludes that ignore ad-hoc CLAUDE.md files)
+!CLAUDE.md
 *.swp
 *.swo
 *~
