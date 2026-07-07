@@ -28,6 +28,12 @@ from strip_solution import strip_solution
 # gated on this set; adding an algorithm is pure trace data, not code here.
 VIZ_TRACES = {"binary_search"}
 
+# Search boost for the generated algorithm tree. docs/algorithms is machine-
+# generated and gitignored, so its de-weighting (below the hand-authored guide
+# and reference pages, which the `meta` plugin boosts to 2) has to live here in
+# the emitted front matter rather than in a checked-in .meta.yml.
+GENERATED_SEARCH_BOOST = 0.5
+
 # ── Paths ────────────────────────────────────────────────────────────
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -232,6 +238,22 @@ def _topic_title(topic: str) -> str:
 # ── Page generators ──────────────────────────────────────────────────
 
 
+def _front_matter(title: str, topic: str | None = None) -> list[str]:
+    """Build the YAML front-matter lines for a generated page.
+
+    Every generated page carries ``search: {boost: 0.5}`` to sink the
+    machine-generated tree beneath the hand-authored pages in search. Pages that
+    belong to a single topic also carry ``tags: [<topic>]``; the tag must appear
+    in ``tags_allowed`` in mkdocs.yml or the tags plugin rejects the build.
+    """
+    lines = ["---", f"title: {title}"]
+    if topic is not None:
+        lines.append(f"tags: [{topic}]")
+    lines.append(f"search: {{boost: {GENERATED_SEARCH_BOOST}}}")
+    lines.append("---")
+    return lines
+
+
 def _gen_problem_page(
     topic: str,
     problem: str,
@@ -242,9 +264,7 @@ def _gen_problem_page(
     name = _title_from_filename(problem)
 
     lines: list[str] = [
-        "---",
-        f"title: {name}",
-        "---",
+        *_front_matter(name, topic),
         "",
         f"# {name}",
         "",
@@ -351,9 +371,7 @@ def _gen_topic_index(
     """Generate the index page for a topic."""
     title = _topic_title(topic)
     lines = [
-        "---",
-        f"title: {title}",
-        "---",
+        *_front_matter(title, topic),
         "",
         f"# {title}",
         "",
@@ -381,9 +399,9 @@ def _gen_algorithms_index(
     """Generate the top-level algorithms overview page."""
     total_problems = sum(len(probs) for probs in topics.values())
     lines = [
-        "---",
-        "title: Algorithms",
-        "---",
+        # No single topic tag: this index spans every topic. It still carries
+        # the generated-tree search boost so it sinks below the guide/reference.
+        *_front_matter("Algorithms"),
         "",
         "# Algorithms",
         "",

@@ -1,0 +1,5 @@
+# Applied to every page under docs/guide/ by the built-in `meta` plugin.
+# The guide is hand-authored, high-signal narrative — boost it in search above
+# the generated algorithm pages (which self-de-weight to 0.5).
+search:
+  boost: 2

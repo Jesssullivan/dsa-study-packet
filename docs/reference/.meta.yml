@@ -1,0 +1,5 @@
+# Applied to every page under docs/reference/ by the built-in `meta` plugin.
+# The reference sheets are hand-authored, high-signal handouts — boost them in
+# search above the generated algorithm pages (which self-de-weight to 0.5).
+search:
+  boost: 2

@@ -1,5 +1,5 @@
-site_name: DSA Study Packet
-site_url: https://jesssullivan.github.io/dsa-study-packet/
+site_name: The DSA Woodshed
+site_url: https://dsa-woodshed.space/
 site_description: Company-neutral DSA and technical interview study packet
 repo_url: https://github.com/Jesssullivan/dsa-study-packet
 repo_name: Jesssullivan/dsa-study-packet
@@ -36,7 +36,14 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
+# Plugin order matters. `meta` runs first so per-directory `.meta.yml`
+# front matter (search boosts) is applied before `tags`/`social` read it.
+# `social` is gated to CI: it needs the Cairo/Pillow imaging stack (installed
+# in the docs workflow), so local builds without those libs skip it cleanly.
+# `privacy` self-hosts external assets and is listed last so it can rewrite the
+# fully assembled output.
 plugins:
+  - meta
   - search
   - section-index
   - gen-files:
@@ -58,6 +65,31 @@ plugins:
             show_signature_annotations: true
             separate_signature: true
             heading_level: 2
+  # Allowed tags = the topic directories under src/algo. The generated
+  # algorithm pages (scripts/gen_algo_pages.py) emit `tags: [<topic>]`; the
+  # tags plugin rejects any tag not in this list, so the two must agree.
+  - tags:
+      tags_allowed:
+        - arrays
+        - backtracking
+        - bit_manipulation
+        - dp
+        - graphs
+        - greedy
+        - heaps
+        - linked_lists
+        - patterns
+        - recursion
+        - searching
+        - sliding_window
+        - sorting
+        - stacks_queues
+        - strings
+        - trees
+        - two_pointers
+  - social:
+      enabled: !ENV [CI, false]
+  - privacy
 
 markdown_extensions:
   - abbr

@@ -54,12 +54,16 @@ Thumbs.db
 site/
 docs/SUMMARY.md
 docs/algorithms/
+# mkdocs-material privacy/social plugin asset cache
+.cache/
 
 # PDF booklet build artifacts
 booklet.tex
 booklet.pdf
 docs/assets/booklet.pdf
 reference-sheets/pdf/
+# Reference-sheet PDFs staged into the site by CI (docs.yml)
+docs/assets/sheets/
 
 # Secrets
 .env
