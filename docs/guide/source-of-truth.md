@@ -74,6 +74,23 @@ guards against. Neutrality is a machine check, not a promise.
 Personal rep scores (`.challenges/reps.md`) are gitignored by default —
 publish aggregates deliberately, or not at all.
 
+## Who Owns The Practice Method
+
+L2 is one loop described from five angles. Each surface owns exactly one
+question about it; none restates another's answer.
+
+| Surface | Owns | Does not own |
+|---------|------|---------------|
+| [Sheet 10](../reference/10-whiteboard-performance-protocol.md) | the CLARP method + self-review rubric — *how* to perform | no calendar, no daily loop |
+| [Sheet 11](../reference/11-14-day-whiteboard-ramp.md) | the 14-day calendar + daily loop — *when*. Its prose feeds `scripts/practice_day.py` closely — edit sheet 11 itself for loop changes, never this table | no method detail, no rubric |
+| [Evidence page](interview-practice-evidence.md) | *why* — research citations and the video shelf | no calendar, no rubric scoring |
+| `AGENTS.md` persona | *how* the resident interviewer behaves during a rep; regenerates the `.github` surfaces via `just gen-agents` | no citations, no calendar |
+| Skills (`practice-day`, `interviewer`) | routing — which rung, which `just` command runs next | no method content of its own |
+
+A change landing on the wrong row is the drift tell: a calendar edit inside
+sheet 10, a rubric row inside the evidence page, or a citation inside
+`AGENTS.md` all mean the edit belongs one row up or down this table instead.
+
 ## Runbook
 
 | I want to… | Do this | Layer |
