@@ -51,6 +51,7 @@ lint:
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
     uv run python scripts/check_agent_instructions.py
+    uv run python scripts/check_onboarding.py
     uv run python scripts/check_no_stubs.py
     uv run python scripts/validate_appendix_schema.py
 
