@@ -23,7 +23,7 @@ LOOP = (
 INTERVIEWERS = (
     ("claude", "run 'claude' (paste-code login) or set ANTHROPIC_API_KEY"),
     ("codex", "set OPENAI_API_KEY, or 'codex login --device-auth'"),
-    ("gemini", "reads AGENTS.md via .gemini/settings.json"),
+    ("gemini", "npm i -g @google/gemini-cli; reads AGENTS.md via .gemini/settings.json"),
 )
 PUBLISHING = (
     ("pandoc", "'just pdf-all' reference-sheet PDFs (optional)"),

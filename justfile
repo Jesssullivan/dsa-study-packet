@@ -340,7 +340,10 @@ challenge-reset:
         while IFS= read -r backup; do
             rel="${backup#.challenges/}"
             dest="src/algo/${rel%.solution}"
-            mkdir -p "$(dirname "$dest")"
+            if [ ! -d "$(dirname "$dest")" ]; then
+                echo "skip (topic gone): $dest"
+                continue
+            fi
             cp "$backup" "$dest"
             rm -f "$backup"
             echo "restored: $dest"

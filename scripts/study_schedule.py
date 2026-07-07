@@ -2,7 +2,8 @@
 
 Ranks the Core 42 by review urgency from .challenges/progress.md: never-attempted
 problems come first, then those longest since their last review. Prints the next
-problems to drill with their `just challenge` commands.
+problems to drill with their `just interview` commands (cold present — the
+ladder's default; `just challenge` remains the learning-mode alternative).
 
 Usage:
     python scripts/study_schedule.py [N]   # default 5
@@ -65,7 +66,7 @@ def format_queue(count: int = 5, progress: Path = PROGRESS) -> str:
     lines = [f"# Spaced-repetition queue — {drilled}/{total} attempted", ""]
     for urgency, topic, problem in ranked[:count]:
         tag = "new" if urgency == _NEVER else f"{urgency}d since review"
-        lines.append(f"just challenge {topic} {problem}    # {tag}")
+        lines.append(f"just interview {topic} {problem}    # {tag}")
     return "\n".join(lines)
 
 

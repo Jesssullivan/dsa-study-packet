@@ -34,8 +34,8 @@ at [github.com/settings/copilot](https://github.com/settings/copilot); the
 free tier is metered, so long sessions run best on a CLI). Claude Code: run
 `claude` (paste-code login) or set an `ANTHROPIC_API_KEY` Codespaces secret.
 Codex: set `OPENAI_API_KEY` (or `codex login --device-auth` after enabling
-device-code login in ChatGPT Settings → Security). Gemini CLI picks up the
-same persona via `.gemini/settings.json`. **No agent at all also works** —
+device-code login in ChatGPT Settings → Security). If you have the Gemini CLI
+installed, it picks up the same persona via `.gemini/settings.json`. **No agent at all also works** —
 the entire loop is plain `just` recipes with the method on printable
 reference sheets.
 
