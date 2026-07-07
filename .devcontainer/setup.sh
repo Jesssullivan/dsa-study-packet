@@ -34,6 +34,65 @@ seed_state() {
 	# Per-user, gitignored practice state — every Codespace user starts fresh.
 	mkdir -p .challenges
 	just catalog || warn "catalog preview failed (non-fatal)"
+
+	# Codex TUI auth: the OPENAI_API_KEY env var alone does NOT log the TUI in
+	# (it only reads ~/.codex/auth.json) — seed it here, where secrets are
+	# reliably injected.
+	if command -v codex >/dev/null 2>&1 && [ -n "${OPENAI_API_KEY:-}" ] \
+		&& ! codex login status >/dev/null 2>&1; then
+		codex login --with-api-key <<<"$OPENAI_API_KEY" \
+			|| warn "codex login failed (optional — Copilot/Claude still work)"
+	fi
+	# Codex trust must live in the GLOBAL config — the repo-level
+	# .codex/config.toml only loads after trust is granted. (auth.json written
+	# above already pins API-key auth; no undocumented auth-method key needed.)
+	if command -v codex >/dev/null 2>&1 && [ ! -f "$HOME/.codex/config.toml" ]; then
+		mkdir -p "$HOME/.codex"
+		cat > "$HOME/.codex/config.toml" <<-EOF
+			approval_policy = "never"
+			sandbox_mode = "workspace-write"
+
+			[projects."$PWD"]
+			trust_level = "trusted"
+		EOF
+	fi
+
+	# Claude Code first-run quieting: onboarding, per-project trust, and (on
+	# the API-key path) the key-approval prompt — otherwise the auto-launched
+	# interviewer opens on a blocking trust dialog instead of a prompt.
+	# Best-effort: keys are undocumented; failure costs one Enter press.
+	seed_claude_json || warn "claude first-run seed failed (one extra prompt at launch)"
+
+	# Sentinel the folderOpen launcher polls — always last.
+	mkdir -p "$HOME/.config/practice"
+	touch "$HOME/.config/practice/seed-done"
+}
+
+seed_claude_json() {
+	local py="$PWD/.venv/bin/python"
+	[ -x "$py" ] || py="$(command -v python3 || true)"
+	[ -n "$py" ] || return 0
+	WORKSPACE="$PWD" "$py" <<-'PYEOF'
+		import json, os
+		path = os.path.expanduser("~/.claude.json")
+		try:
+		    with open(path) as f:
+		        cfg = json.load(f)
+		except (FileNotFoundError, ValueError):
+		    cfg = {}
+		cfg["hasCompletedOnboarding"] = True
+		project = cfg.setdefault("projects", {}).setdefault(os.environ["WORKSPACE"], {})
+		project["hasTrustDialogAccepted"] = True
+		project["hasCompletedProjectOnboarding"] = True
+		key = os.environ.get("ANTHROPIC_API_KEY", "")
+		if key:
+		    approved = cfg.setdefault("customApiKeyResponses", {}).setdefault("approved", [])
+		    if key[-20:] not in approved:
+		        approved.append(key[-20:])
+		with open(path, "w") as f:
+		    json.dump(cfg, f, indent=2)
+		    f.write("\n")
+	PYEOF
 }
 
 case "${1:-}" in

@@ -1,0 +1,9 @@
+# Repo-level Codex config — loads once the project is trusted (trust itself is
+# seeded into the GLOBAL ~/.codex/config.toml by .devcontainer/setup.sh; a
+# trust_level here would never be read).
+#
+# Deliberately NO `model` pin: pinned Codex model strings rot (every pre-5.5
+# model retires 2026-07-23) — ride the CLI default so the interviewer upgrades
+# with the vendor. Medium reasoning keeps conversational turns snappy; the
+# interviewer probes and listens, it doesn't deep-plan.
+model_reasoning_effort = "medium"

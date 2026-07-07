@@ -1,0 +1,63 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "practice: interviewer",
+      "type": "shell",
+      "command": "bash .devcontainer/launch-agent.sh",
+      "presentation": {
+        "group": "practice",
+        "panel": "dedicated",
+        "reveal": "always",
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "practice: shell",
+      "type": "shell",
+      "command": "bash -c 'bash .devcontainer/welcome.sh; exec bash'",
+      "presentation": {
+        "group": "practice",
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "practice: start",
+      "dependsOn": ["practice: interviewer", "practice: shell"],
+      "runOptions": { "runOn": "folderOpen" },
+      "problemMatcher": []
+    },
+    {
+      "label": "DSA: test",
+      "type": "shell",
+      "command": "just test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "DSA: lint",
+      "type": "shell",
+      "command": "just lint",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "DSA: packet",
+      "type": "shell",
+      "command": "just packet",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "DSA: docs",
+      "type": "shell",
+      "command": "just docs",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

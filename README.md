@@ -17,8 +17,10 @@ see [the contract](docs/guide/source-of-truth.md).
 
 1. **Click the badge** and wait for the terminal banner. The container builds
    in a couple of minutes — no setup, no secrets.
-2. **Say the line.** Open Copilot Chat in the sidebar — or run `claude` or
-   `codex` in the terminal — and say: **"Start my first practice rep."**
+2. **Say the line.** If you set an interviewer secret ([WELCOME.md](WELCOME.md)),
+   your interviewer is already running in the focused terminal pane — just say:
+   **"Start my first practice rep."** No secret? Open Copilot Chat in the
+   sidebar, or run `claude` or `codex` yourself, and say the same line.
 3. **Talk, don't grind.** The interviewer asks one placement question, then
    runs an untimed conversational rep: restate the problem, pick an example,
    think out loud. No clock, no score — minutes of silence are fine, and you
@@ -31,13 +33,16 @@ pristine slate · `just --list` shows every recipe.
 
 **Interviewer options.** Copilot needs zero keys (activate Copilot Free once
 at [github.com/settings/copilot](https://github.com/settings/copilot); the
-free tier is metered, so long sessions run best on a CLI). Claude Code: run
-`claude` (paste-code login) or set an `ANTHROPIC_API_KEY` Codespaces secret.
-Codex: set `OPENAI_API_KEY` (or `codex login --device-auth` after enabling
-device-code login in ChatGPT Settings → Security). If you have the Gemini CLI
-installed, it picks up the same persona via `.gemini/settings.json`. **No agent at all also works** —
-the entire loop is plain `just` recipes with the method on printable
-reference sheets.
+free tier is metered, so long sessions run best on a CLI). Set one Codespaces
+secret and every Codespace opens with your interviewer **already running in a
+split terminal**: `CLAUDE_CODE_OAUTH_TOKEN` (Claude Pro/Max, from
+`claude setup-token`) or `ANTHROPIC_API_KEY` for Claude Code, `OPENAI_API_KEY`
+for Codex — the two-minute walkthrough lives in [WELCOME.md](WELCOME.md),
+including which model to run (short version: don't pin one; plan defaults are
+already right). If you have the Gemini CLI installed, it picks up the same
+persona via `.gemini/settings.json`. **No agent at all also works** — the
+entire loop is plain `just` recipes with the method on printable reference
+sheets.
 
 This is a template repository — **Use this template** gives you your own copy
 with a fresh, private practice log (`.challenges/` is gitignored). Forks that
