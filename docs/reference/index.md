@@ -4,7 +4,7 @@ title: Reference Sheets
 
 # Reference Sheets
 
-Eleven printable reference sheets covering everything from Python stdlib to interview-day logistics, whiteboard performance under pressure, and a day-by-day two-week ramp. Print them out or keep them open as tabs during study sessions.
+Printable reference sheets covering everything from Python stdlib to interview-day logistics, whiteboard performance under pressure, and a day-by-day two-week ramp. Print them out or keep them open as tabs during study sessions.
 
 ```bash
 just packet  # generate printable PDF packet

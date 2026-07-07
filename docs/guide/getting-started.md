@@ -160,6 +160,7 @@ That is why the two surfaces always agree.
 |-------------------|-----|-------|
 | Re-implement a problem from scratch | `just challenge` / `just study` | terminal |
 | Identify which pattern a prompt needs | [Decision tree](when-to-use-what.md) | web |
+| Plan a four-hour interview-prep block | [Interview practice evidence](interview-practice-evidence.md) | web |
 | See a full reference implementation + complexity | [Algorithms](../algorithms/index.md) | web |
 | Map a pattern to its implementations | [Cross-reference guide](../reference/08-cross-reference-guide.md) | web |
 | Brush up on language/stdlib/system-design | [Reference sheets](../reference/index.md) and [Concepts](../concepts/index.md) | web |

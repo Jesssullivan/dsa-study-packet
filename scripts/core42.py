@@ -7,7 +7,7 @@ spaced-repetition scheduler (keeps the two from drifting).
 from __future__ import annotations
 
 CORE_42: dict[str, list[str]] = {
-    "arrays": ["two_sum", "group_anagrams", "product_except_self"],
+    "arrays": ["two_sum", "group_anagrams", "product_except_self", "top_k_frequent"],
     "two_pointers": ["three_sum", "trapping_rain_water"],
     "sliding_window": ["min_window_substring", "longest_substring_no_repeat"],
     "stacks_queues": ["valid_parentheses", "daily_temperatures"],

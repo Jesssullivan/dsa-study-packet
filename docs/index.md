@@ -9,15 +9,15 @@ and printable non-electronic study packets.
 
 <div class="grid cards" markdown>
 
--   :material-code-braces:{ .lg .middle } **69 Implementations**
+-   :material-code-braces:{ .lg .middle } **Core + Extended Drills**
 
     ---
 
-    15 topics, typed Python 3.14+, 42 core drills
+    Typed Python 3.14+, generated drill catalog
 
     [:octicons-arrow-right-24: Algorithms](algorithms/index.md)
 
--   :material-test-tube:{ .lg .middle } **647 Tests**
+-   :material-test-tube:{ .lg .middle } **Test-Backed Practice**
 
     ---
 
@@ -25,7 +25,7 @@ and printable non-electronic study packets.
 
     [:octicons-arrow-right-24: Challenges](challenges/index.md)
 
--   :material-book-open-variant:{ .lg .middle } **7 Concept Modules**
+-   :material-book-open-variant:{ .lg .middle } **Concepts**
 
     ---
 
@@ -33,7 +33,7 @@ and printable non-electronic study packets.
 
     [:octicons-arrow-right-24: Concepts](concepts/index.md)
 
--   :material-file-document-multiple:{ .lg .middle } **9 Reference Sheets**
+-   :material-file-document-multiple:{ .lg .middle } **Reference Sheets**
 
     ---
 
@@ -49,7 +49,7 @@ and printable non-electronic study packets.
 
 ```bash
 direnv allow          # nix devshell + python 3.14 venv
-just test             # 647 tests
+just test             # pytest + Hypothesis
 just lint             # ruff + mypy strict
 just docs             # this site, locally
 just packet           # latest printable PDF packet
@@ -74,7 +74,7 @@ just packet           # latest printable PDF packet
 
 ## Daily Drill
 
-42 core algorithms for repeated drills. Challenge mode strips solutions so you
+Core algorithms for repeated drills. Challenge mode strips solutions so you
 re-implement from the signature and docstring alone.
 
 ```bash
@@ -87,6 +87,8 @@ just challenge-progress
 
 The [decision tree](guide/when-to-use-what.md) maps problem signals to patterns.
 The [cross-reference guide](reference/08-cross-reference-guide.md) maps patterns to implementations.
+The [interview practice evidence](guide/interview-practice-evidence.md) page
+backs the sheet-11 four-hour loop with research and targeted video refreshers.
 
 [:material-rocket-launch: Start Drilling](challenges/index.md){ .md-button .md-button--primary }
 [:material-map: Decision Tree](guide/when-to-use-what.md){ .md-button }

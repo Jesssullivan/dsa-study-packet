@@ -13,7 +13,7 @@ stack of sheets you carry into an interview.
 
     1. **The full booklet** — one self-contained PDF with the decision trees,
        pattern tables, every algorithm (docstring + code), and the appendix.
-    2. **The reference sheets** — nine compact 1–4 page handouts you can fan out
+    2. **The reference sheets** — compact handouts you can fan out
        on a desk.
 
     The rule: **bring the latest packet.** Both artifacts are *generated* from
@@ -25,8 +25,8 @@ stack of sheets you carry into an interview.
 
 ## The full booklet
 
-The single "bring everything" artifact: roughly 137 pages, about 240 KB, built
-fresh by `just packet`. It is the most complete offline view of the repo.
+The single "bring everything" artifact, built fresh by `just packet`. It is the
+most complete offline view of the repo.
 
 [:material-download: Download the full booklet (PDF)](assets/booklet.pdf){ .md-button .md-button--primary }
 [:material-eye: View it inline](assets/booklet.pdf){ .md-button }
@@ -43,8 +43,8 @@ fresh by `just packet`. It is the most complete offline view of the repo.
 !!! note "Why the page count moves"
     The booklet emits **one page per algorithm**, so its length tracks the repo.
     Add a drill and the next `just packet` build is a page or two longer. Treat
-    "~137 pages" as the current ballpark, not a fixed number — always reprint
-    from a fresh build rather than reusing an old PDF.
+    the current build as a snapshot, not a fixed page count — always reprint from
+    a fresh build rather than reusing an old PDF.
 
 <div markdown class="pdf-viewer">
 <iframe src="assets/booklet.pdf" width="100%" height="800px" style="border: 1px solid #ccc; border-radius: 8px;"></iframe>
@@ -54,7 +54,7 @@ fresh by `just packet`. It is the most complete offline view of the repo.
 
 ## Reference sheets
 
-Nine focused handouts. Each links to the rendered page below; the same source
+Focused handouts. Each links to the rendered page below; the same source
 markdown (`reference-sheets/*.md`) compiles to standalone PDFs with
 `just pdf-all`.
 
@@ -69,6 +69,8 @@ markdown (`reference-sheets/*.md`) compiles to standalone PDFs with
 | 07 | [Interview Day Guide](reference/07-interview-day-guide.md) | Day-of logistics, communication framework, timing strategy, and what to have open |
 | 08 | [Cross-Reference Guide](reference/08-cross-reference-guide.md) | Master lookup: problem description → implementation, decision tree, keyword cheat sheet |
 | 09 | [Python 3.14 & Modern Patterns](reference/09-python-314-and-modern-patterns.md) | PEP 750 t-strings, PEP 649 lazy annotations, PEP 695 type syntax, Hypothesis, advanced typing |
+| 10 | [Whiteboard Performance & Panic Protocol](reference/10-whiteboard-performance-protocol.md) | CLARP, panic recovery, collaboration scripts, self-review rubric |
+| 11 | [14-Day Whiteboard Ramp](reference/11-14-day-whiteboard-ramp.md) | Day-by-day four-hour study loop for board + IDE practice |
 
 !!! info "Where the sheet PDFs land"
     `just pdf-all` writes one PDF per sheet to `reference-sheets/pdf/`

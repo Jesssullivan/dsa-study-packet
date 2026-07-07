@@ -4,7 +4,7 @@ title: Daily Drill
 
 # Daily Drill
 
-42 core algorithms. All of them. Every day. Seven days.
+The core drill set. All of it. Every day. Seven days.
 
 Challenge mode strips each implementation, leaving the signature and docstring.
 You re-implement from scratch and run tests to verify.
@@ -23,16 +23,17 @@ just challenge-progress           # see stats
 
 ---
 
-## The 42
+## The Core Set
 
-Copy-paste the full block to strip all 42 at once, or work topic by topic.
+Copy-paste the full block to strip the whole set at once, or work topic by topic.
 
-### Arrays (3)
+### Arrays (4)
 
 ```bash
 just challenge arrays two_sum
 just challenge arrays group_anagrams
 just challenge arrays product_except_self
+just challenge arrays top_k_frequent
 ```
 
 ### Two Pointers (2)
@@ -170,11 +171,10 @@ just challenge-progress
 
 ## Extended Practice
 
-The remaining 27 implementations are in the repo for deeper study:
+The extended implementations are in the repo for deeper study:
 
 - **graphs**: clone_graph, word_ladder, network_delay_time, network_flow, geohash_grid, kd_tree
 - **dp**: climbing_stairs, traveling_salesman_dp, constraint_satisfaction
-- **arrays**: top_k_frequent
 - **two_pointers**: container_with_most_water
 - **stacks_queues**: min_stack
 - **searching**: find_minimum_rotated

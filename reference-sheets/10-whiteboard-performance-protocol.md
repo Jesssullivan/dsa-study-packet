@@ -156,3 +156,8 @@ being *interrupted and judged*. Both are the real stressor, split in two.
 6. Trace your code on a tiny example. Find your own bug.
 7. Blanking? Say so, breathe, shrink to n=1. Stuck-and-talking passes.
 8. It's a colleague and a problem, not a test and a judge.
+
+## 8. Research backing
+
+The web guide carries the evidence and video shelf:
+`docs/guide/interview-practice-evidence.md`.
