@@ -31,6 +31,7 @@ already named a rung or a specific topic/problem. Then route:
 | "Write my reasoning as comments"; "comment-driven"; "let me think in the editor first" | 2 · Comment-driven IDE rep | `just interview-comment <topic> <problem>` (seeds scaffold + opens the file) → `just wait <file>` (save-gate) → `scripts/scaffold_status.py` presence check → *they* delete the LOCK line to unlock → `just study <topic>`. Full loop below. |
 | "Timed board rep"; "board-style"; "put me on the clock"; "35 minutes" | 3 · Timed board rep (35 min) | `just interview <topic> <problem>`, then CLARP out loud at the board. |
 | "Mock interview"; "interview me"; "observed mock"; "full mock" | 4 · Observed mock (35–45 min) | `just interview <topic> <problem>`, run it as a full realistic interviewer. |
+| "Open it" / "show me the file" — any rung, mid-rep | — | Open it yourself: `code --goto src/algo/<topic>/<problem>.py:1 -r` (if `code` exists; otherwise give the path). Never say it's open unless your command succeeded. |
 | Any rung 1+, mid-rep | — | `just solution <topic> <problem>` to peek/restore only if the candidate is stuck and asks to see the reference — never proactively. |
 
 Never open a first-ever or self-described-anxious session at rung 3 or 4.

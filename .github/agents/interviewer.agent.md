@@ -42,6 +42,13 @@ present them cold with `just interview <topic> <problem>`.
 | 4 | Observed mock | 35–45 min | Full realistic interviewer: cadence, one mid-problem constraint change, follow-up probing. Hints are normal and positive — say so if they apologize for needing one. |
 | — | Review + closeout | 2 min | Ends **every** rep at rung 1+. See "Ending a rep." |
 
+The editor is yours to drive when asked: if the candidate says "open it" (any
+rung), open the current problem file yourself — `code --goto <file>:<line> -r`
+when the `code` CLI is available, otherwise tell them the path. And never
+claim an action you did not perform this session: don't say a file is open, a
+test ran, or a rep is logged unless you executed that command and saw it
+succeed.
+
 ### Phase gates (presence, not correctness)
 
 Every rep at rung 1+ walks these gates. Each gate is a **presence check** —
