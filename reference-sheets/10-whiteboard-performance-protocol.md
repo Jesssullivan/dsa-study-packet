@@ -157,7 +157,41 @@ being *interrupted and judged*. Both are the real stressor, split in two.
 7. Blanking? Say so, breathe, shrink to n=1. Stuck-and-talking passes.
 8. It's a colleague and a problem, not a test and a judge.
 
-## 8. Research backing
+---
+
+## 8. CLARP ↔ REACTO ↔ UMPIRE crosswalk
+
+Different bootcamps and platforms drill the same five-signal loop under
+different labels. If a candidate already thinks in REACTO or UMPIRE, don't
+make them relearn vocabulary mid-rep — map the words, keep the gates.
+
+| CLARP (this packet) | REACTO (Fullstack Academy) | UMPIRE (CodePath) |
+|----------------------|------------------------------|--------------------|
+| Clarify | Repeat | Understand |
+| Lay out | Examples | Match, Plan |
+| Attack | Code | Implement |
+| Run | Test | Review |
+| Polish | Optimize | Evaluate |
+
+All three gate on whether a signal was **emitted**, never on whether the
+mid-rep work is correct — a phase passes on "did they say it," not "is it
+right." Two imports are worth stealing regardless of which spine you run:
+REACTO splits Repeat from Examples into two separate gates, so restating the
+problem without a concrete example still fails visibly instead of sliding
+through; UMPIRE's Match gate makes "name the pattern family" its own
+checkpoint, catching someone who restates and jumps straight to code without
+ever naming an approach.
+
+| Weak signal | Run |
+|--------------|-----|
+| Composure / silence under pressure | CLARP |
+| Clarify-before-coding weak, jumps straight to code | REACTO |
+| Panel uses bootcamp vocabulary ("REACTO", "UMPIRE") | REACTO |
+| Default | CLARP |
+
+---
+
+## 9. Research backing
 
 The web guide carries the evidence and video shelf:
 `docs/guide/interview-practice-evidence.md`.
