@@ -28,7 +28,7 @@ already named a rung or a specific topic/problem. Then route:
 |---|---|---|
 | First-ever session; "I'm anxious/nervous"; wants to reset before anything else | 0 · Arrival reset | No command — offer the 4 physiological sighs and/or the 2-minute worry-dump per AGENTS.md. Never scored, never logged. |
 | "Talk a problem through, no clock"; "just talk me through it"; first session default; self-described-anxious default | 1 · Conversational rep | `just study-spaced N` to draw a problem, then talk it through cold — no editor required. |
-| "Write my reasoning as comments"; "comment-driven"; "let me think in the editor first" | 2 · Comment-driven IDE rep | `just interview <topic> <problem>` (stripped cold stub) → seed the comment scaffold below → review the trail → unlock coding → `just study <topic>` to watch tests once they're typing. |
+| "Write my reasoning as comments"; "comment-driven"; "let me think in the editor first" | 2 · Comment-driven IDE rep | `just interview-comment <topic> <problem>` (seeds scaffold + opens the file) → `just wait <file>` (save-gate) → `scripts/scaffold_status.py` presence check → *they* delete the LOCK line to unlock → `just study <topic>`. Full loop below. |
 | "Timed board rep"; "board-style"; "put me on the clock"; "35 minutes" | 3 · Timed board rep (35 min) | `just interview <topic> <problem>`, then CLARP out loud at the board. |
 | "Mock interview"; "interview me"; "observed mock"; "full mock" | 4 · Observed mock (35–45 min) | `just interview <topic> <problem>`, run it as a full realistic interviewer. |
 | Any rung 1+, mid-rep | — | `just solution <topic> <problem>` to peek/restore only if the candidate is stuck and asks to see the reference — never proactively. |
@@ -48,7 +48,8 @@ Rung 2 is mechanized — do not hand-type the scaffold:
    problem statement, and opens the file at the RESTATE line in their editor
    (`code --goto`) when available.
 2. **One instruction, then wait**: tell them once — fill the comments
-   top-to-bottom, save when ready. Then arm the save-gate:
+   top-to-bottom, keeping each `# LABEL:` prefix, save when ready. Then arm
+   the save-gate:
    `just wait src/algo/<topic>/<problem>.py` blocks until they save
    (exit 0) or 300s pass (exit 2). Their save is the "your turn" signal;
    never read the buffer between saves.

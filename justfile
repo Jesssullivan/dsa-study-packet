@@ -391,8 +391,8 @@ interview-comment topic problem:
     else
         echo "  Open $src at the RESTATE line to begin."
     fi
-    echo "Fill the five comments top-to-bottom, then save; delete the LOCK line"
-    echo "yourself when you're ready to code."
+    echo "Fill the five comments top-to-bottom (keep each '# LABEL:' prefix),"
+    echo "then save; delete the LOCK line yourself when you're ready to code."
     echo "  Verify: just study {{ topic }}   Restore: just solution {{ topic }} {{ problem }}"
 
 # Block until a file is saved (rung-2 turn-taking; exit 0=saved, 2=timeout)

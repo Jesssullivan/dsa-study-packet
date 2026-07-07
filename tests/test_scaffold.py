@@ -47,6 +47,31 @@ class TestInjectScaffold:
         source = '"""Doc only."""\n\nANSWER = 42\n'
         assert inject_scaffold(source) == source
 
+    def test_idempotent_on_rerun(self) -> None:
+        once = inject_scaffold(strip_solution(MODULE))
+        assert inject_scaffold(once) == once
+        assert once.count(LOCK_SENTINEL) == 1
+
+    def test_earliest_method_wins_over_later_helper(self) -> None:
+        # Class-based problems with a trailing top-level helper (kd_tree shape):
+        # the scaffold must gate the first real method, not the helper.
+        source = (
+            "class Tree:\n"
+            "    def build(self) -> None:\n"
+            "        return None\n"
+            "\n"
+            "    def query(self) -> None:\n"
+            "        return None\n"
+            "\n"
+            "\n"
+            "def _helper() -> int:\n"
+            "    return 1\n"
+        )
+        lines = inject_scaffold(strip_solution(source)).splitlines()
+        lock_at = lines.index(f"        {LOCK_SENTINEL}")
+        assert lock_at < lines.index("class Tree:") + 10
+        assert lines.index("def _helper() -> int:") > lock_at
+
     def test_without_scaffold_flag_output_unchanged(self) -> None:
         # Legacy strip stays byte-identical — scaffolding is opt-in.
         assert LOCK_SENTINEL not in strip_solution(MODULE)

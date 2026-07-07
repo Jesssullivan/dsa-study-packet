@@ -40,11 +40,14 @@ def main() -> int:
     )
     parser.add_argument("--interval", type=float, default=1.0)
     args = parser.parse_args()
+    if args.timeout < 0 or args.interval < 0:
+        parser.error("--timeout and --interval must be non-negative")
 
     base = snap(args.file)
     deadline = time.monotonic() + args.timeout
     while time.monotonic() < deadline:
-        time.sleep(args.interval)
+        # Clamp so --timeout stays a strict upper bound even for odd intervals.
+        time.sleep(min(args.interval, max(0.0, deadline - time.monotonic())))
         current = snap(args.file)
         if current is not None and current != base:
             print(args.file)

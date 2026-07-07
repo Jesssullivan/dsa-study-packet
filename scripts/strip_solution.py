@@ -91,24 +91,19 @@ def strip_solution(source: str) -> str:
 def inject_scaffold(source: str) -> str:
     """Seed the rung-2 comment scaffold above the first stripped function body.
 
-    Targets the earliest function (top-level, or a method of the first class
-    that has one) whose body ends in the bare ``raise`` that
-    ``strip_solution`` leaves behind; inserts the scaffold comments plus the
-    LOCK sentinel at that statement's indentation. Returns the source
-    unchanged if no such function exists.
+    Targets the earliest function anywhere in the module (top-level or
+    method) whose body ends in the bare ``raise`` that ``strip_solution``
+    leaves behind; inserts the scaffold comments plus the LOCK sentinel at
+    that statement's indentation. Idempotent: a source that already carries
+    the LOCK sentinel is returned unchanged, so re-running a rep never stacks
+    scaffolds. Returns the source unchanged if no stripped function exists.
     """
+    if LOCK_SENTINEL in source:
+        return source
     tree = ast.parse(source)
-    funcs = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
-    if not funcs:
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                funcs = [
-                    m
-                    for m in node.body
-                    if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))
-                ]
-                if funcs:
-                    break
+    funcs = [
+        n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
     targets = sorted(
         (f for f in funcs if f.body and isinstance(f.body[-1], ast.Raise)),
         key=lambda f: f.lineno,
