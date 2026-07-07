@@ -33,9 +33,15 @@ result-*
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE — track the template's committed VS Code config, ignore everything else
+# (!.vscode/ first: re-includes the dir itself so per-file negations work even
+# under a machine-global '.vscode/' ignore rule)
 .idea/
-.vscode/
+!.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # Tracked on purpose: the @AGENTS.md pointer stub for Claude Code
 # (overrides any local excludes that ignore ad-hoc CLAUDE.md files)

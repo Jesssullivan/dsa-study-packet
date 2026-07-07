@@ -34,6 +34,38 @@ seed_state() {
 	# Per-user, gitignored practice state — every Codespace user starts fresh.
 	mkdir -p .challenges
 	just catalog || warn "catalog preview failed (non-fatal)"
+
+	# Codex TUI auth: the OPENAI_API_KEY env var alone does NOT log the TUI in
+	# (it only reads ~/.codex/auth.json) — seed it here, where secrets are
+	# reliably injected.
+	if command -v codex >/dev/null 2>&1 && [ -n "${OPENAI_API_KEY:-}" ] \
+		&& ! codex login status >/dev/null 2>&1; then
+		codex login --with-api-key <<<"$OPENAI_API_KEY" \
+			|| warn "codex login failed (optional — Copilot/Claude still work)"
+	fi
+	# Codex trust must live in the GLOBAL config — the repo-level
+	# .codex/config.toml only loads after trust is granted.
+	if command -v codex >/dev/null 2>&1 && [ ! -f "$HOME/.codex/config.toml" ]; then
+		mkdir -p "$HOME/.codex"
+		cat > "$HOME/.codex/config.toml" <<-EOF
+			preferred_auth_method = "apikey"
+			approval_policy = "never"
+			sandbox_mode = "workspace-write"
+
+			[projects."$PWD"]
+			trust_level = "trusted"
+		EOF
+	fi
+
+	# Claude Code first-run quieting (best-effort; key is undocumented and a
+	# failure here just means one extra onboarding screen).
+	if [ ! -f "$HOME/.claude.json" ]; then
+		printf '{"hasCompletedOnboarding": true}\n' > "$HOME/.claude.json" || true
+	fi
+
+	# Sentinel the folderOpen launcher polls — always last.
+	mkdir -p "$HOME/.config/practice"
+	touch "$HOME/.config/practice/seed-done"
 }
 
 case "${1:-}" in
