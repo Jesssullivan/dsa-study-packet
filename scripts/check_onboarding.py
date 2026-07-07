@@ -26,16 +26,19 @@ THE_LINE = "Start my first practice rep."
 # they appear so a learner who sets one can grep for it and trust the match.
 SECRET_VARS = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY")
 
+# The product name, so a rebrand cannot silently leave a surface behind.
+BRAND = "The DSA Woodshed"
+
 # Relative file -> the substrings it MUST contain. Verified against the tree.
 SURFACES: dict[str, tuple[str, ...]] = {
-    "README.md": (THE_LINE, *SECRET_VARS, "WELCOME.md"),
+    "README.md": (BRAND, THE_LINE, *SECRET_VARS, "WELCOME.md"),
     "WELCOME.md": (
         THE_LINE,
         *SECRET_VARS,
         "claude setup-token",
         "github.com/settings/codespaces",
     ),
-    ".devcontainer/welcome.sh": (THE_LINE, *SECRET_VARS),
+    ".devcontainer/welcome.sh": (BRAND, THE_LINE, *SECRET_VARS),
     ".devcontainer/launch-agent.sh": (
         THE_LINE,
         "CLAUDE_CODE_OAUTH_TOKEN",

@@ -6,7 +6,7 @@ export PATH="$HOME/.local/bin:$PATH"
 have() { command -v "$1" >/dev/null 2>&1 && echo "ok" || echo "--"; }
 
 echo ""
-echo "dsa-study-packet — a woodshed for technical interviews"
+echo "The DSA Woodshed — practice technical interviews like an instrument"
 echo "======================================================="
 echo ""
 echo "  toolchain   uv [$(have uv)]  just [$(have just)]  watchexec [$(have watchexec)]"
