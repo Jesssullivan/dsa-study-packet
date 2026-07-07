@@ -1,0 +1,74 @@
+"""Preflight: report toolchain and interviewer-CLI readiness, with hints.
+
+Runs on the system interpreter on purpose (`just doctor` calls python3, not
+`uv run`) so it still works when the venv is broken — that is when you need a
+doctor. Exits 1 only if a core tool (uv, just) is missing; everything else is
+informational.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+
+CORE = (
+    ("uv", "installs python + deps; https://astral.sh/uv"),
+    ("just", "runs every recipe; https://just.systems"),
+)
+LOOP = (
+    ("watchexec", "'just study <topic>' watch mode; loop works without it"),
+    ("git", "rep history and challenge backups"),
+)
+INTERVIEWERS = (
+    ("claude", "run 'claude' (paste-code login) or set ANTHROPIC_API_KEY"),
+    ("codex", "set OPENAI_API_KEY, or 'codex login --device-auth'"),
+    ("gemini", "reads AGENTS.md via .gemini/settings.json"),
+)
+PUBLISHING = (
+    ("pandoc", "'just pdf-all' reference-sheet PDFs (optional)"),
+    ("tectonic", "'just packet' booklet PDF (optional)"),
+    ("bazelisk", "'just remote-*' cache-first builds (optional)"),
+)
+
+
+def report(title: str, tools: tuple[tuple[str, str], ...]) -> list[str]:
+    print(title)
+    missing = []
+    for name, hint in tools:
+        found = shutil.which(name)
+        mark = "ok" if found else "--"
+        print(f"  {name:<10} {mark:<4} {hint}")
+        if not found:
+            missing.append(name)
+    return missing
+
+
+def main() -> int:
+    print(f"doctor — python {sys.version.split()[0]} at {sys.executable}")
+    print()
+    core_missing = report("Core", CORE)
+    report("Practice loop", LOOP)
+    print("Interviewers")
+    if os.environ.get("CODESPACES"):
+        print("  copilot    ok   built into Codespaces (Chat in the sidebar)")
+    else:
+        print("  copilot    --   open this repo in Codespaces, or use a CLI below")
+    for name, hint in INTERVIEWERS:
+        mark = "ok" if shutil.which(name) else "--"
+        print(f"  {name:<10} {mark:<4} {hint}")
+    report("Publishing (optional)", PUBLISHING)
+    print()
+    if os.path.isdir(".venv"):
+        print("venv: .venv present — 'uv run pytest -q' should work")
+    else:
+        print("venv: missing — run 'uv sync --extra dev' first")
+    if core_missing:
+        print(f"MISSING core tools: {', '.join(core_missing)}", file=sys.stderr)
+        return 1
+    print("Core toolchain ok. Say 'Start my first practice rep.' to your agent.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
