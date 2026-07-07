@@ -40,6 +40,7 @@ jobs:
             export PATH="$HOME/.local/bin:$PATH"
             uv --version
             just --version
+            bash .devcontainer/welcome.sh
             uv run pytest tests/arrays -q
             just interview arrays two_sum
             just challenge-done arrays two_sum

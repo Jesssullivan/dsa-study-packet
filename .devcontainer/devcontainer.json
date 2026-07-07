@@ -9,6 +9,9 @@
 	"updateContentCommand": "bash .devcontainer/setup.sh --sync",
 	"postCreateCommand": "bash .devcontainer/setup.sh --seed",
 	"postAttachCommand": "bash .devcontainer/welcome.sh",
+	"containerEnv": {
+		"UV_PYTHON_PREFERENCE": "only-managed"
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -17,7 +20,7 @@
 				"anthropic.claude-code",
 				"ms-python.python",
 				"charliermarsh.ruff",
-				"nefrob.vscode-just"
+				"nefrob.vscode-just-syntax"
 			],
 			"settings": {
 				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",

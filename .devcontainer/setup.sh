@@ -11,12 +11,15 @@
 #   --seed   seed per-user practice state (postCreateCommand)
 set -euo pipefail
 
-UV_VERSION="0.7.13"
+UV_VERSION="0.11.27"
 JUST_VERSION="1.40.0"
 WATCHEXEC_VERSION="2.3.2"
 
 BIN_DIR="$HOME/.local/bin"
 export PATH="$BIN_DIR:$PATH"
+# The base image ships python3.11-minimal (no `json` module); uv must never
+# probe it — always use uv-managed CPython. Mirrored in containerEnv.
+export UV_PYTHON_PREFERENCE=only-managed
 mkdir -p "$BIN_DIR"
 
 log()  { echo "[setup] $*"; }
@@ -58,10 +61,11 @@ if ! command -v watchexec >/dev/null 2>&1; then
 	if curl -LsSf "$url" -o /tmp/watchexec.tar.xz \
 		&& tar -xJf /tmp/watchexec.tar.xz -C /tmp \
 		&& install -m 0755 "/tmp/$tarball/watchexec" "$BIN_DIR/watchexec"; then
-		rm -rf /tmp/watchexec.tar.xz "/tmp/$tarball"
+		:
 	else
 		warn "watchexec install failed — 'just study' watch mode unavailable; loop still works"
 	fi
+	rm -rf /tmp/watchexec.tar.xz "/tmp/$tarball"
 fi
 
 # Optional interviewer CLIs. Claude Code arrives via its devcontainer feature;
