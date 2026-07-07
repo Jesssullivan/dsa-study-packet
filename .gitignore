@@ -66,6 +66,9 @@ reference-sheets/pdf/
 # Challenge mode (incl. personal rep scores — publish aggregates deliberately, never raw)
 .challenges/
 
+# Agent-workflow scratch worktrees
+.claude/worktrees/
+
 # Bazel
 /bazel-*
 user.bazelrc

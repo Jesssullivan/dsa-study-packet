@@ -1,15 +1,15 @@
 ---
 name: practice-day
-description: Conduct Jess's daily 4–5h whiteboard + IDE interview-practice block. Use when she says "run my practice day", "let's practice", "start today's block", or at the start of a study session. Picks interleaved cold drills, gates timed sub-blocks (arrival ritual → cold whiteboard CLARP reps → IDE close+verify → targeted input → observed mock → tape review), logs reps. Trains confident, non-panicked reasoning-out-loud under observation for senior/DoD-level technical interviews — not LeetCode volume. Grounded in the science in docs/guide/interview-practice-evidence.md.
+description: Conduct the candidate's daily 4–5h whiteboard + IDE interview-practice block. Use when the candidate says "run my practice day", "let's practice", "start today's block", or at the start of a study session. Picks interleaved cold drills, gates timed sub-blocks (arrival ritual → cold whiteboard CLARP reps → IDE close+verify → targeted input → observed mock → tape review), logs reps. Trains confident, non-panicked reasoning-out-loud under observation for senior/DoD-level technical interviews — not LeetCode volume. Grounded in the science in docs/guide/interview-practice-evidence.md.
 ---
 
 # Practice Day Conductor
 
-Run ONE focused deliberate-practice day (~4–5h ceiling) from `~/git/dsa-study-packet`.
-The target is: *make my reasoning inspectable while the problem moves, without panicking.*
-Structure the day as 3–4 effortful sub-blocks with real breaks — effortful practice
-degrades past ~90 min without recovery (Ericsson 1993). 4–5h is a **ceiling**, not a
-quota to pad with passive video.
+Run ONE focused deliberate-practice day (~4–5h ceiling) from the repo root.
+The target is: *make the candidate's reasoning inspectable while the problem moves,
+without panicking.* Structure the day as 3–4 effortful sub-blocks with real breaks —
+effortful practice degrades past ~90 min without recovery (Ericsson 1993). 4–5h is a
+**ceiling**, not a quota to pad with passive video.
 
 ## Before you start
 - Confirm the whiteboard, a phone/camera to record, and the printed desk stack
@@ -22,28 +22,32 @@ quota to pad with passive video.
 ## The blocks — announce each, time it, don't overrun
 
 ### 0 · Arrival ritual (10 min) — anxiety inoculation
-Have Jess do, in order: **(a)** ~3 min slow diaphragmatic breathing, ~4–6 breaths/min
-(Ma 2017); **(b)** ~5 min **expressive writing** — free-write the worries about the
-interview, then set it aside (Ramirez & Beilock 2011); **(c)** one **reappraisal**
-line out loud: *"my heart rate is my body getting me ready — I'm up for this"*
-(Jamieson 2010; Brooks 2014, "I'm excited" beats "calm down"). Never say "just relax."
+Have the candidate do, in order: **(a)** default to **4 physiological sighs**
+(double inhale through the nose, long exhale; ~30s total — see the arrival reset
+in the AGENTS.md persona). Slow diaphragmatic breathing, ~4–6 breaths/min, is the
+named alternative if that's already their practice (Ma 2017); **(b)** ~5 min
+**expressive writing** — free-write the worries about the interview, then set it
+aside (Ramirez & Beilock 2011); **(c)** one **reappraisal** line out loud: *"my
+heart rate is my body getting me ready — I'm up for this"* (Jamieson 2010; Brooks
+2014, "I'm excited" beats "calm down"). Never say "just relax." Never scored,
+never logged.
 
 ### 1 · Cold whiteboard reps (75–90 min) — retrieval + think-aloud, observed
 Per drawn problem: `just interview <topic> <problem>` — **cold**: statement only,
 solution stripped (retrieval practice beats rereading — Roediger & Karpicke 2006).
 **Recording ON** (rehearse the exact social-evaluative condition — choking is worst
-on under-practiced, working-memory-heavy problems, Beilock 2001/2004). Jess **stands**
-and runs **CLARP out loud** (sheet 10 §2): Clarify → Lay out → Attack → Run → Polish.
-YOUR job: watch, and every ~2 min interrupt — *"why did you do that?"* or add a
-constraint. Concurrent narration does not impair solving (Ericsson & Simon 1980);
-silence is lost signal. 2–4 problems.
+on under-practiced, working-memory-heavy problems, Beilock 2001/2004). The candidate
+**stands** and runs **CLARP out loud** (sheet 10 §2): Clarify → Lay out → Attack →
+Run → Polish. This runs as rung 3 in the AGENTS.md persona — interrupt cadence and
+the hint ladder live there, not here. Concurrent narration does not impair solving
+(Ericsson & Simon 1980); silence is lost signal. 2–4 problems.
 
 ### 2 · IDE close + verify (60–75 min) — make it actually run
 Implement each board solution in the stripped file; `just study <topic>` until tests
-pass. Jess narrates aloud where the typed version diverged from the board version and
-why (shipping more working code that runs clean correlates with advancing —
-interviewing.io). Then `just challenge-done <topic> <problem>` (feeds spaced
-repetition — Cepeda 2006).
+pass. The candidate narrates aloud where the typed version diverged from the board
+version and why (shipping more working code that runs clean correlates with
+advancing — interviewing.io). Then `just challenge-done <topic> <problem>` (feeds
+spaced repetition — Cepeda 2006).
 
 **— BREAK 15 min (a real break) —**
 
@@ -55,9 +59,18 @@ that cost the most (worked examples help for genuinely new patterns — Sweller 
 No passive playlist grinding.
 
 ### 4 · Observed mock (30–45 min; ~3×/week) — the real stressor
-A full mock with a person — Ann early (she just watches and asks "why?"; hand her the
-sheet 10 §5 rubric), a technical peer or an LLM interviewer later (Daryanto 2025).
-Offer hints: **taking a hint is a positive signal, not a failure** (interviewing.io).
+Default: the resident agent runs this rung as the interviewer — full realistic
+cadence, one mid-problem constraint change, follow-up probing, per the AGENTS.md
+persona.
+
+**Optional variant — human observer.** If a person is sitting in instead (early on,
+someone who just watches and asks "why?" is enough; a technical peer or a second
+LLM interviewer works later — Daryanto 2025), hand them the sheet 10 §5 rubric to
+score the rep and let them run the interruptions; the agent drops to shadow —
+watching and logging only, no interrupting.
+
+Hints are normal here either way: **taking a hint is a positive signal, not a
+failure** (interviewing.io).
 
 ## Close every block
 - **2 min** tape review, no more. Score the sheet 10 §5 rubric.

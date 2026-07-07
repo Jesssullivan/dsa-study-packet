@@ -9,6 +9,7 @@ list — so the public guard cannot itself disclose what it guards against.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -47,6 +48,11 @@ def tracked_files() -> list[str]:
 
 
 def read_text(path: Path) -> str | None:
+    # A tracked symlink's git blob is its target string, not the target's
+    # contents (which may be a directory, e.g. .agents/skills/* skill
+    # symlinks) — read the link itself so this stays a structural check.
+    if path.is_symlink():
+        return os.readlink(path)
     data = path.read_bytes()
     if b"\0" in data:
         return None

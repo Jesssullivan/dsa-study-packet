@@ -50,6 +50,7 @@ lint:
     uv run mypy
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
+    uv run python scripts/check_agent_instructions.py
     uv run python scripts/check_no_stubs.py
     uv run python scripts/validate_appendix_schema.py
 
@@ -57,6 +58,10 @@ lint:
 public-boundary:
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
+
+# Regenerate agent instruction surfaces from the AGENTS.md persona region
+gen-agents:
+    uv run python scripts/gen_agent_instructions.py
 
 # Format code with ruff
 fmt:
@@ -341,7 +346,7 @@ interview topic problem:
     mkdir -p ".challenges/{{ topic }}"
     if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
     uv run python scripts/strip_solution.py --cold "$src" >/dev/null
-    awk 'c<2 {print} /"""/ {c++}' "$src"
+    uv run python scripts/strip_solution.py --print-statement "$src"
     echo "Interview (cold): CLARP at the board first, then implement in $src"
     echo "  Verify: just study {{ topic }}   Restore: just solution {{ topic }} {{ problem }}"
     echo "  Log:    just rep \"{{ topic }}/{{ problem }} C_ L_ A_ R_ P_ <one fix>\""
