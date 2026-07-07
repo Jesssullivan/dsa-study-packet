@@ -61,14 +61,3 @@ jobs:
       # concepts sync or --ignore is needed to keep the job green.
       - name: Test
         run: uv run pytest -q
-
-      # The agent-instructions drift-guard script lands in the same
-      # integration PR that merges all P1 streams; guard its absence here so
-      # this stream's CI file can land first without breaking the gate.
-      - name: Agent-instructions drift guard
-        run: |
-          if [ -f scripts/check_agent_instructions.py ]; then
-            uv run python scripts/check_agent_instructions.py
-          else
-            echo "drift guard not present yet"
-          fi

@@ -122,6 +122,9 @@ def main() -> None:
     args = [a for a in sys.argv[1:] if a not in flags]
     cold = "--cold" in sys.argv[1:]
     print_statement = "--print-statement" in sys.argv[1:]
+    if cold and print_statement:
+        print("Error: --cold and --print-statement are mutually exclusive")
+        sys.exit(1)
     if len(args) != 1:
         print(f"Usage: {sys.argv[0]} [--cold | --print-statement] <source_file>")
         sys.exit(1)

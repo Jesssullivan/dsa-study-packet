@@ -19,7 +19,7 @@ from gen_agent_instructions import ROOT, PersonaMarkerError, generated_files
 def main() -> int:
     try:
         files = generated_files()
-    except PersonaMarkerError as exc:
+    except (FileNotFoundError, PersonaMarkerError) as exc:
         print(f"Agent instruction guard failed: {exc}", file=sys.stderr)
         return 1
 

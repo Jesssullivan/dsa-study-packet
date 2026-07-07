@@ -167,8 +167,8 @@ make them relearn vocabulary mid-rep — map the words, keep the gates.
 
 | CLARP (this packet) | REACTO (Fullstack Academy) | UMPIRE (CodePath) |
 |----------------------|------------------------------|--------------------|
-| Clarify | Repeat | Understand |
-| Lay out | Examples | Match, Plan |
+| Clarify | Repeat, Examples | Understand |
+| Lay out | Approach | Match, Plan |
 | Attack | Code | Implement |
 | Run | Test | Review |
 | Polish | Optimize | Evaluate |
@@ -178,7 +178,8 @@ mid-rep work is correct — a phase passes on "did they say it," not "is it
 right." Two imports are worth stealing regardless of which spine you run:
 REACTO splits Repeat from Examples into two separate gates, so restating the
 problem without a concrete example still fails visibly instead of sliding
-through; UMPIRE's Match gate makes "name the pattern family" its own
+through (its Approach step is CLARP's Lay out under another name); UMPIRE's
+Match gate makes "name the pattern family" its own
 checkpoint, catching someone who restates and jumps straight to code without
 ever naming an approach.
 
