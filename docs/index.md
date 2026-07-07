@@ -1,11 +1,12 @@
 ---
-title: DSA Study Packet
+title: The DSA Woodshed
 ---
 
-# DSA Study Packet
+# The DSA Woodshed
 
-Technical interview prep for DSA drills, system design discussion, code reading,
-and printable non-electronic study packets.
+A woodshed for technical interviews: DSA drills with tests, an evidence-based
+practice method with a resident agent interviewer, and printable
+non-electronic study packets.
 
 <div class="grid cards" markdown>
 
