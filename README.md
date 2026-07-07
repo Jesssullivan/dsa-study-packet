@@ -13,24 +13,36 @@ see [the contract](docs/guide/source-of-truth.md).
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
 
-No setup and no secrets required: the Codespace boots the whole toolchain, and
-GitHub Copilot can act as your interviewer (activate Copilot Free once at
-[github.com/settings/copilot](https://github.com/settings/copilot) if you
-haven't; the free tier is metered, so long sessions run best with one of the
-CLIs below). When the terminal banner appears, tell your agent:
+**Your first ten minutes:**
 
-> Start my first practice rep.
+1. **Click the badge** and wait for the terminal banner. The container builds
+   in a couple of minutes — no setup, no secrets.
+2. **Say the line.** Open Copilot Chat in the sidebar — or run `claude` or
+   `codex` in the terminal — and say: **"Start my first practice rep."**
+3. **Talk, don't grind.** The interviewer asks one placement question, then
+   runs an untimed conversational rep: restate the problem, pick an example,
+   think out loud. No clock, no score — minutes of silence are fine, and you
+   end when *you* have a plan.
+4. **Stop clean.** One specific win, one fix, logged with `just rep` +
+   `just challenge-done` — and tomorrow's draw is already queued.
 
-Prefer a different interviewer? The container also ships the Claude Code and
-Codex CLIs — run `claude` (paste-code login, or an `ANTHROPIC_API_KEY`
-Codespaces secret) or set `OPENAI_API_KEY` for Codex (its `codex login
---device-auth` alternative first needs device-code login enabled in ChatGPT
-Settings → Security). No agent at all works too: the entire loop is plain
-`just` recipes (below), with the method on printable reference sheets.
+`just doctor` checks the toolchain · `just challenge-reset` restores a
+pristine slate · `just --list` shows every recipe.
+
+**Interviewer options.** Copilot needs zero keys (activate Copilot Free once
+at [github.com/settings/copilot](https://github.com/settings/copilot); the
+free tier is metered, so long sessions run best on a CLI). Claude Code: run
+`claude` (paste-code login) or set an `ANTHROPIC_API_KEY` Codespaces secret.
+Codex: set `OPENAI_API_KEY` (or `codex login --device-auth` after enabling
+device-code login in ChatGPT Settings → Security). If you have the Gemini CLI
+installed, it picks up the same persona via `.gemini/settings.json`. **No agent at all also works** —
+the entire loop is plain `just` recipes with the method on printable
+reference sheets.
 
 This is a template repository — **Use this template** gives you your own copy
 with a fresh, private practice log (`.challenges/` is gitignored). Forks that
-want faster boots can enable Codespaces prebuilds on their own account.
+want faster boots can enable Codespaces prebuilds on their own account (repo
+Settings → Codespaces); they stay off upstream so your minutes are yours.
 
 ## Local quick start (Nix power users)
 

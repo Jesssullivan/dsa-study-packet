@@ -331,10 +331,32 @@ practice-day day="12":
 study-tonight:
     @uv run python scripts/practice_day.py 12
 
-# Reset challenge progress (clear all completions)
+# Reset the practice slate: restore stripped solutions, clear progress + rep log
 challenge-reset:
-    rm -f .challenges/progress.md
-    @echo "Progress cleared."
+    #!/usr/bin/env bash
+    set -euo pipefail
+    restored=0
+    if [ -d .challenges ]; then
+        while IFS= read -r backup; do
+            rel="${backup#.challenges/}"
+            dest="src/algo/${rel%.solution}"
+            if [ ! -d "$(dirname "$dest")" ]; then
+                echo "skip (topic gone): $dest"
+                continue
+            fi
+            cp "$backup" "$dest"
+            rm -f "$backup"
+            echo "restored: $dest"
+            restored=$((restored+1))
+        done < <(find .challenges -name '*.py.solution' -type f)
+        rm -f .challenges/progress.md .challenges/reps.md
+        find .challenges -type d -empty -delete 2>/dev/null || true
+    fi
+    echo "Slate reset: $restored solution(s) restored; progress and rep log cleared."
+
+# Preflight: check the toolchain and optional interviewer CLIs
+doctor:
+    @python3 scripts/doctor.py
 
 # Interview mode: cold problem — statement only (no Approach/Complexity), no auto-tests
 interview topic problem:
