@@ -373,6 +373,32 @@ interview topic problem:
     echo "  Verify: just study {{ topic }}   Restore: just solution {{ topic }} {{ problem }}"
     echo "  Log:    just rep \"{{ topic }}/{{ problem }} C_ L_ A_ R_ P_ <one fix>\""
 
+# Rung-2 comment-driven rep: cold stub + think-aloud scaffold, code locked
+interview-comment topic problem:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="src/algo/{{ topic }}/{{ problem }}.py"
+    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
+    if [ ! -f "$src" ]; then echo "Error: $src not found"; exit 1; fi
+    mkdir -p ".challenges/{{ topic }}"
+    if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
+    uv run python scripts/strip_solution.py --cold --scaffold "$src" >/dev/null
+    uv run python scripts/strip_solution.py --print-statement "$src"
+    if command -v code >/dev/null 2>&1; then
+        line="$(grep -n 'RESTATE:' "$src" | head -1 | cut -d: -f1)"
+        code --goto "$src:${line:-1}" -r 2>/dev/null \
+            || echo "  (open $src at the RESTATE line to begin)"
+    else
+        echo "  Open $src at the RESTATE line to begin."
+    fi
+    echo "Fill the five comments top-to-bottom, then save; delete the LOCK line"
+    echo "yourself when you're ready to code."
+    echo "  Verify: just study {{ topic }}   Restore: just solution {{ topic }} {{ problem }}"
+
+# Block until a file is saved (rung-2 turn-taking; exit 0=saved, 2=timeout)
+wait file timeout="300":
+    @uv run python scripts/wait_for_save.py --timeout {{ timeout }} "{{ file }}"
+
 # Log one practice rep (appends to gitignored .challenges/reps.md)
 rep line:
     @mkdir -p .challenges && echo "- $(date +%Y-%m-%d) {{ line }}" >> .challenges/reps.md && tail -1 .challenges/reps.md

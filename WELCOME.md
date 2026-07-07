@@ -11,8 +11,10 @@ Say the line and you're practicing:
 
 No credential? Nothing is locked: Copilot Chat (sidebar → pick the
 **Interviewer** agent) and the solo loop (`just interview arrays two_sum`,
-method on `reference-sheets/10`) work with zero keys. `just doctor` checks the
-toolchain.
+method on `reference-sheets/10`) work with zero keys. Prefer writing your
+thinking down? `just interview-comment arrays two_sum` seeds a comment
+scaffold into the stub — fill it, save, and your interviewer picks it up.
+`just doctor` checks the toolchain.
 
 ## One-time setup: an interviewer that's already running when you attach
 
