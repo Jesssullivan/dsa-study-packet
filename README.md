@@ -9,6 +9,9 @@ Code, tests, and authored notes are the single source of truth; every artifact
 panel-specific prep lives in private downstream overlays, never in this repo —
 see [the contract](docs/guide/source-of-truth.md).
 
+Prefer reading to running commands first? The same drills, sheets, and method
+are published at **[dsa-woodshed.space](https://dsa-woodshed.space)**.
+
 ## Try it in one click
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
@@ -111,3 +114,13 @@ The [GloriousFlywheel front-door kit](justfile.flywheel) is endpoint-free by
 contract: no cache endpoints, tokens, or runner labels are committed; profile
 and auth resolve at invocation. Unattached, everything degrades to a local
 disk cache. Never call raw `bazel` — drive builds through `just remote-*`.
+
+## Aspirations
+
+Codespaces is the one-click front door, not a hard dependency: the design is
+terminal-first, so the same devcontainer, `just` recipes, and
+resident-interviewer persona are meant to work from local VS Code, a bare
+`just doctor` + `uv` checkout, [DevPod](https://devpod.sh), or a self-hosted
+[Coder](https://coder.com) template — and to run against on-prem or
+self-hosted models via endpoint overrides, not only hosted APIs. That work is
+tracked in [#49](https://github.com/Jesssullivan/dsa-study-packet/issues/49).
