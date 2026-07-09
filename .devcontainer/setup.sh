@@ -25,6 +25,16 @@ mkdir -p "$BIN_DIR"
 log()  { echo "[setup] $*"; }
 warn() { echo "[setup] WARN: $*" >&2; }
 
+# --seed only runs automatically via postCreateCommand (Codespaces or local
+# Dev Containers), where $HOME is the container's own throwaway home. Guard
+# the global-config writes below in case someone runs this by hand on a bare
+# host, where $HOME is the real machine and those writes would not be
+# throwaway.
+in_container() {
+	[ -f /.dockerenv ] || [ -f /run/.containerenv ] \
+		|| [ -n "${CODESPACES:-}" ] || [ -n "${REMOTE_CONTAINERS:-}" ]
+}
+
 sync_deps() {
 	log "syncing python deps (uv fetches CPython to satisfy requires-python)"
 	uv sync --extra dev
@@ -35,33 +45,44 @@ seed_state() {
 	mkdir -p .challenges
 	just catalog || warn "catalog preview failed (non-fatal)"
 
-	# Codex TUI auth: the OPENAI_API_KEY env var alone does NOT log the TUI in
-	# (it only reads ~/.codex/auth.json) — seed it here, where secrets are
-	# reliably injected.
-	if command -v codex >/dev/null 2>&1 && [ -n "${OPENAI_API_KEY:-}" ] \
-		&& ! codex login status >/dev/null 2>&1; then
-		codex login --with-api-key <<<"$OPENAI_API_KEY" \
-			|| warn "codex login failed (optional — Copilot/Claude still work)"
-	fi
-	# Codex trust must live in the GLOBAL config — the repo-level
-	# .codex/config.toml only loads after trust is granted. (auth.json written
-	# above already pins API-key auth; no undocumented auth-method key needed.)
-	if command -v codex >/dev/null 2>&1 && [ ! -f "$HOME/.codex/config.toml" ]; then
-		mkdir -p "$HOME/.codex"
-		cat > "$HOME/.codex/config.toml" <<-EOF
-			approval_policy = "never"
-			sandbox_mode = "workspace-write"
+	if in_container; then
+		# Codex TUI auth: the OPENAI_API_KEY env var alone does NOT log the TUI
+		# in (it only reads ~/.codex/auth.json) — seed it here, where secrets
+		# are reliably injected.
+		if command -v codex >/dev/null 2>&1 && [ -n "${OPENAI_API_KEY:-}" ] \
+			&& ! codex login status >/dev/null 2>&1; then
+			codex login --with-api-key <<<"$OPENAI_API_KEY" \
+				|| warn "codex login failed (optional — Copilot/Claude still work)"
+		fi
+		# Codex trust must live in the GLOBAL config — the repo-level
+		# .codex/config.toml only loads after trust is granted. (auth.json
+		# written above already pins API-key auth; no undocumented
+		# auth-method key needed.)
+		if command -v codex >/dev/null 2>&1 && [ ! -f "$HOME/.codex/config.toml" ]; then
+			mkdir -p "$HOME/.codex"
+			cat > "$HOME/.codex/config.toml" <<-EOF
+				approval_policy = "never"
+				sandbox_mode = "workspace-write"
 
-			[projects."$PWD"]
-			trust_level = "trusted"
-		EOF
-	fi
+				[projects."$PWD"]
+				trust_level = "trusted"
+			EOF
+		fi
 
-	# Claude Code first-run quieting: onboarding, per-project trust, and (on
-	# the API-key path) the key-approval prompt — otherwise the auto-launched
-	# interviewer opens on a blocking trust dialog instead of a prompt.
-	# Best-effort: keys are undocumented; failure costs one Enter press.
-	seed_claude_json || warn "claude first-run seed failed (one extra prompt at launch)"
+		# Claude Code first-run quieting: onboarding, per-project trust, and
+		# (on the API-key path) the key-approval prompt — otherwise the
+		# auto-launched interviewer opens on a blocking trust dialog instead
+		# of a prompt. Best-effort: keys are undocumented; failure costs one
+		# Enter press.
+		seed_claude_json || warn "claude first-run seed failed (one extra prompt at launch)"
+	else
+		# Run by hand on a bare host, $HOME is the real machine, not a
+		# throwaway container home — skip the global ~/.codex and
+		# ~/.claude.json writes rather than silently rewrite the user's own
+		# config. The bare-metal lane never needs this: just export your key
+		# and run 'claude' / 'codex' yourself.
+		warn "not running in a container — skipping global codex/claude config seeding"
+	fi
 
 	# Sentinel the folderOpen launcher polls — always last.
 	mkdir -p "$HOME/.config/practice"

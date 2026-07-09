@@ -53,7 +53,7 @@ def main() -> int:
     if os.environ.get("CODESPACES"):
         print("  copilot    ok   built into Codespaces (Chat in the sidebar)")
     else:
-        print("  copilot    --   open this repo in Codespaces, or use a CLI below")
+        print("  copilot    --   install GitHub Copilot Chat in VS Code, or use a CLI below")
     for name, hint in INTERVIEWERS:
         mark = "ok" if shutil.which(name) else "--"
         print(f"  {name:<10} {mark:<4} {hint}")
