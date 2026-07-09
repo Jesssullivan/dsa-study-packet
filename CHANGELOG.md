@@ -7,6 +7,11 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases — see
 
 ## [Unreleased]
 
+## [v2026.7.0] — 2026-07-09
+
+First tagged release: the packet as a one-click, agent-conducted practice
+environment, with its reading surface live at https://dsa-woodshed.space.
+
 ### Added
 
 - Zero-click Codespaces interviewer: devcontainer boot pre-authenticates and
