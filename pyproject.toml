@@ -29,7 +29,7 @@ docs = [
   # `properdocs` dependency and inject a "switch to ProperDocs" ad into every
   # build. These pins keep the build quiet and drop the unwanted transitive.
   "mkdocs-gen-files>=0.5,<0.6.2",
-  "mkdocs-literate-nav>=0.6,<0.6.3",
+  "mkdocs-literate-nav>=0.6,<0.6.4",
   "mkdocs-section-index>=0.3,<0.3.13",
 ]
 dev = [
