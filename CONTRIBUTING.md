@@ -1,8 +1,9 @@
 # Contributing
 
 Company-neutral technical-interview study packet. Code, tests, and authored
-notes are the source of truth; the printable booklet and the docs site are
-generated from them.
+notes are the source of truth; the printable booklet is generated from them,
+and the reading surface at https://dsa-woodshed.space syncs its content from
+this repo at build time.
 
 ## Set up the loop
 
