@@ -1,8 +1,9 @@
 # dsa-study-packet — agent guide
 
 Public, company-neutral technical-interview study SSOT. Source code, tests, and
-authored notes are the source of truth; the printable booklet PDF and the mkdocs
-site are **generated** from them. The point of the repo is a repeatable practice
+authored notes are the source of truth; the printable booklet PDF is
+**generated** from them, and the reading surface at https://dsa-woodshed.space
+syncs its content from this repo at build time. The point of the repo is a repeatable practice
 day that trains confident, non-panicked reasoning-out-loud under observation.
 
 ## Run a practice day
