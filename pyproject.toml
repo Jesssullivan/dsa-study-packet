@@ -8,7 +8,7 @@ license = { text = "MIT" }
 authors = [{ name = "jsullivan2" }]
 
 dependencies = [
-    "scipy-stubs~=1.17.1",
+    "scipy-stubs>=1.17.1,<1.19.0",
 ]
 
 [project.optional-dependencies]
