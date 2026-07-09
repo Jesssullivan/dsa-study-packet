@@ -38,8 +38,10 @@ theme:
 
 # Plugin order matters. `meta` runs first so per-directory `.meta.yml`
 # front matter (search boosts) is applied before `tags`/`social` read it.
-# `social` is gated to CI: it needs the Cairo/Pillow imaging stack (installed
-# in the docs workflow), so local builds without those libs skip it cleanly.
+# `social` needs the Cairo/Pillow imaging stack (the nix devshell provides it);
+# builds without those libs skip it cleanly. mkdocs is a local reading/dev
+# surface only — it is not built or deployed in CI; the public reading surface
+# is https://dsa-woodshed.space (a separate SvelteKit site).
 # `privacy` self-hosts external assets and is listed last so it can rewrite the
 # fully assembled output.
 plugins:

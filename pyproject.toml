@@ -21,8 +21,8 @@ concepts = [
 docs = [
   "mkdocs>=1.6",
   # [imaging] pulls in Pillow + CairoSVG for the `social` plugin's OG cards.
-  # The Cairo/FreeType/etc. system libraries are installed in the docs workflow;
-  # local builds that lack them simply skip `social` (gated to CI in mkdocs.yml).
+  # Cairo/FreeType/etc. system libraries come from the nix devshell; builds
+  # that lack them simply skip `social` (see mkdocs.yml — local-only, not CI).
   "mkdocs-material[imaging]>=9.6",
   "mkdocstrings[python]>=0.27",
   # Cap below the 2026-03 releases of these three plugins: they added a hard
