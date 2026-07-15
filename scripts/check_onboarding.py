@@ -47,6 +47,7 @@ SURFACES: dict[str, tuple[str, ...]] = {
         "setup.sh --tools",
         "setup.sh --sync",
         "setup.sh --seed",
+        '"terminal.integrated.hideOnStartup": "always"',
     ),
     ".devcontainer/setup.sh": ("--tools", "--sync", "--seed"),
     ".vscode/settings.json": (
