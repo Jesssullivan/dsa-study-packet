@@ -7,7 +7,8 @@ Problem:
 Approach:
     Bucket sort by frequency. Count occurrences, then place each number
     into a bucket indexed by its frequency. Walk buckets from highest
-    frequency downward until k elements are collected.
+    frequency downward until k elements are collected. Alternate
+    top_k_frequent_heap gets the same answer with heapq.nlargest.
 
 When to use:
     Frequency counting + selection — "top K", "most common", "least common".
@@ -18,6 +19,7 @@ Complexity:
     Space: O(n)
 """
 
+import heapq
 from collections import Counter
 from collections.abc import Sequence
 
@@ -32,6 +34,7 @@ def top_k_frequent(nums: Sequence[int], k: int) -> list[int]:
         return []
 
     count = Counter(nums)
+    # bucket index = frequency; frequency is bounded by len(nums), so len(nums)+1 buckets
     buckets: list[list[int]] = [[] for _ in range(len(nums) + 1)]
     for num, freq in count.items():
         buckets[freq].append(num)
@@ -43,3 +46,17 @@ def top_k_frequent(nums: Sequence[int], k: int) -> list[int]:
             return result[:k]
 
     return result[:k]
+
+
+# --- heapq.nlargest one-liner (O(n log k), stdlib) ---
+def top_k_frequent_heap(nums: Sequence[int], k: int) -> list[int]:
+    """Return the *k* most frequent elements in *nums*, via heapq.nlargest.
+
+    >>> sorted(top_k_frequent_heap([1, 1, 1, 2, 2, 3], 2))
+    [1, 2]
+    """
+    if k <= 0:
+        return []
+
+    count = Counter(nums)
+    return heapq.nlargest(k, count.keys(), key=count.__getitem__)

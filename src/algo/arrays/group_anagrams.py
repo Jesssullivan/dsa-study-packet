@@ -7,7 +7,9 @@ Problem:
 Approach:
     Use the sorted characters of each string as a hash key.
     All anagrams produce the same sorted tuple, so they land in the
-    same bucket in a defaultdict.
+    same bucket in a defaultdict. Alternate group_anagrams_countkey
+    keys on a 26-length character-count vector instead of sorting,
+    trading the sort for a fixed-size linear scan.
 
 When to use:
     Grouping items by equivalence class — anagrams, isomorphic strings, etc.
@@ -32,6 +34,28 @@ def group_anagrams(strs: list[str]) -> list[list[str]]:
     """
     groups: defaultdict[tuple[str, ...], list[str]] = defaultdict(list)
     for s in strs:
-        key = tuple(sorted(s))
+        key = tuple(sorted(s))  # tuple, not list — the key must be hashable
         groups[key].append(s)
+    return list(groups.values())
+
+
+# --- character-count key variant (avoids sorting each string) ---
+def group_anagrams_countkey(strs: list[str]) -> list[list[str]]:
+    """Group anagrams using a 26-length lowercase character-count vector.
+
+    Assumes lowercase a-z input (as is typical for this problem). Trades
+    the O(k log k) sort for an O(k) count pass per string.
+
+    >>> sorted(
+    ...     sorted(g)
+    ...     for g in group_anagrams_countkey(["eat", "tea", "tan", "ate", "nat", "bat"])
+    ... )
+    [['ate', 'eat', 'tea'], ['bat'], ['nat', 'tan']]
+    """
+    groups: defaultdict[tuple[int, ...], list[str]] = defaultdict(list)
+    for s in strs:
+        counts = [0] * 26
+        for ch in s:
+            counts[ord(ch) - ord("a")] += 1  # counts as key sidesteps the sort entirely
+        groups[tuple(counts)].append(s)
     return list(groups.values())

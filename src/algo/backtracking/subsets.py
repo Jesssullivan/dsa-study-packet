@@ -6,8 +6,10 @@ Problem:
     subsets.
 
 Approach:
-    Backtracking. At each index, decide to include or exclude the
-    element. Append a snapshot of the current path at every node.
+    subsets: backtracking. At each index, decide to include or exclude
+    the element. Append a snapshot of the current path at every node.
+    subsets_bitmask is the iterative alternate: every integer from 0 to
+    2^n - 1 encodes one inclusion/exclusion choice per bit.
 
 When to use:
     Power set / feature combinations — "generate all subsets", "all
@@ -31,11 +33,25 @@ def subsets(nums: Sequence[int]) -> list[list[int]]:
     result: list[list[int]] = []
 
     def backtrack(start: int, path: list[int]) -> None:
+        # snapshot copy -- path is reused and mutated across the whole walk
         result.append(path[:])
         for i in range(start, len(nums)):
             path.append(nums[i])
+            # i + 1 (not i): each element is used at most once per subset,
+            # unlike combination_sum's unlimited-reuse variant
             backtrack(i + 1, path)
             path.pop()
 
     backtrack(0, [])
     return result
+
+
+# --- iterative alternate: bitmask enumeration over 2^n choices ---
+def subsets_bitmask(nums: Sequence[int]) -> list[list[int]]:
+    """Return all subsets of *nums* by enumerating bitmasks.
+
+    >>> sorted(subsets_bitmask([1, 2, 3]), key=len)
+    [[], [1], [2], [3], [1, 2], [1, 3], [2, 3], [1, 2, 3]]
+    """
+    n = len(nums)
+    return [[nums[i] for i in range(n) if mask & (1 << i)] for mask in range(1 << n)]

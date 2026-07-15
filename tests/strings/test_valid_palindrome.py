@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.strings.valid_palindrome import is_palindrome
+from algo.strings.valid_palindrome import is_palindrome, is_palindrome_filtered
 
 
 class TestIsPalindrome:
@@ -33,3 +33,17 @@ class TestIsPalindrome:
     def test_doubled_string_is_palindrome(self, s: str) -> None:
         # s + reverse(s) is always a palindrome
         assert is_palindrome(s + s[::-1])
+
+
+class TestIsPalindromeFiltered:
+    """Cross-check the filtered-comprehension alternate against the primary."""
+
+    @given(
+        s=st.text(
+            alphabet=st.characters(categories=("L", "N", "P")),
+            min_size=0,
+            max_size=30,
+        )
+    )
+    def test_matches_primary(self, s: str) -> None:
+        assert is_palindrome_filtered(s) == is_palindrome(s)

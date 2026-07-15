@@ -5,9 +5,9 @@ Problem:
     it into a single list of integers.
 
 Approach:
-    Recursive: if element is a list, recurse into it; otherwise yield
-    the integer. Also provide an iterative version using an explicit
-    stack (process in reverse to maintain order).
+    flatten_recursive: recurse into list elements, yield everything
+    else. flatten_iterative is the alternate using an explicit stack
+    instead of the call stack (push in reverse to maintain order).
 
 When to use:
     Processing recursive/nested data structures — JSON, XML, file trees,
@@ -45,6 +45,7 @@ def _flatten_helper(nested: NestedList) -> Iterator[int]:
             yield item
 
 
+# --- iterative alternate: explicit stack instead of the call stack ---
 def flatten_iterative(nested: NestedList) -> list[int]:
     """Flatten *nested* list of integers iteratively using a stack.
 
@@ -54,6 +55,7 @@ def flatten_iterative(nested: NestedList) -> list[int]:
     []
     """
     result: list[int] = []
+    # push in reverse so pop() (LIFO) still yields items in original order
     stack: list[int | list[Any]] = list(reversed(nested))
     while stack:
         item = stack.pop()

@@ -37,6 +37,7 @@ def is_valid(s: str) -> bool:
 
     for ch in s:
         if ch in match:
+            # empty stack means an orphan closer; mismatch means wrong nesting
             if not stack or stack[-1] != match[ch]:
                 return False
             stack.pop()

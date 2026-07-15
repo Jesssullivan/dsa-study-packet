@@ -9,7 +9,8 @@ Approach:
     Use a max-heap (negated counts) to always schedule the most frequent
     task first. After executing a task, place it in a cooldown queue with
     the time it becomes available. When that time arrives, push it back
-    onto the heap.
+    onto the heap. Alternate least_interval_formula skips the simulation
+    entirely and computes the answer from the idle-slot math.
 
 When to use:
     Scheduling with cooldown constraints — "minimum time to complete all
@@ -50,10 +51,27 @@ def least_interval(tasks: Sequence[str], n: int) -> int:
 
         if max_heap:
             cnt = heapq.heappop(max_heap) + 1  # execute one (cnt is negative)
-            if cnt:
+            if cnt:  # task still has instances left; requeue after cooldown
                 cooldown.append((time + n, cnt))
 
         if cooldown and cooldown[0][0] == time:
             heapq.heappush(max_heap, cooldown.popleft()[1])
 
     return time
+
+
+# --- formula alternate: idle-slot math instead of simulating the heap ---
+def least_interval_formula(tasks: Sequence[str], n: int) -> int:
+    """Return the minimum intervals using the idle-slot formula, no simulation.
+
+    >>> least_interval_formula(["A", "A", "A", "B", "B", "B"], 2)
+    8
+    """
+    if not tasks:
+        return 0
+
+    counts = Counter(tasks).values()
+    max_count = max(counts)
+    # slots after the most frequent task's last-but-one run, plus ties for the max
+    num_max = sum(1 for c in counts if c == max_count)
+    return max(len(tasks), (max_count - 1) * (n + 1) + num_max)

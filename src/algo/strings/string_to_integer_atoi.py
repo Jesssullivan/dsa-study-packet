@@ -58,9 +58,11 @@ def my_atoi(s: str) -> int:
         result = result * 10 + int(s[i])
         i += 1
 
-    result *= sign
+    result *= sign  # apply sign before clamping
 
-    # clamp to 32-bit signed range
+    # Python ints never overflow like a fixed-width 32-bit int would —
+    # clamp manually to emulate that boundary
+
     if result < INT_MIN:
         return INT_MIN
     if result > INT_MAX:

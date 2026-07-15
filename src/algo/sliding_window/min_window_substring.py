@@ -52,10 +52,13 @@ def min_window(s: str, t: str) -> str:
                 need[s[left]] += 1
                 left += 1
 
+            # end starts at 0, and a real window's end is always >= 1 here,
+            # so "not end" reliably detects "no window recorded yet"
             if not end or right - left < end - start:
                 start, end = left, right
 
-            # Invalidate window to search for smaller ones
+            # deliberately invalidate the window so the loop keeps searching
+            # for a smaller one, mirroring the shrink accounting above
             need[s[left]] += 1
             missing += 1
             left += 1

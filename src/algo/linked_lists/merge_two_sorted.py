@@ -6,7 +6,8 @@ Problem:
 
 Approach:
     Use a dummy head node and compare the fronts of both lists, advancing
-    the smaller one each time.
+    the smaller one each time. Alternate merge_two_sorted_recursive builds
+    the same result through recursive calls instead of an explicit loop.
 
 When to use:
     Merge step of merge sort — combining two sorted sequences into one.
@@ -48,8 +49,30 @@ def merge_two_sorted(
             l2 = l2.next
         tail = tail.next
 
-    tail.next = l1 if l1 else l2
+    tail.next = l1 if l1 else l2  # remainder is already sorted; splice it in directly
     return dummy.next
+
+
+# --- recursive alternate: build the merge through the call stack ---
+def merge_two_sorted_recursive(
+    l1: ListNode | None,
+    l2: ListNode | None,
+) -> ListNode | None:
+    """Merge two sorted linked lists using recursion.
+
+    >>> to_list(merge_two_sorted_recursive(from_list([1, 3, 5]), from_list([2, 4, 6])))
+    [1, 2, 3, 4, 5, 6]
+    """
+    if l1 is None:
+        return l2
+    if l2 is None:
+        return l1
+
+    if l1.val <= l2.val:
+        l1.next = merge_two_sorted_recursive(l1.next, l2)
+        return l1
+    l2.next = merge_two_sorted_recursive(l1, l2.next)
+    return l2
 
 
 # --- helpers for testing ---

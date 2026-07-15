@@ -3,7 +3,10 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.strings.longest_common_prefix import longest_common_prefix
+from algo.strings.longest_common_prefix import (
+    longest_common_prefix,
+    longest_common_prefix_zip,
+)
 
 
 class TestLongestCommonPrefix:
@@ -41,3 +44,17 @@ class TestLongestCommonPrefix:
         assert result.startswith(prefix) or prefix.startswith(result)
         # result must be at least as long as prefix
         assert len(result) >= len(prefix)
+
+
+class TestLongestCommonPrefixZip:
+    """Cross-check the zip/takewhile alternate against the primary implementation."""
+
+    @given(
+        strs=st.lists(
+            st.text(alphabet="ab", min_size=0, max_size=10),
+            min_size=0,
+            max_size=8,
+        ),
+    )
+    def test_matches_primary(self, strs: list[str]) -> None:
+        assert longest_common_prefix_zip(strs) == longest_common_prefix(strs)

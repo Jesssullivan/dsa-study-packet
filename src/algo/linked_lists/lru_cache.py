@@ -35,7 +35,7 @@ class LRUCache:
         """Return value for key, or -1 if not found. Marks key as recently used."""
         if key not in self._cache:
             return -1
-        self._cache.move_to_end(key)
+        self._cache.move_to_end(key)  # reads count as "recently used" too
         return self._cache[key]
 
     def put(self, key: int, value: int) -> None:
@@ -44,7 +44,7 @@ class LRUCache:
             self._cache.move_to_end(key)
         self._cache[key] = value
         if len(self._cache) > self._capacity:
-            self._cache.popitem(last=False)
+            self._cache.popitem(last=False)  # last=False: evict the front (oldest)
 
 
 # --- Manual doubly-linked-list implementation ---

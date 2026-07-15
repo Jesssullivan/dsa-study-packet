@@ -31,11 +31,14 @@ def max_non_overlapping(intervals: Sequence[Sequence[int]]) -> int:
     if not intervals:
         return 0
 
+    # sort by END time, not start: the interval finishing soonest always
+    # leaves the most room for everything after it
     sorted_iv = sorted(intervals, key=lambda iv: iv[1])
     count = 1
     end = sorted_iv[0][1]
 
     for start, finish in sorted_iv[1:]:
+        # >= (not >): touching intervals (start == end) don't overlap
         if start >= end:
             count += 1
             end = finish

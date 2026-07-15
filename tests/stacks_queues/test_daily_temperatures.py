@@ -3,7 +3,10 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.stacks_queues.daily_temperatures import daily_temperatures
+from algo.stacks_queues.daily_temperatures import (
+    daily_temperatures,
+    daily_temperatures_brute,
+)
 
 
 class TestDailyTemperatures:
@@ -50,3 +53,31 @@ class TestDailyTemperatures:
                     expected[i] = j - i
                     break
         assert daily_temperatures(temps) == expected
+
+
+class TestDailyTemperaturesBrute:
+    def test_basic(self) -> None:
+        assert daily_temperatures_brute([73, 74, 75, 71, 69, 72, 76, 73]) == [
+            1,
+            1,
+            4,
+            2,
+            1,
+            1,
+            0,
+            0,
+        ]
+
+    def test_descending(self) -> None:
+        assert daily_temperatures_brute([60, 50, 40, 30]) == [0, 0, 0, 0]
+
+    @given(
+        temps=st.lists(
+            st.integers(min_value=30, max_value=100),
+            min_size=1,
+            max_size=50,
+        ),
+    )
+    def test_matches_stack_primary(self, temps: list[int]) -> None:
+        """The brute-force alternate must always agree with the monotonic-stack primary."""
+        assert daily_temperatures_brute(temps) == daily_temperatures(temps)

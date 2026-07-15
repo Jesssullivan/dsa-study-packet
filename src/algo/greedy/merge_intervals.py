@@ -35,6 +35,8 @@ def merge_intervals(intervals: Sequence[Sequence[int]]) -> list[list[int]]:
     merged: list[list[int]] = [list(sorted_iv[0])]
 
     for start, end in sorted_iv[1:]:
+        # <= (not <): touching intervals (start == last end) DO merge here,
+        # opposite convention from interval_scheduling's non-overlap check
         if start <= merged[-1][1]:
             merged[-1][1] = max(merged[-1][1], end)
         else:

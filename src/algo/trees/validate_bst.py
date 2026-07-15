@@ -43,8 +43,12 @@ def is_valid_bst(
     """
     if not root:
         return True
+    # Strict inequalities: a BST forbids duplicate values, so val == lo or
+    # val == hi is a violation, not a boundary pass.
     if not (lo < root.val < hi):
         return False
+    # Tighten the bound each recursive call: left subtree's new ceiling is
+    # this node's value; right subtree's new floor is this node's value.
     return is_valid_bst(root.left, lo, root.val) and is_valid_bst(
         root.right, root.val, hi
     )

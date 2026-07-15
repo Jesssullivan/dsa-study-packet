@@ -33,6 +33,8 @@ class UnionFind:
     def find(self, x: int) -> int:
         """Find the root of *x* with path compression."""
         while self.parent[x] != x:
+            # Path halving: point at the grandparent each step instead of
+            # the true root, shortening the path on every future find() too.
             self.parent[x] = self.parent[self.parent[x]]
             x = self.parent[x]
         return x
@@ -42,6 +44,8 @@ class UnionFind:
         px, py = self.find(x), self.find(y)
         if px == py:
             return False
+        # Union by rank: always hang the lower-rank tree under the
+        # higher-rank root, keeping trees shallow.
         if self.rank[px] < self.rank[py]:
             px, py = py, px
         self.parent[py] = px
@@ -70,6 +74,8 @@ def kruskal(
     for u, v, w in sorted_edges:
         if uf.union(u, v):
             mst.append((u, v, w))
+            # A spanning tree on num_nodes vertices has exactly num_nodes-1
+            # edges; stop as soon as we have them instead of scanning the rest.
             if len(mst) == num_nodes - 1:
                 break
 
@@ -100,6 +106,8 @@ def prim(
 
     while heap and len(mst) < num_nodes - 1:
         w, frm, to = heapq.heappop(heap)
+        # Stale-heap skip: `to` may already be settled via a cheaper edge
+        # pushed earlier (heapq has no decrease-key), so ignore leftovers.
         if in_mst[to]:
             continue
         in_mst[to] = True

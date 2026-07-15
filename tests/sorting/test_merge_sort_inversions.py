@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.sorting.merge_sort_inversions import count_inversions
+from algo.sorting.merge_sort_inversions import count_inversions, count_inversions_brute
 
 
 class TestCountInversions:
@@ -38,6 +38,23 @@ class TestCountInversions:
             if data[i] > data[j]
         )
         assert count_inversions(data) == expected
+
+
+class TestCountInversionsBrute:
+    def test_basic(self) -> None:
+        assert count_inversions_brute([2, 4, 1, 3, 5]) == 3
+
+    def test_reverse_sorted(self) -> None:
+        assert count_inversions_brute([5, 4, 3, 2, 1]) == 10
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=-100, max_value=100), min_size=0, max_size=50
+        ),
+    )
+    def test_matches_merge_sort_primary(self, data: list[int]) -> None:
+        """The brute-force alternate must always agree with the merge-sort primary."""
+        assert count_inversions_brute(data) == count_inversions(data)
 
 
 def _inversions_via_bubble_sort(nums: list[int]) -> int:

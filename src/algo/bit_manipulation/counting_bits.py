@@ -7,7 +7,8 @@ Problem:
 Approach:
     DP recurrence: dp[i] = dp[i >> 1] + (i & 1).
     The number of set bits in i equals the bits in i//2 plus whether
-    the least significant bit is set.
+    the least significant bit is set. Alternate counting_bits_listcomp
+    gets the same answer with bin(i).count("1").
 
 When to use:
     DP on binary representation — "count set bits for 0..n", "Hamming
@@ -30,5 +31,17 @@ def counting_bits(n: int) -> list[int]:
     """
     dp = [0] * (n + 1)
     for i in range(1, n + 1):
-        dp[i] = dp[i >> 1] + (i & 1)
+        dp[i] = dp[i >> 1] + (i & 1)  # bits(i) = bits(i//2) + i's own last bit
     return dp
+
+
+# --- comprehension alternate: bin().count("1") per value (stdlib, O(n * bit-width)) ---
+def counting_bits_listcomp(n: int) -> list[int]:
+    """Return bit counts for 0..n using bin().count("1") (stdlib).
+
+    >>> counting_bits_listcomp(5)
+    [0, 1, 1, 2, 1, 2]
+    >>> counting_bits_listcomp(0)
+    [0]
+    """
+    return [bin(i).count("1") for i in range(n + 1)]

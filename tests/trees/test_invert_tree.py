@@ -1,5 +1,10 @@
 """Tests for invert binary tree."""
 
+from collections import Counter
+
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.trees.invert_tree import TreeNode, invert_tree
 
 
@@ -62,3 +67,38 @@ class TestInvertTree:
         tree = TreeNode(5, TreeNode(3), TreeNode(8))
         result = invert_tree(tree)
         assert result is tree
+
+
+def _all_values(node: TreeNode | None) -> list[int]:
+    if node is None:
+        return []
+    return [node.val, *_all_values(node.left), *_all_values(node.right)]
+
+
+_random_trees = st.recursive(
+    st.none() | st.builds(TreeNode, st.integers(min_value=-50, max_value=50)),
+    lambda children: st.builds(
+        TreeNode,
+        st.integers(min_value=-50, max_value=50),
+        children,
+        children,
+    ),
+    max_leaves=20,
+)
+
+
+class TestInvertTreeProperties:
+    @given(tree=_random_trees)
+    def test_double_invert_restores_structure(self, tree: TreeNode | None) -> None:
+        before = _to_list(tree)
+        invert_tree(tree)
+        invert_tree(tree)
+        assert _to_list(tree) == before
+
+    @given(tree=_random_trees)
+    def test_preserves_value_multiset(self, tree: TreeNode | None) -> None:
+        """Inverting only swaps structure — the set of values is unchanged."""
+        before = Counter(_all_values(tree))
+        invert_tree(tree)
+        after = Counter(_all_values(tree))
+        assert before == after

@@ -35,6 +35,8 @@ def max_area(height: Sequence[int]) -> int:
     while lo < hi:
         area = min(height[lo], height[hi]) * (hi - lo)
         best = max(best, area)
+        # the shorter line caps the area no matter what — moving it inward is
+        # the only move that can possibly find something taller
         if height[lo] < height[hi]:
             lo += 1
         else:

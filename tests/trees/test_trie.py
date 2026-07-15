@@ -1,6 +1,6 @@
 """Tests for the trie (prefix tree) implementation."""
 
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from algo.trees.trie import Trie
@@ -141,7 +141,6 @@ class TestTrieProperties:
             max_size=20,
         ),
     )
-    @settings(max_examples=50)
     def test_inserted_words_are_searchable(self, words: list[str]) -> None:
         t = Trie()
         for word in words:
@@ -157,9 +156,27 @@ class TestTrieProperties:
         ),
         query=st.text(alphabet="xyz", min_size=1, max_size=6),
     )
-    @settings(max_examples=50)
     def test_non_inserted_words_not_found(self, words: list[str], query: str) -> None:
         t = Trie()
         for word in words:
             t.insert(word)
         assert t.search(query) is False
+
+    @given(
+        words=st.lists(
+            st.text(alphabet="abcde", min_size=1, max_size=6),
+            min_size=1,
+            max_size=15,
+            unique=True,
+        ),
+    )
+    def test_delete_then_search_is_false(self, words: list[str]) -> None:
+        """Deleting one word must not disturb the others."""
+        t = Trie()
+        for word in words:
+            t.insert(word)
+        target = words[0]
+        assert t.delete(target) is True
+        assert t.search(target) is False
+        for word in words[1:]:
+            assert t.search(word) is True

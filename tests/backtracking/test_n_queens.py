@@ -1,5 +1,8 @@
 """Tests for N-Queens."""
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.backtracking.n_queens import solve_n_queens
 
 
@@ -29,6 +32,26 @@ class TestNQueens:
             cols = [c for _, c in queens]
             assert len(cols) == len(set(cols))
             # No shared diagonal
+            for i in range(len(queens)):
+                for j in range(i + 1, len(queens)):
+                    r1, c1 = queens[i]
+                    r2, c2 = queens[j]
+                    assert abs(r1 - r2) != abs(c1 - c2)
+
+
+class TestNQueensProperties:
+    @given(n=st.integers(min_value=1, max_value=7))
+    def test_every_solution_is_a_valid_non_attacking_placement(self, n: int) -> None:
+        """For any n, every returned board has exactly n queens with no two
+        sharing a row, column, or diagonal."""
+        for board in solve_n_queens(n):
+            assert len(board) == n
+            queens = [(r, row.index("Q")) for r, row in enumerate(board)]
+            assert len(queens) == n
+
+            cols = [c for _, c in queens]
+            assert len(cols) == len(set(cols))
+
             for i in range(len(queens)):
                 for j in range(i + 1, len(queens)):
                     r1, c1 = queens[i]

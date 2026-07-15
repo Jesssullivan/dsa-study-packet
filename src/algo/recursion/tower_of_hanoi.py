@@ -39,8 +39,11 @@ def tower_of_hanoi(
     def solve(disks: int, src: str, tgt: str, aux: str) -> None:
         if disks == 0:
             return
+        # move n-1 disks out of the way: src -> aux, using tgt as the spare
         solve(disks - 1, src, aux, tgt)
         moves.append((src, tgt))
+        # move the same n-1 disks onto the largest one: aux -> tgt, using
+        # src (now holding only the largest disk) as the spare
         solve(disks - 1, aux, tgt, src)
 
     solve(n, source, target, auxiliary)

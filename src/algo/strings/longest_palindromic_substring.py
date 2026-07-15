@@ -37,13 +37,14 @@ def longest_palindromic_substring(s: str) -> str:
         while left >= 0 and right < len(s) and s[left] == s[right]:
             left -= 1
             right += 1
+        # loop overshoots by one on both sides before stopping, hence the -1
         length = right - left - 1
         if length > max_len:
             start = left + 1
             max_len = length
 
     for i in range(len(s)):
-        _expand(i, i)  # odd length
-        _expand(i, i + 1)  # even length
+        _expand(i, i)  # odd-length palindrome centered on i
+        _expand(i, i + 1)  # even-length palindrome centered between i and i+1
 
     return s[start : start + max_len]

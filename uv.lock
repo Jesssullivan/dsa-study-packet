@@ -300,10 +300,10 @@ requires-dist = [
     { name = "flask", marker = "extra == 'concepts'", specifier = ">=3.0" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.115" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6" },
-    { name = "mkdocs-gen-files", marker = "extra == 'docs'", specifier = ">=0.5,<0.6.1" },
-    { name = "mkdocs-literate-nav", marker = "extra == 'docs'", specifier = ">=0.6,<0.6.3" },
+    { name = "mkdocs-gen-files", marker = "extra == 'docs'", specifier = ">=0.5,<0.6.2" },
+    { name = "mkdocs-literate-nav", marker = "extra == 'docs'", specifier = ">=0.6,<0.6.4" },
     { name = "mkdocs-material", extras = ["imaging"], marker = "extra == 'docs'", specifier = ">=9.6" },
-    { name = "mkdocs-section-index", marker = "extra == 'docs'", specifier = ">=0.3,<0.3.11" },
+    { name = "mkdocs-section-index", marker = "extra == 'docs'", specifier = ">=0.3,<0.3.13" },
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13" },
     { name = "numpy", marker = "extra == 'concepts'", specifier = ">=2.0" },
@@ -314,7 +314,7 @@ requires-dist = [
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.5" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
     { name = "scipy", marker = "extra == 'concepts'", specifier = ">=1.14" },
-    { name = "scipy-stubs", specifier = "~=1.17.1" },
+    { name = "scipy-stubs", specifier = ">=1.17.1,<1.19.0" },
 ]
 provides-extras = ["concepts", "docs", "dev"]
 

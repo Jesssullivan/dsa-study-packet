@@ -6,7 +6,8 @@ Problem:
 
 Approach:
     Maintain a min-heap of size k. The heap top is always the kth largest.
-    For each new element larger than the heap top, replace it.
+    For each new element larger than the heap top, replace it. Alternate
+    find_kth_largest_nlargest gets the same answer with heapq.nlargest.
 
 When to use:
     Streaming top-K — "kth largest in a stream", "maintain running top K".
@@ -40,9 +41,23 @@ def find_kth_largest(nums: Sequence[int], k: int) -> int:
 
     for n in nums[k:]:
         if n > heap[0]:
-            heapq.heapreplace(heap, n)
+            heapq.heapreplace(heap, n)  # pop-then-push in one step; heap stays size k
 
     return heap[0]
+
+
+# --- heapq.nlargest one-liner (O(n log k), stdlib) ---
+def find_kth_largest_nlargest(nums: Sequence[int], k: int) -> int:
+    """Return the kth largest element using heapq.nlargest (stdlib).
+
+    >>> find_kth_largest_nlargest([3, 2, 1, 5, 6, 4], 2)
+    5
+    """
+    if k <= 0 or k > len(nums):
+        msg = f"k={k} out of range for length {len(nums)}"
+        raise ValueError(msg)
+
+    return heapq.nlargest(k, nums)[-1]
 
 
 class KthLargest:
@@ -66,7 +81,7 @@ class KthLargest:
     def add(self, val: int) -> int:
         """Add a value and return the current kth largest element."""
         if len(self._heap) < self._k:
-            heapq.heappush(self._heap, val)
+            heapq.heappush(self._heap, val)  # still growing to size k: plain push
         elif val > self._heap[0]:
-            heapq.heapreplace(self._heap, val)
+            heapq.heapreplace(self._heap, val)  # at size k: pop-then-push, not push-then-pop
         return self._heap[0]

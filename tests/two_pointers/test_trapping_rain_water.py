@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.two_pointers.trapping_rain_water import trap
+from algo.two_pointers.trapping_rain_water import trap, trap_prefix_suffix
 
 
 class TestTrap:
@@ -52,3 +52,17 @@ class TestTrap:
 
         expected = sum(min(left_max[i], right_max[i]) - data[i] for i in range(n))
         assert trap(data) == expected
+
+
+class TestTrapPrefixSuffix:
+    """Cross-check the accumulate-based alternate against the primary."""
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=0, max_value=50),
+            min_size=0,
+            max_size=50,
+        ),
+    )
+    def test_matches_primary(self, data: list[int]) -> None:
+        assert trap_prefix_suffix(data) == trap(data)

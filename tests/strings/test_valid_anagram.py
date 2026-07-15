@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.strings.valid_anagram import is_anagram
+from algo.strings.valid_anagram import is_anagram, is_anagram_sorted
 
 
 class TestIsAnagram:
@@ -33,3 +33,14 @@ class TestIsAnagram:
         shuffled = list(s)
         random.shuffle(shuffled)
         assert is_anagram(s, "".join(shuffled))
+
+
+class TestIsAnagramSorted:
+    """Cross-check the sort-based alternate against the primary implementation."""
+
+    @given(
+        s=st.text(alphabet="abcdef", min_size=0, max_size=20),
+        t=st.text(alphabet="abcdef", min_size=0, max_size=20),
+    )
+    def test_matches_primary(self, s: str, t: str) -> None:
+        assert is_anagram_sorted(s, t) == is_anagram(s, t)

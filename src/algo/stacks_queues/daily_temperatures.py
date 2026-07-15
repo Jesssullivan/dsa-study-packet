@@ -8,7 +8,8 @@ Problem:
 Approach:
     Monotonic decreasing stack of indices. For each temperature, pop
     all stack entries whose temperature is lower than the current one
-    and record the distance.
+    and record the distance. Alternate daily_temperatures_brute checks
+    each future day directly.
 
 When to use:
     Next-greater-element pattern — "next warmer day", "next higher price",
@@ -35,9 +36,23 @@ def daily_temperatures(temps: Sequence[int]) -> list[int]:
     stack: list[int] = []  # indices with decreasing temps
 
     for i, t in enumerate(temps):
-        while stack and temps[stack[-1]] < t:
+        while stack and temps[stack[-1]] < t:  # current day is warmer than stack top
             j = stack.pop()
-            result[j] = i - j
+            result[j] = i - j  # distance from j's day to the first warmer day found
         stack.append(i)
 
     return result
+
+
+# --- brute-force alternate: scan forward for the first warmer day (O(n^2)) ---
+def daily_temperatures_brute(temps: Sequence[int]) -> list[int]:
+    """Return days until a warmer temperature via a direct forward scan.
+
+    >>> daily_temperatures_brute([73, 74, 75, 71, 69, 72, 76, 73])
+    [1, 1, 4, 2, 1, 1, 0, 0]
+    """
+    n = len(temps)
+    return [
+        next((j - i for j in range(i + 1, n) if temps[j] > temps[i]), 0)
+        for i in range(n)
+    ]

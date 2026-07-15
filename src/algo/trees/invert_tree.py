@@ -38,7 +38,11 @@ def invert_tree(root: TreeNode | None) -> TreeNode | None:
     """
     if not root:
         return None
+    # Simultaneous swap (no temp var); recursing afterward still inverts both
+    # subtrees correctly since invert_tree treats left/right symmetrically.
     root.left, root.right = root.right, root.left
     invert_tree(root.left)
     invert_tree(root.right)
+    # Mutates in place and returns the same root object, so callers can use
+    # either the return value or the original reference interchangeably.
     return root

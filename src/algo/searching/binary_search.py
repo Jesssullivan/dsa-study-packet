@@ -34,7 +34,7 @@ def binary_search(nums: Sequence[int], target: int) -> int:
     lo, hi = 0, len(nums) - 1
 
     while lo <= hi:
-        mid = lo + (hi - lo) // 2
+        mid = lo + (hi - lo) // 2  # overflow-safe: avoids (lo + hi) overflowing
         if nums[mid] == target:
             return mid
         if nums[mid] < target:
@@ -57,7 +57,7 @@ def binary_search_recursive(nums: Sequence[int], target: int) -> int:
     def _helper(lo: int, hi: int) -> int:
         if lo > hi:
             return -1
-        mid = lo + (hi - lo) // 2
+        mid = lo + (hi - lo) // 2  # overflow-safe midpoint, same as the iterative version
         if nums[mid] == target:
             return mid
         if nums[mid] < target:

@@ -9,7 +9,10 @@ Problem:
 Approach:
     BFS level-by-level. At each level, for every word generate all
     possible one-character mutations and check if they exist in the
-    remaining word set.
+    remaining word set. Also provided: ladder_length_comprehension, which
+    swaps the index-mutation neighbor generator (_neighbors) for a
+    slice-based list comprehension (_neighbors_comprehension) — same BFS,
+    a different way to build the same one-edit neighbor set.
 
 When to use:
     BFS for shortest transformation sequence — "minimum edits", "fewest
@@ -43,11 +46,15 @@ def ladder_length(begin_word: str, end_word: str, word_list: list[str]) -> int:
     level = 1
 
     while queue:
+        # range(len(queue)) snapshots the current level's size before the
+        # loop starts pushing next-level words into the same queue.
         for _ in range(len(queue)):
             word = queue.popleft()
             if word == end_word:
                 return level
             for neighbor in _neighbors(word, word_set, visited):
+                # Mark visited on enqueue, not on dequeue, so the same word
+                # can't be queued again via a second one-edit path.
                 visited.add(neighbor)
                 queue.append(neighbor)
         level += 1
@@ -66,6 +73,7 @@ def _neighbors(
     for i in range(len(word_arr)):
         original = word_arr[i]
         for c in "abcdefghijklmnopqrstuvwxyz":
+            # Skip the original letter: that "mutation" isn't an edit at all.
             if c == original:
                 continue
             word_arr[i] = c
@@ -74,3 +82,51 @@ def _neighbors(
                 result.append(candidate)
         word_arr[i] = original
     return result
+
+
+# --- comprehension form: build one-edit neighbors via slicing instead of index-mutation ---
+def ladder_length_comprehension(
+    begin_word: str, end_word: str, word_list: list[str]
+) -> int:
+    """Same BFS as ladder_length, but generates neighbors via slice comprehension.
+
+    >>> ladder_length_comprehension(
+    ...     "hit", "cog", ["hot", "dot", "dog", "lot", "log", "cog"]
+    ... )
+    5
+    """
+    word_set = set(word_list)
+    if end_word not in word_set:
+        return 0
+
+    queue: deque[str] = deque([begin_word])
+    visited: set[str] = {begin_word}
+    level = 1
+
+    while queue:
+        for _ in range(len(queue)):
+            word = queue.popleft()
+            if word == end_word:
+                return level
+            for neighbor in _neighbors_comprehension(word, word_set, visited):
+                visited.add(neighbor)
+                queue.append(neighbor)
+        level += 1
+
+    return 0
+
+
+def _neighbors_comprehension(
+    word: str,
+    word_set: set[str],
+    visited: set[str],
+) -> list[str]:
+    """Generate valid one-edit neighbors of *word* via slice comprehension."""
+    return [
+        candidate
+        for i in range(len(word))
+        for c in "abcdefghijklmnopqrstuvwxyz"
+        if c != word[i]
+        for candidate in (word[:i] + c + word[i + 1 :],)
+        if candidate in word_set and candidate not in visited
+    ]

@@ -35,6 +35,8 @@ def coin_change(coins: Sequence[int], amount: int) -> int:
     if amount == 0:
         return 0
 
+    # amount + 1 coins is impossible with any real denomination, so it is a
+    # safe "unreachable" sentinel that still compares correctly with min()
     dp = [amount + 1] * (amount + 1)
     dp[0] = 0
 
@@ -43,4 +45,5 @@ def coin_change(coins: Sequence[int], amount: int) -> int:
             if c <= a:
                 dp[a] = min(dp[a], dp[a - c] + 1)
 
+    # sentinel never got overwritten -> amount is unreachable
     return dp[amount] if dp[amount] <= amount else -1

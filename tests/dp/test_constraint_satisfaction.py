@@ -2,7 +2,35 @@
 
 import copy
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.dp.constraint_satisfaction import CSP, solve_sudoku
+
+
+@st.composite
+def graph_coloring_csp(
+    draw: st.DrawFn,
+) -> tuple[list[str], dict[str, list[int]], dict[str, list[str]]]:
+    """Strategy: a small random graph plus a domain of colors for each node.
+
+    Returns (variables, domains, neighbors) ready to build a CSP[int].
+    The number of colors is drawn independently of edge density, so both
+    solvable and unsolvable instances are exercised.
+    """
+    n = draw(st.integers(min_value=1, max_value=6))
+    variables = [f"n{i}" for i in range(n)]
+    num_colors = draw(st.integers(min_value=1, max_value=4))
+    domains = {v: list(range(num_colors)) for v in variables}
+
+    neighbors: dict[str, set[str]] = {v: set() for v in variables}
+    for i in range(n):
+        for j in range(i + 1, n):
+            if draw(st.booleans()):
+                neighbors[variables[i]].add(variables[j])
+                neighbors[variables[j]].add(variables[i])
+
+    return variables, domains, {v: sorted(ns) for v, ns in neighbors.items()}
 
 
 class TestCSP:
@@ -37,6 +65,33 @@ class TestCSP:
 
         csp: CSP[str] = CSP(variables, domains, neighbors, not_equal)
         assert csp.solve() is None
+
+
+class TestCSPProperties:
+    @given(instance=graph_coloring_csp())
+    def test_solution_always_respects_neighbor_constraint(
+        self,
+        instance: tuple[list[str], dict[str, list[int]], dict[str, list[str]]],
+    ) -> None:
+        """Whenever solve() returns an assignment, no two neighbors share a color.
+
+        This holds regardless of whether the instance was actually
+        colorable, so no separate solvability oracle is needed.
+        """
+        variables, domains, neighbors = instance
+
+        def not_equal(a: int, b: int) -> bool:
+            return a != b
+
+        csp: CSP[int] = CSP(variables, domains, neighbors, not_equal)
+        result = csp.solve()
+
+        if result is not None:
+            assert set(result) == set(variables)
+            for var, color in result.items():
+                assert color in domains[var]
+                for neighbor in neighbors[var]:
+                    assert result[neighbor] != color
 
 
 class TestSolveSudoku:

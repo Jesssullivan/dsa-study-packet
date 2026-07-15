@@ -128,6 +128,8 @@ class Trie:
         if depth == len(word):
             if not node.is_end:
                 return False
+            # Unmark, don't delete: this node may still be a live prefix of
+            # another stored word (e.g. deleting "app" when "apple" exists).
             node.is_end = False
             return True
 
@@ -138,6 +140,9 @@ class Trie:
         deleted = self._delete(node.children[ch], word, depth + 1)
         if deleted:
             child = node.children[ch]
+            # Only prune a child if it's both non-terminal AND childless —
+            # pruning a node that ends another word or still has children
+            # would corrupt the trie.
             if not child.is_end and not child.children:
                 del node.children[ch]
         return deleted
@@ -155,6 +160,8 @@ class Trie:
         if node.is_end:
             results.append(prefix)
         for ch in sorted(node.children):
+            # Re-check the limit inside the loop too: the recursive call
+            # below can fill `results` mid-iteration, not just between calls.
             if len(results) >= limit:
                 return
             self._collect(node.children[ch], prefix + ch, limit, results)

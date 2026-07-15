@@ -38,9 +38,12 @@ def combination_sum(candidates: Sequence[int], target: int) -> list[list[int]]:
             return
         for i in range(start, len(sorted_cands)):
             c = sorted_cands[i]
+            # sorted ascending -- once one candidate is too big, all later
+            # (larger) ones are too, so it's safe to break, not continue
             if c > remaining:
                 break
             path.append(c)
+            # pass i (not i + 1): the same candidate can be reused
             backtrack(i, path, remaining - c)
             path.pop()
 

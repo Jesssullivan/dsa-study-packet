@@ -8,7 +8,8 @@ Problem:
 Approach:
     2D DP. If characters match, extend the diagonal; otherwise take
     the max of skipping one character from either string.
-    Space-optimized to a single row.
+    longest_common_subsequence space-optimizes this to a single row;
+    the longest_common_subsequence_2d alternate keeps the full table.
 
 When to use:
     Diff / alignment — "longest common subsequence", "diff two files",
@@ -39,6 +40,8 @@ def longest_common_subsequence(text1: str, text2: str) -> int:
     for i in range(1, m + 1):
         prev = 0
         for j in range(1, n + 1):
+            # save before overwrite: becomes the diagonal (dp[i-1][j-1])
+            # value for the next iteration of j
             temp = dp[j]
             if text1[i - 1] == text2[j - 1]:
                 dp[j] = prev + 1
@@ -47,3 +50,25 @@ def longest_common_subsequence(text1: str, text2: str) -> int:
             prev = temp
 
     return dp[n]
+
+
+# --- full 2D table alternate (explicit rows, no rolling overwrite) ---
+def longest_common_subsequence_2d(text1: str, text2: str) -> int:
+    """Return the length of the LCS using the full 2D DP table.
+
+    >>> longest_common_subsequence_2d("abcde", "ace")
+    3
+    >>> longest_common_subsequence_2d("abc", "def")
+    0
+    """
+    m, n = len(text1), len(text2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if text1[i - 1] == text2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+
+    return dp[m][n]

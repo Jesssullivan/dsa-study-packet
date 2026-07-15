@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.bit_manipulation.counting_bits import counting_bits
+from algo.bit_manipulation.counting_bits import counting_bits, counting_bits_listcomp
 
 
 class TestCountingBits:
@@ -27,3 +27,16 @@ class TestCountingBits:
         result = counting_bits(n)
         for i in range(n + 1):
             assert result[i] == bin(i).count("1")
+
+
+class TestCountingBitsListcomp:
+    def test_five(self) -> None:
+        assert counting_bits_listcomp(5) == [0, 1, 1, 2, 1, 2]
+
+    def test_zero(self) -> None:
+        assert counting_bits_listcomp(0) == [0]
+
+    @given(n=st.integers(min_value=0, max_value=500))
+    def test_matches_dp_primary(self, n: int) -> None:
+        """The comprehension alternate must always agree with the DP primary."""
+        assert counting_bits_listcomp(n) == counting_bits(n)

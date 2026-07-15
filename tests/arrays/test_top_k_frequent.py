@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.arrays.top_k_frequent import top_k_frequent
+from algo.arrays.top_k_frequent import top_k_frequent, top_k_frequent_heap
 
 
 class TestTopKFrequent:
@@ -42,3 +42,28 @@ class TestTopKFrequent:
         counter = Counter(data)
         max_freq = counter.most_common(1)[0][1]
         assert counter[result[0]] == max_freq
+
+
+class TestTopKFrequentHeap:
+    """Cross-check the heap alternate against the primary implementation."""
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=-20, max_value=20),
+            min_size=1,
+            max_size=30,
+        ),
+        k=st.integers(min_value=1, max_value=10),
+    )
+    def test_matches_primary_frequency_profile(self, data: list[int], k: int) -> None:
+        # ties at the cutoff can break differently between the two
+        # implementations, so compare frequency profiles, not exact elements
+        from collections import Counter
+
+        counter = Counter(data)
+        bucket_result = top_k_frequent(data, k)
+        heap_result = top_k_frequent_heap(data, k)
+        assert len(bucket_result) == len(heap_result)
+        assert sorted(counter[x] for x in bucket_result) == sorted(
+            counter[x] for x in heap_result
+        )

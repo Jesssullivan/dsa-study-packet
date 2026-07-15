@@ -56,6 +56,8 @@ def encode(lat: float, lng: float, precision: int = 12) -> str:
                 char_index = char_index << 1
                 lat_range = (lat_range[0], mid)
 
+        # Bits accumulate MSB-first (each shift makes room for the next bit);
+        # decode() must consume bits in this same MSB-first order.
         is_lng = not is_lng
         bits += 1
 
@@ -82,6 +84,8 @@ def decode(geohash: str) -> tuple[tuple[float, float], tuple[float, float]]:
 
     for ch in geohash:
         cd = _DECODE_MAP[ch]
+        # Mask order (16 down to 1) reads bits MSB-first, matching how
+        # encode() packed them into each base32 character.
         for mask in (16, 8, 4, 2, 1):
             if is_lng:
                 mid = (lng_range[0] + lng_range[1]) / 2

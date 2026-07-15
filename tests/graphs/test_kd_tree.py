@@ -2,6 +2,9 @@
 
 import math
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.graphs.kd_tree import KDTree
 
 
@@ -52,3 +55,51 @@ class TestKDTree:
         assert result is not None
         brute = min(points, key=lambda p: math.dist(p, target))
         assert result == brute
+
+
+def _sq_dist(a: tuple[float, ...], b: tuple[float, ...]) -> float:
+    return sum((x - y) ** 2 for x, y in zip(a, b, strict=True))
+
+
+_points_2d = st.lists(
+    st.tuples(
+        st.integers(min_value=-50, max_value=50),
+        st.integers(min_value=-50, max_value=50),
+    ),
+    min_size=1,
+    max_size=30,
+)
+_point_2d = st.tuples(
+    st.integers(min_value=-50, max_value=50), st.integers(min_value=-50, max_value=50)
+)
+
+
+class TestKDTreeProperties:
+    @given(points=_points_2d, target=_point_2d)
+    def test_nearest_matches_brute_force(
+        self, points: list[tuple[int, int]], target: tuple[int, int]
+    ) -> None:
+        tree = KDTree(points)
+        result = tree.nearest(target)
+        assert result is not None
+        brute = min(_sq_dist(p, target) for p in points)
+        # Compare distances (not identity) since ties may resolve to any
+        # equally-close point.
+        assert _sq_dist(result, target) == brute
+
+    @given(
+        points=_points_2d,
+        target=_point_2d,
+        radius=st.floats(min_value=0, max_value=80, allow_nan=False),
+    )
+    def test_range_search_matches_brute_force(
+        self,
+        points: list[tuple[int, int]],
+        target: tuple[int, int],
+        radius: float,
+    ) -> None:
+        tree = KDTree(points)
+        result = set(tree.range_search(target, radius))
+        r_sq = radius * radius
+        expected = {p for p in points if _sq_dist(p, target) <= r_sq}
+        assert result == expected

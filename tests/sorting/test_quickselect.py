@@ -4,7 +4,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.sorting.quickselect import quickselect
+from algo.sorting.quickselect import quickselect, quickselect_heap
 
 
 class TestQuickselect:
@@ -38,3 +38,26 @@ class TestQuickselect:
     def test_matches_sorted(self, data: list[int]) -> None:
         k = 1
         assert quickselect(list(data), k) == sorted(data)[k - 1]
+
+
+class TestQuickselectHeap:
+    def test_basic(self) -> None:
+        assert quickselect_heap([3, 2, 1, 5, 6, 4], 2) == 2
+
+    def test_k_equals_length(self) -> None:
+        assert quickselect_heap([5, 3, 1, 2, 4], 5) == 5
+
+    def test_k_out_of_range_raises(self) -> None:
+        with pytest.raises(ValueError):
+            quickselect_heap([1, 2], 3)
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=-100, max_value=100), min_size=1, max_size=50
+        ),
+        k=st.integers(min_value=1),
+    )
+    def test_matches_primary(self, data: list[int], k: int) -> None:
+        """The heapq.nsmallest alternate must always agree with the primary."""
+        k = 1 + k % len(data)
+        assert quickselect_heap(list(data), k) == quickselect(list(data), k)

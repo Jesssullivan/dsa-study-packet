@@ -43,6 +43,7 @@ def reverse_iterative(head: ListNode | None) -> ListNode | None:
     return prev
 
 
+# --- recursive alternate: reverse via the call stack instead of explicit pointers ---
 def reverse_recursive(head: ListNode | None) -> ListNode | None:
     """Reverse a linked list using recursion.
 
@@ -52,8 +53,8 @@ def reverse_recursive(head: ListNode | None) -> ListNode | None:
     if not head or not head.next:
         return head
     new_head = reverse_recursive(head.next)
-    head.next.next = head
-    head.next = None
+    head.next.next = head  # point the next node's next back at head
+    head.next = None  # head becomes the new tail; must clear its old forward link
     return new_head
 
 
