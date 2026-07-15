@@ -46,6 +46,8 @@ def network_delay_time(
 
     while heap:
         d, u = heapq.heappop(heap)
+        # Stale-heap skip: a shorter distance to u was already relaxed
+        # (heapq has no decrease-key), so this popped entry is obsolete.
         if d > dist[u]:
             continue
         for v, w in adj[u]:
@@ -54,5 +56,7 @@ def network_delay_time(
                 dist[v] = nd
                 heapq.heappush(heap, (nd, v))
 
+    # dist[1:] drops the unused 0-index slot (nodes are 1-indexed); the
+    # signal has "reached all nodes" only once the *slowest* one hears it.
     max_dist = max(dist[1:])
     return int(max_dist) if max_dist < INF else -1

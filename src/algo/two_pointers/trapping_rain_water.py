@@ -8,7 +8,9 @@ Problem:
 Approach:
     Two pointers from both ends. Track left_max and right_max. Move
     the pointer on the side with the smaller max inward. Water at each
-    position is (current_side_max - height[pointer]).
+    position is (current_side_max - height[pointer]). Alternate
+    trap_prefix_suffix precomputes left/right max arrays with
+    itertools.accumulate instead of tracking them with two pointers.
 
 When to use:
     Bounded accumulation between barriers — water trapping, histogram
@@ -21,6 +23,7 @@ Complexity:
 """
 
 from collections.abc import Sequence
+from itertools import accumulate
 
 
 def trap(height: Sequence[int]) -> int:
@@ -37,6 +40,8 @@ def trap(height: Sequence[int]) -> int:
     water = 0
 
     while lo < hi:
+        # the smaller running max is the one that actually bounds the water at
+        # its pointer — the far side is guaranteed to be at least as tall
         if height[lo] < height[hi]:
             lo_max = max(lo_max, height[lo])
             water += lo_max - height[lo]
@@ -47,3 +52,19 @@ def trap(height: Sequence[int]) -> int:
             hi -= 1
 
     return water
+
+
+# --- prefix/suffix max arrays via itertools.accumulate (O(n) space) ---
+def trap_prefix_suffix(height: Sequence[int]) -> int:
+    """Return total units of water trapped, via precomputed max arrays.
+
+    >>> trap_prefix_suffix([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1])
+    6
+    """
+    n = len(height)
+    if n < 3:
+        return 0
+
+    left_max = list(accumulate(height, max))
+    right_max = list(accumulate(reversed(height), max))[::-1]
+    return sum(min(left_max[i], right_max[i]) - height[i] for i in range(n))

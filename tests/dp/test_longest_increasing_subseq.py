@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.dp.longest_increasing_subseq import length_of_lis
+from algo.dp.longest_increasing_subseq import length_of_lis, length_of_lis_dp
 
 
 class TestLengthOfLIS:
@@ -33,3 +33,12 @@ class TestLengthOfLIS:
     def test_result_within_bounds(self, data: list[int]) -> None:
         result = length_of_lis(data)
         assert 1 <= result <= len(data)
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=-50, max_value=50), min_size=0, max_size=40
+        ),
+    )
+    def test_matches_on2_dp_alternate(self, data: list[int]) -> None:
+        """The O(n log n) alternate must always agree with the O(n^2) DP table."""
+        assert length_of_lis(data) == length_of_lis_dp(data)

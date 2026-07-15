@@ -1,5 +1,8 @@
 """Tests for course schedule (cycle detection)."""
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.graphs.course_schedule import can_finish, find_order
 
 
@@ -41,3 +44,39 @@ class TestFindOrder:
 
     def test_single_course(self) -> None:
         assert find_order(1, []) == [0]
+
+
+@st.composite
+def random_dag(draw: st.DrawFn, max_courses: int = 8) -> tuple[int, list[list[int]]]:
+    """A random DAG's prerequisites: edges only run earlier -> later in a
+    random permutation, so a cycle can never occur."""
+    n = draw(st.integers(min_value=1, max_value=max_courses))
+    order = draw(st.permutations(range(n)))
+    possible_edges = [[order[j], order[i]] for i in range(n) for j in range(i + 1, n)]
+    prereqs = (
+        draw(st.lists(st.sampled_from(possible_edges), max_size=n * 2))
+        if possible_edges
+        else []
+    )
+    return n, prereqs
+
+
+class TestCourseScheduleProperties:
+    @given(data=random_dag())
+    def test_acyclic_is_always_finishable(
+        self, data: tuple[int, list[list[int]]]
+    ) -> None:
+        n, prereqs = data
+        assert can_finish(n, prereqs) is True
+        order = find_order(n, prereqs)
+        assert len(order) == n
+        pos = {course: i for i, course in enumerate(order)}
+        assert all(pos[prereq] < pos[course] for course, prereq in prereqs)
+
+    @given(n=st.integers(min_value=2, max_value=8))
+    def test_full_chain_with_back_edge_is_cyclic(self, n: int) -> None:
+        """A chain 0<-1<-...<-(n-1) plus a back edge (n-1)->0 forms one cycle."""
+        prereqs = [[i, i - 1] for i in range(1, n)]
+        prereqs.append([0, n - 1])  # course 0 also requires course n-1
+        assert can_finish(n, prereqs) is False
+        assert find_order(n, prereqs) == []

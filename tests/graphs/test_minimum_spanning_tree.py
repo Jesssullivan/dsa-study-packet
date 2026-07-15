@@ -1,5 +1,8 @@
 """Tests for minimum spanning tree algorithms."""
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.graphs.minimum_spanning_tree import UnionFind, kruskal, prim
 
 
@@ -69,3 +72,47 @@ class TestPrim:
     def test_two_nodes(self) -> None:
         mst = prim(2, [(0, 1, 5)])
         assert _mst_weight(mst) == 5
+
+
+@st.composite
+def connected_weighted_graphs(
+    draw: st.DrawFn, max_nodes: int = 8
+) -> tuple[int, list[tuple[int, int, float]]]:
+    """A random connected undirected weighted graph."""
+    n = draw(st.integers(min_value=1, max_value=max_nodes))
+    edges: list[tuple[int, int, float]] = []
+    # Random spanning tree guarantees connectivity.
+    for i in range(1, n):
+        parent = draw(st.integers(min_value=0, max_value=i - 1))
+        w = draw(st.integers(min_value=1, max_value=20))
+        edges.append((parent, i, float(w)))
+    if n > 1:
+        extra_pairs = draw(
+            st.lists(
+                st.tuples(
+                    st.integers(min_value=0, max_value=n - 1),
+                    st.integers(min_value=0, max_value=n - 1),
+                ),
+                max_size=n,
+            )
+        )
+        for u, v in extra_pairs:
+            if u != v:
+                w = draw(st.integers(min_value=1, max_value=20))
+                edges.append((u, v, float(w)))
+    return n, edges
+
+
+class TestMSTProperties:
+    @given(data=connected_weighted_graphs())
+    def test_kruskal_and_prim_agree(
+        self, data: tuple[int, list[tuple[int, int, float]]]
+    ) -> None:
+        """Kruskal and Prim must find the same total weight and edge count."""
+        n, edges = data
+        mst_kruskal = kruskal(n, edges)
+        mst_prim = prim(n, edges)
+        expected_edge_count = max(n - 1, 0)
+        assert len(mst_kruskal) == expected_edge_count
+        assert len(mst_prim) == expected_edge_count
+        assert _mst_weight(mst_kruskal) == _mst_weight(mst_prim)

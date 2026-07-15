@@ -1,5 +1,10 @@
 """Tests for interval scheduling."""
 
+import itertools
+
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.greedy.interval_scheduling import max_non_overlapping, min_removals
 
 
@@ -32,3 +37,34 @@ class TestMinRemovals:
 
     def test_all_same(self) -> None:
         assert min_removals([[1, 2], [1, 2], [1, 2]]) == 2
+
+
+def _max_non_overlapping_brute_force(intervals: list[list[int]]) -> int:
+    """Independent oracle: try every subset, keep the largest non-overlapping one."""
+    best = 0
+    for size in range(len(intervals), 0, -1):
+        for combo in itertools.combinations(intervals, size):
+            ordered = sorted(combo, key=lambda iv: iv[0])
+            if all(ordered[i][1] <= ordered[i + 1][0] for i in range(len(ordered) - 1)):
+                best = max(best, size)
+                break
+        if best:
+            break
+    return best
+
+
+class TestMaxNonOverlappingProperties:
+    @given(
+        raw=st.lists(
+            st.tuples(
+                st.integers(min_value=0, max_value=20),
+                st.integers(min_value=1, max_value=10),
+            ),
+            max_size=8,
+        ),
+    )
+    def test_matches_brute_force_oracle(self, raw: list[tuple[int, int]]) -> None:
+        intervals = [[start, start + length] for start, length in raw]
+        assert max_non_overlapping(intervals) == _max_non_overlapping_brute_force(
+            intervals
+        )

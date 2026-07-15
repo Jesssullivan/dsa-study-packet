@@ -1,6 +1,8 @@
 """Tests for geohash encoding, decoding, and neighbors."""
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from algo.graphs.geohash_grid import decode, decode_center, encode, neighbor, neighbors
 
@@ -57,3 +59,33 @@ class TestNeighbor:
         north = neighbor(original, "n")
         back = neighbor(north, "s")
         assert back == original
+
+
+class TestGeohashProperties:
+    @given(
+        lat=st.floats(min_value=-89.0, max_value=89.0, allow_nan=False),
+        lng=st.floats(min_value=-179.0, max_value=179.0, allow_nan=False),
+        precision=st.integers(min_value=1, max_value=10),
+    )
+    def test_encode_decode_roundtrip_contains_point(
+        self, lat: float, lng: float, precision: int
+    ) -> None:
+        h = encode(lat, lng, precision)
+        (lat_min, lat_max), (lng_min, lng_max) = decode(h)
+        assert lat_min <= lat <= lat_max
+        assert lng_min <= lng <= lng_max
+
+    @given(
+        lat=st.floats(min_value=-80.0, max_value=80.0, allow_nan=False),
+        lng=st.floats(min_value=-170.0, max_value=170.0, allow_nan=False),
+        direction=st.sampled_from(("n", "s", "e", "w")),
+    )
+    def test_cardinal_neighbor_is_reversible(
+        self, lat: float, lng: float, direction: str
+    ) -> None:
+        """Walking n/s/e/w and back on any cell returns to the same geohash."""
+        opposite = {"n": "s", "s": "n", "e": "w", "w": "e"}
+        h = encode(lat, lng, 6)
+        moved = neighbor(h, direction)
+        back = neighbor(moved, opposite[direction])
+        assert back == h

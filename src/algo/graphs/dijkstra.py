@@ -47,6 +47,8 @@ def dijkstra(
 
     while heap:
         d, u = heapq.heappop(heap)
+        # Stale-heap skip: a shorter (u, d) was already popped and relaxed
+        # earlier (heapq has no decrease-key), so this entry is obsolete.
         if d > dist[u]:
             continue
         for v, w in adj[u]:

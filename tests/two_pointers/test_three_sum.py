@@ -1,5 +1,8 @@
 """Tests for the 3Sum problem."""
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.two_pointers.three_sum import three_sum
 
 
@@ -29,3 +32,22 @@ class TestThreeSum:
             key = tuple(triplet)
             assert key not in seen
             seen.add(key)
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=-10, max_value=10),
+            min_size=0,
+            max_size=15,
+        ),
+    )
+    def test_all_triplets_sum_to_zero_and_are_unique(self, data: list[int]) -> None:
+        result = three_sum(data)
+        seen: set[tuple[int, ...]] = set()
+        for triplet in result:
+            assert sum(triplet) == 0
+            key = tuple(triplet)
+            assert key not in seen
+            seen.add(key)
+            # every element of the triplet must come from the input
+            for val in triplet:
+                assert data.count(val) > 0

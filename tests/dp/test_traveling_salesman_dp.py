@@ -1,8 +1,10 @@
 """Tests for traveling salesman DP."""
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
-from algo.dp.traveling_salesman_dp import tsp
+from algo.dp.traveling_salesman_dp import tsp, tsp_brute_force
 
 
 class TestTSP:
@@ -43,3 +45,23 @@ class TestTSP:
         result = tsp(dist)
         assert isinstance(result, int)
         assert result > 0
+
+
+@st.composite
+def distance_matrix(draw: st.DrawFn) -> list[list[int]]:
+    """Strategy: a small symmetric n x n distance matrix, zero diagonal."""
+    n = draw(st.integers(min_value=1, max_value=6))
+    dist = [[0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(i + 1, n):
+            w = draw(st.integers(min_value=1, max_value=30))
+            dist[i][j] = w
+            dist[j][i] = w
+    return dist
+
+
+class TestTSPProperties:
+    @given(dist=distance_matrix())
+    def test_matches_brute_force_oracle(self, dist: list[list[int]]) -> None:
+        """The bitmask DP must always agree with the exhaustive permutation search."""
+        assert tsp(dist) == tsp_brute_force(dist)

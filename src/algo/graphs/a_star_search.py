@@ -68,9 +68,13 @@ def a_star(
 
     while open_heap:
         _f, g, r, c = heapq.heappop(open_heap)
+        # First pop of goal is optimal only because Manhattan distance is
+        # admissible+consistent on this 4-connected, cost>=1 grid.
         if (r, c) == goal:
             return _reconstruct_path(came_from, goal)
 
+        # Stale-heap skip: a cheaper g for (r, c) was already relaxed
+        # (heapq has no decrease-key), so this popped entry is obsolete.
         if g > g_score.get((r, c), float("inf")):
             continue
 

@@ -33,7 +33,7 @@ def two_sum(nums: Sequence[int], target: int) -> tuple[int, int]:
         complement = target - n
         if complement in seen:
             return (seen[complement], i)
-        seen[n] = i
+        seen[n] = i  # store after the lookup so we never pair an element with itself
 
     msg = "no two elements sum to target"
     raise ValueError(msg)

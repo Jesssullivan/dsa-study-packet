@@ -3,7 +3,10 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.arrays.product_except_self import product_except_self
+from algo.arrays.product_except_self import (
+    product_except_self,
+    product_except_self_accumulate,
+)
 
 
 class TestProductExceptSelf:
@@ -39,3 +42,17 @@ class TestProductExceptSelf:
         for i, val in enumerate(result):
             expected = math.prod(data[:i]) * math.prod(data[i + 1 :])
             assert val == expected
+
+
+class TestProductExceptSelfAccumulate:
+    """Cross-check the accumulate alternate against the primary implementation."""
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=-10, max_value=10),
+            min_size=1,
+            max_size=20,
+        ),
+    )
+    def test_matches_primary(self, data: list[int]) -> None:
+        assert product_except_self_accumulate(data) == product_except_self(data)

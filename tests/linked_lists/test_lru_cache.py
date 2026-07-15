@@ -1,6 +1,8 @@
 """Tests for LRU Cache."""
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from algo.linked_lists.lru_cache import LRUCache, LRUCacheManual
 
@@ -97,3 +99,35 @@ class TestLRUCacheManual:
     def test_zero_capacity_raises(self) -> None:
         with pytest.raises(ValueError):
             LRUCacheManual(0)
+
+
+@st.composite
+def _cache_operations(draw: st.DrawFn) -> list[tuple[str, int, int]]:
+    """Draw a sequence of (op, key, value) calls over a small key space."""
+    return draw(
+        st.lists(
+            st.tuples(
+                st.sampled_from(["get", "put"]),
+                st.integers(min_value=0, max_value=9),
+                st.integers(min_value=0, max_value=100),
+            ),
+            min_size=1,
+            max_size=40,
+        )
+    )
+
+
+class TestLRUCacheCrossCheck:
+    @given(capacity=st.integers(min_value=1, max_value=5), ops=_cache_operations())
+    def test_manual_matches_ordereddict(
+        self, capacity: int, ops: list[tuple[str, int, int]]
+    ) -> None:
+        """LRUCacheManual must agree with LRUCache over any op sequence."""
+        primary = LRUCache(capacity)
+        alt = LRUCacheManual(capacity)
+        for op, key, value in ops:
+            if op == "put":
+                primary.put(key, value)
+                alt.put(key, value)
+            else:
+                assert primary.get(key) == alt.get(key)

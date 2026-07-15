@@ -1,5 +1,9 @@
 """Tests for Dijkstra's shortest-path algorithm."""
 
+from hypothesis import given
+from hypothesis import strategies as st
+
+from algo.graphs.bellman_ford import bellman_ford
 from algo.graphs.dijkstra import INF, dijkstra
 
 
@@ -40,3 +44,31 @@ class TestDijkstra:
         ]
         dist = dijkstra(6, edges, 0)
         assert dist == [0, 7, 9, 20, 26, 11]
+
+
+@st.composite
+def _nonneg_weighted_graphs(
+    draw: st.DrawFn, max_nodes: int = 8
+) -> tuple[int, list[tuple[int, int, float]], int]:
+    """A random directed graph with non-negative weights, plus a source."""
+    n = draw(st.integers(min_value=1, max_value=max_nodes))
+    possible = [(u, v) for u in range(n) for v in range(n) if u != v]
+    edges: list[tuple[int, int, float]] = []
+    if possible:
+        pairs = draw(st.lists(st.sampled_from(possible), max_size=n * 2))
+        edges = [
+            (u, v, float(draw(st.integers(min_value=0, max_value=25))))
+            for u, v in pairs
+        ]
+    source = draw(st.integers(min_value=0, max_value=n - 1))
+    return n, edges, source
+
+
+class TestDijkstraProperties:
+    @given(data=_nonneg_weighted_graphs())
+    def test_matches_bellman_ford_oracle(
+        self, data: tuple[int, list[tuple[int, int, float]], int]
+    ) -> None:
+        """On non-negative weights, Dijkstra must agree with Bellman-Ford."""
+        n, edges, source = data
+        assert dijkstra(n, edges, source) == bellman_ford(n, edges, source)

@@ -6,9 +6,11 @@ Problem:
     starting city.
 
 Approach:
-    Bitmask DP (Held-Karp algorithm). State is (visited_set, current_city).
-    Use an integer bitmask to represent the set of visited cities.
-    ``dp[mask][i]`` = minimum cost to visit the cities in `mask`, ending at city i.
+    tsp: bitmask DP (Held-Karp algorithm). State is (visited_set,
+    current_city). Use an integer bitmask to represent the set of
+    visited cities. ``dp[mask][i]`` = minimum cost to visit the cities
+    in `mask`, ending at city i. tsp_brute_force is the exponential
+    itertools.permutations alternate used to sanity-check small cases.
 
 When to use:
     Visit-all-nodes optimization — "shortest route visiting every city",
@@ -23,6 +25,7 @@ Note:
     Only practical for small n (typically n <= 20).
 """
 
+import itertools
 from collections.abc import Sequence
 
 INF = float("inf")
@@ -49,6 +52,7 @@ def tsp(dist: Sequence[Sequence[int | float]]) -> int | float:
 
     for mask in range(1 << n):
         for u in range(n):
+            # state unreachable (or u not actually in mask) -- nothing to extend
             if dp[mask][u] == INF:
                 continue
             if not (mask & (1 << u)):
@@ -61,7 +65,8 @@ def tsp(dist: Sequence[Sequence[int | float]]) -> int | float:
                 if cost < dp[new_mask][v]:
                     dp[new_mask][v] = cost
 
-    # Close the tour: return to city 0
+    # Close the tour: return to city 0. Start at u=1 -- city 0 is the tour's
+    # start, not a valid "last stop" to close the loop from.
     result: int | float = INF
     for u in range(1, n):
         cost = dp[full_mask][u] + dist[u][0]
@@ -69,3 +74,26 @@ def tsp(dist: Sequence[Sequence[int | float]]) -> int | float:
             result = cost
 
     return result
+
+
+# --- brute-force alternate (itertools.permutations, exponential) ---
+def tsp_brute_force(dist: Sequence[Sequence[int | float]]) -> int | float:
+    """Return the minimum cost tour by trying every permutation of cities.
+
+    Exponential (O(n!)); only useful as a correctness oracle for small n.
+
+    >>> tsp_brute_force(
+    ...     [[0, 10, 15, 20], [10, 0, 35, 25], [15, 35, 0, 30], [20, 25, 30, 0]]
+    ... )
+    80
+    """
+    n = len(dist)
+    if n <= 1:
+        return 0
+
+    best: int | float = INF
+    for perm in itertools.permutations(range(1, n)):
+        route = (0, *perm, 0)
+        cost = sum(dist[route[i]][route[i + 1]] for i in range(len(route) - 1))
+        best = min(best, cost)
+    return best

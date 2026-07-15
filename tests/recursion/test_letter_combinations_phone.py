@@ -8,6 +8,7 @@ from hypothesis import strategies as st
 from algo.recursion.letter_combinations_phone import (
     DIGIT_TO_LETTERS,
     letter_combinations,
+    letter_combinations_itertools,
 )
 
 
@@ -48,3 +49,14 @@ class TestLetterCombinations:
             assert len(combo) == len(digits)
         # No duplicates
         assert len(result) == len(set(result))
+
+    @given(
+        digits=st.text(
+            alphabet=st.sampled_from("23456789"),
+            min_size=0,
+            max_size=4,
+        ),
+    )
+    def test_matches_itertools_alternate(self, digits: str) -> None:
+        """The stdlib alternate must always agree with the recursive backtracker."""
+        assert letter_combinations(digits) == letter_combinations_itertools(digits)

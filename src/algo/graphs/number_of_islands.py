@@ -38,6 +38,8 @@ def num_islands(grid: list[list[str]]) -> int:
 
     for r in range(rows):
         for c in range(cols):
+            # Cells are the strings "1"/"0", not ints — a common trap when
+            # porting this from a problem statement that shows a numeric grid.
             if grid[r][c] == "1" and (r, c) not in visited:
                 count += 1
                 _bfs(grid, r, c, rows, cols, visited)
@@ -66,5 +68,7 @@ def _bfs(
                 and grid[nr][nc] == "1"
                 and (nr, nc) not in visited
             ):
+                # Mark visited on enqueue, not on dequeue — otherwise the
+                # same cell can be pushed multiple times before it's processed.
                 visited.add((nr, nc))
                 queue.append((nr, nc))

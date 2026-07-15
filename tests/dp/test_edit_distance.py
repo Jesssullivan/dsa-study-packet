@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.dp.edit_distance import edit_distance
+from algo.dp.edit_distance import edit_distance, edit_distance_2d
 
 
 class TestEditDistance:
@@ -29,3 +29,11 @@ class TestEditDistance:
     def test_symmetric(self, s: str) -> None:
         t = s[::-1]
         assert edit_distance(s, t) == edit_distance(t, s)
+
+    @given(
+        s=st.text(alphabet="abc", min_size=0, max_size=15),
+        t=st.text(alphabet="abc", min_size=0, max_size=15),
+    )
+    def test_matches_2d_alternate(self, s: str, t: str) -> None:
+        """The rolling-row alternate must always agree with the full table."""
+        assert edit_distance(s, t) == edit_distance_2d(s, t)

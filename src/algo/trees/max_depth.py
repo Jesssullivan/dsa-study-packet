@@ -36,4 +36,6 @@ def max_depth(root: TreeNode | None) -> int:
     """
     if not root:
         return 0
+    # Depth counted in nodes (empty tree = 0, a single node = 1), not edges —
+    # if asked for edge-count height instead, subtract 1 from the result.
     return 1 + max(max_depth(root.left), max_depth(root.right))

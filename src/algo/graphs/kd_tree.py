@@ -110,7 +110,9 @@ class KDTree:
 
         self._search(near, target, best)
 
-        # Only search the far side if the splitting plane is closer than best
+        # Prune: only descend into the far subtree if its splitting plane is
+        # closer than the current best — compare squared distances throughout
+        # to avoid an extra sqrt.
         if diff * diff < best[0][0]:
             self._search(far, target, best)
 
@@ -142,6 +144,8 @@ class KDTree:
         far = node.right if diff <= 0 else node.left
 
         self._range_search(near, target, r_sq, results)
+        # Same pruning idea as nearest-neighbor search: skip the far subtree
+        # unless its splitting plane could still be within the radius.
         if diff * diff <= r_sq:
             self._range_search(far, target, r_sq, results)
 

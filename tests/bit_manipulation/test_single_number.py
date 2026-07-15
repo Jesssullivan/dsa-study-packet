@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.bit_manipulation.single_number import single_number
+from algo.bit_manipulation.single_number import single_number, single_number_reduce
 
 
 class TestSingleNumber:
@@ -37,3 +37,28 @@ class TestSingleNumber:
                 continue
             nums.extend([p, p])
         assert single_number(nums) == unique
+
+
+class TestSingleNumberReduce:
+    def test_basic(self) -> None:
+        assert single_number_reduce([4, 1, 2, 1, 2]) == 4
+
+    def test_single_element(self) -> None:
+        assert single_number_reduce([1]) == 1
+
+    @given(
+        unique=st.integers(min_value=-1000, max_value=1000),
+        pairs=st.lists(
+            st.integers(min_value=-1000, max_value=1000),
+            min_size=0,
+            max_size=20,
+        ),
+    )
+    def test_matches_primary(self, unique: int, pairs: list[int]) -> None:
+        """The functools.reduce alternate must always agree with the primary."""
+        nums = [unique]
+        for p in pairs:
+            if p == unique:
+                continue
+            nums.extend([p, p])
+        assert single_number_reduce(nums) == single_number(nums)

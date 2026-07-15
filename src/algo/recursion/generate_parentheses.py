@@ -35,7 +35,8 @@ def generate_parentheses(n: int) -> list[str]:
         if open_count < n:
             current.append("(")
             backtrack(current, open_count + 1, close_count)
-            current.pop()
+            current.pop()  # undo before trying the sibling branch
+        # invariant: close must never exceed open, or the prefix is invalid
         if close_count < open_count:
             current.append(")")
             backtrack(current, open_count, close_count + 1)

@@ -8,6 +8,7 @@ Approach:
     Modified merge sort. During the merge step, when an element from
     the right half is placed before elements remaining in the left
     half, those left-half elements all form inversions with it.
+    Alternate count_inversions_brute checks every pair directly.
 
 When to use:
     Counting disorder in sequences — "number of inversions", "how far
@@ -64,7 +65,7 @@ def _merge(arr: list[int], lo: int, mid: int, hi: int) -> int:
             i += 1
         else:
             arr[k] = right[j]
-            inversions += len(left) - i
+            inversions += len(left) - i  # every remaining left elem is > right[j]
             j += 1
         k += 1
 
@@ -79,3 +80,20 @@ def _merge(arr: list[int], lo: int, mid: int, hi: int) -> int:
         k += 1
 
     return inversions
+
+
+# --- brute-force alternate: check every pair directly (O(n^2)) ---
+def count_inversions_brute(nums: Sequence[int]) -> int:
+    """Count inversions by checking every pair directly.
+
+    >>> count_inversions_brute([2, 4, 1, 3, 5])
+    3
+    >>> count_inversions_brute([5, 4, 3, 2, 1])
+    10
+    """
+    return sum(
+        1
+        for i in range(len(nums))
+        for j in range(i + 1, len(nums))
+        if nums[i] > nums[j]
+    )

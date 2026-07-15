@@ -1,8 +1,11 @@
 """Tests for Bellman-Ford shortest path algorithm."""
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from algo.graphs.bellman_ford import INF, NegativeCycleError, bellman_ford
+from algo.graphs.dijkstra import dijkstra
 
 
 class TestBellmanFord:
@@ -30,3 +33,32 @@ class TestBellmanFord:
     def test_all_zero_weights(self) -> None:
         edges = [(0, 1, 0), (1, 2, 0)]
         assert bellman_ford(3, edges, 0) == [0, 0, 0]
+
+
+@st.composite
+def _nonneg_weighted_graphs(
+    draw: st.DrawFn, max_nodes: int = 8
+) -> tuple[int, list[tuple[int, int, float]], int]:
+    """A random directed graph with non-negative weights, plus a source."""
+    n = draw(st.integers(min_value=1, max_value=max_nodes))
+    possible = [(u, v) for u in range(n) for v in range(n) if u != v]
+    edges: list[tuple[int, int, float]] = []
+    if possible:
+        pairs = draw(st.lists(st.sampled_from(possible), max_size=n * 2))
+        edges = [
+            (u, v, float(draw(st.integers(min_value=0, max_value=25))))
+            for u, v in pairs
+        ]
+    source = draw(st.integers(min_value=0, max_value=n - 1))
+    return n, edges, source
+
+
+class TestBellmanFordProperties:
+    @given(data=_nonneg_weighted_graphs())
+    def test_matches_dijkstra_oracle(
+        self, data: tuple[int, list[tuple[int, int, float]], int]
+    ) -> None:
+        """On non-negative weights, no negative cycle can exist, and the
+        result must agree with Dijkstra."""
+        n, edges, source = data
+        assert bellman_ford(n, edges, source) == dijkstra(n, edges, source)

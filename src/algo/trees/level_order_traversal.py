@@ -44,6 +44,8 @@ def level_order(root: TreeNode | None) -> list[list[int]]:
 
     while queue:
         level: list[int] = []
+        # range(len(queue)) snapshots this level's size up front — the loop
+        # body pushes next-level nodes into the same queue as it runs.
         for _ in range(len(queue)):
             node = queue.popleft()
             level.append(node.val)

@@ -37,6 +37,8 @@ def can_jump(nums: Sequence[int]) -> bool:
     """
     farthest = 0
     for i, n in enumerate(nums):
+        # check BEFORE extending farthest: if this index is already beyond
+        # every prior jump's reach, it was never reachable to begin with
         if i > farthest:
             return False
         farthest = max(farthest, i + n)
@@ -60,6 +62,8 @@ def jump_game_ii(nums: Sequence[int]) -> int:
 
     for i in range(len(nums) - 1):
         farthest = max(farthest, i + nums[i])
+        # i reached the end of the current BFS "layer" -- must jump again
+        # to advance to the next layer's reachable window
         if i == cur_end:
             jumps += 1
             cur_end = farthest

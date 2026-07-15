@@ -8,6 +8,7 @@ Approach:
     Use a min-heap of size k. Push (value, list_index, node) tuples.
     Pop the smallest, append to result, and push the next node from
     that list. The list_index breaks ties to avoid comparing nodes.
+    Alternate merge_k_sorted_sorted collects every value and sorts once.
 
 When to use:
     K-way merge for external sorting — "merge K sorted lists/arrays/files",
@@ -43,7 +44,7 @@ def merge_k_sorted(lists: list[ListNode | None]) -> ListNode | None:
 
     for i, node in enumerate(lists):
         if node:
-            heap.append((node.val, i, node))
+            heap.append((node.val, i, node))  # index tiebreak: never compares ListNodes
 
     heapq.heapify(heap)
 
@@ -56,6 +57,33 @@ def merge_k_sorted(lists: list[ListNode | None]) -> ListNode | None:
         tail = tail.next
         if node.next:
             heapq.heappush(heap, (node.next.val, idx, node.next))
+
+    return dummy.next
+
+
+# --- stdlib alternate: collect all values and sort once (O(n log n), ignores k) ---
+def merge_k_sorted_sorted(lists: list[ListNode | None]) -> ListNode | None:
+    """Merge k sorted linked lists by collecting values and sorting.
+
+    >>> to_list(
+    ...     merge_k_sorted_sorted(
+    ...         [from_list([1, 4, 5]), from_list([1, 3, 4]), from_list([2, 6])]
+    ...     )
+    ... )
+    [1, 1, 2, 3, 4, 4, 5, 6]
+    """
+    vals: list[int] = []
+    for node in lists:
+        while node:
+            vals.append(node.val)
+            node = node.next
+    vals.sort()
+
+    dummy = ListNode(0)
+    tail = dummy
+    for v in vals:
+        tail.next = ListNode(v)
+        tail = tail.next
 
     return dummy.next
 

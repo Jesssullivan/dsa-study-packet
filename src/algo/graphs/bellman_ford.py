@@ -45,16 +45,21 @@ def bellman_ford(
     dist: list[float] = [INF] * num_nodes
     dist[source] = 0
 
+    # A shortest path visits at most V-1 edges (no repeated vertices), so
+    # V-1 relaxation rounds are guaranteed to converge if no negative cycle.
     for _ in range(num_nodes - 1):
         updated = False
         for u, v, w in edges:
+            # dist[u] < INF guard: skip relaxing from a still-unreached node
+            # so we never treat "infinity" as a real distance to propagate.
             if dist[u] < INF and dist[u] + w < dist[v]:
                 dist[v] = dist[u] + w
                 updated = True
         if not updated:
             break
 
-    # Check for negative cycles
+    # If any edge can still relax after V-1 rounds, that relaxation could
+    # only come from a negative-weight cycle reachable from source.
     for u, v, w in edges:
         if dist[u] < INF and dist[u] + w < dist[v]:
             raise NegativeCycleError(

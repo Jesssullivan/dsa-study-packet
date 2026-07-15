@@ -8,7 +8,8 @@ Approach:
     Lomuto partition scheme. Pick a pivot, partition the array so
     elements less than the pivot come before it. If the pivot lands
     at position k-1 we are done; otherwise recurse on the correct
-    half. Randomized pivot for expected O(n).
+    half. Randomized pivot for expected O(n). Alternate quickselect_heap
+    gets the same answer with heapq.nsmallest.
 
 When to use:
     Selection without full sort — "kth smallest/largest", "median",
@@ -20,6 +21,7 @@ Complexity:
     Space: O(1)  (in-place partitioning)
 """
 
+import heapq
 import random
 
 
@@ -63,3 +65,19 @@ def quickselect(nums: list[int], k: int) -> int:
     # Should not reach here if k is valid
     msg = "quickselect failed"
     raise RuntimeError(msg)
+
+
+# --- heapq.nsmallest one-liner (O(n log k), stdlib) ---
+def quickselect_heap(nums: list[int], k: int) -> int:
+    """Return the *k*-th smallest element using heapq.nsmallest (stdlib).
+
+    >>> quickselect_heap([3, 2, 1, 5, 6, 4], 2)
+    2
+    >>> quickselect_heap([7], 1)
+    7
+    """
+    if k < 1 or k > len(nums):
+        msg = f"k={k} out of range for length {len(nums)}"
+        raise ValueError(msg)
+
+    return heapq.nsmallest(k, nums)[-1]

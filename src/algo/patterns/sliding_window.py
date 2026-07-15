@@ -28,7 +28,7 @@ def max_sum_subarray(nums: Sequence[int], k: int) -> int:
     best = window_sum
 
     for i in range(k, len(nums)):
-        window_sum += nums[i] - nums[i - k]
+        window_sum += nums[i] - nums[i - k]  # add incoming, drop the element k back
         best = max(best, window_sum)
 
     return best

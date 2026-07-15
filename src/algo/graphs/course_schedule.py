@@ -34,6 +34,8 @@ def can_finish(num_courses: int, prerequisites: list[list[int]]) -> bool:
     in_degree = [0] * num_courses
 
     for course, prereq in prerequisites:
+        # Edge direction is prereq -> course: prereq must be visited (taken)
+        # before course; reversing this is the most common bug here.
         adj[prereq].append(course)
         in_degree[course] += 1
 
@@ -48,6 +50,8 @@ def can_finish(num_courses: int, prerequisites: list[list[int]]) -> bool:
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
 
+    # A cycle can only be detected by counting: nodes stuck in a cycle never
+    # reach in-degree 0, so BFS finishes early with visited < num_courses.
     return visited == num_courses
 
 
@@ -75,6 +79,8 @@ def find_order(num_courses: int, prerequisites: list[list[int]]) -> list[int]:
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
 
+    # Same cycle check as can_finish: nodes on a cycle never hit in-degree 0,
+    # so a short order here means a cycle exists.
     if len(order) != num_courses:
         return []
     return order

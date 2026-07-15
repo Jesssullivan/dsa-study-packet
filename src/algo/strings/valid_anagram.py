@@ -6,7 +6,8 @@ Problem:
 
 Approach:
     Counter comparison — count character frequencies for both strings
-    and check equality.
+    and check equality. Alternate is_anagram_sorted compares the two
+    strings sorted instead.
 
 When to use:
     Equivalence class membership — same chars different order. Group
@@ -29,4 +30,17 @@ def is_anagram(s: str, t: str) -> bool:
     >>> is_anagram("rat", "car")
     False
     """
+    # Counter equality also fails on unequal length — no separate len check needed
     return Counter(s) == Counter(t)
+
+
+# --- sort-and-compare variant (O(n log n), no extra structures) ---
+def is_anagram_sorted(s: str, t: str) -> bool:
+    """Return True if *s* and *t* are anagrams of each other, via sorting.
+
+    >>> is_anagram_sorted("anagram", "nagaram")
+    True
+    >>> is_anagram_sorted("rat", "car")
+    False
+    """
+    return sorted(s) == sorted(t)

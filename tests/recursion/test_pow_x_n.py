@@ -6,7 +6,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.recursion.pow_x_n import my_pow
+from algo.recursion.pow_x_n import my_pow, my_pow_iterative
 
 
 class TestMyPow:
@@ -38,3 +38,13 @@ class TestMyPow:
         result = my_pow(x, n)
         expected = math.pow(x, n)
         assert result == pytest.approx(expected, rel=1e-9)
+
+    @given(
+        x=st.floats(
+            min_value=0.1, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
+        n=st.integers(min_value=-20, max_value=20),
+    )
+    def test_matches_iterative_alternate(self, x: float, n: int) -> None:
+        """The iterative alternate must always agree with the recursive form."""
+        assert my_pow(x, n) == pytest.approx(my_pow_iterative(x, n), rel=1e-9)

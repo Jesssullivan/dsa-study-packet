@@ -6,7 +6,8 @@ Problem:
 
 Approach:
     XOR all elements. Since a ^ a = 0 and a ^ 0 = a, all pairs
-    cancel out, leaving only the single element.
+    cancel out, leaving only the single element. Alternate
+    single_number_reduce folds the same XOR with functools.reduce.
 
 When to use:
     XOR uniqueness — "find the element appearing once while others appear
@@ -19,6 +20,8 @@ Complexity:
 """
 
 from collections.abc import Sequence
+from functools import reduce
+from operator import xor
 
 
 def single_number(nums: Sequence[int]) -> int:
@@ -31,5 +34,17 @@ def single_number(nums: Sequence[int]) -> int:
     """
     result = 0
     for n in nums:
-        result ^= n
+        result ^= n  # a^a=0 cancels pairs, a^0=a preserves the single value
     return result
+
+
+# --- functools.reduce alternate: fold XOR across the sequence (stdlib idiom) ---
+def single_number_reduce(nums: Sequence[int]) -> int:
+    """Return the element that appears exactly once, via functools.reduce.
+
+    >>> single_number_reduce([4, 1, 2, 1, 2])
+    4
+    >>> single_number_reduce([1])
+    1
+    """
+    return reduce(xor, nums, 0)

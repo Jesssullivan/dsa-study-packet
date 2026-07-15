@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from algo.backtracking.subsets import subsets
+from algo.backtracking.subsets import subsets, subsets_bitmask
 
 
 class TestSubsets:
@@ -40,3 +40,17 @@ class TestSubsets:
     )
     def test_power_set_size(self, data: list[int]) -> None:
         assert len(subsets(data)) == 2 ** len(data)
+
+    @given(
+        data=st.lists(
+            st.integers(min_value=-10, max_value=10),
+            min_size=0,
+            max_size=8,
+            unique=True,
+        ),
+    )
+    def test_matches_bitmask_alternate(self, data: list[int]) -> None:
+        """The bitmask alternate must produce the same set of subsets."""
+        got = {tuple(s) for s in subsets(data)}
+        expected = {tuple(s) for s in subsets_bitmask(data)}
+        assert got == expected

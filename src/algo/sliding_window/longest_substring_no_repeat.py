@@ -34,6 +34,8 @@ def length_of_longest_substring(s: str) -> int:
     left = best = 0
 
     for right, ch in enumerate(s):
+        # seen[ch] may be stale (outside the current window) — the >= left
+        # check stops left from ever moving backward on a stale hit
         if ch in seen and seen[ch] >= left:
             left = seen[ch] + 1
         seen[ch] = right

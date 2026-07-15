@@ -53,6 +53,8 @@ def topological_sort_kahn(
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
 
+    # Nodes stuck in a cycle never reach in-degree 0, so a short order here
+    # is the only signal that a cycle exists.
     if len(order) != num_nodes:
         return []
     return order
@@ -84,6 +86,9 @@ def topological_sort_dfs(
             return
         state[node] = 1
         for neighbor in adj[node]:
+            # A back edge to an in-progress (state 1) ancestor closes a
+            # cycle; an edge to a done (state 2) node is just a shared
+            # descendant and is fine.
             if state[neighbor] == 1:
                 has_cycle = True
                 return
@@ -98,5 +103,7 @@ def topological_sort_dfs(
 
     if has_cycle:
         return []
+    # order collected nodes in finish (post-order) time; reversing that
+    # gives a valid topological order — easy to forget this last step.
     order.reverse()
     return order

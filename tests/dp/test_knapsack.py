@@ -1,5 +1,8 @@
 """Tests for 0/1 knapsack."""
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from algo.dp.knapsack import knapsack, knapsack_2d
 
 
@@ -37,3 +40,24 @@ class TestKnapsack2D:
 
     def test_no_items(self) -> None:
         assert knapsack_2d([], [], 5) == 0
+
+
+class TestKnapsackProperties:
+    @given(
+        items=st.lists(
+            st.tuples(
+                st.integers(min_value=1, max_value=20),
+                st.integers(min_value=1, max_value=50),
+            ),
+            min_size=0,
+            max_size=8,
+        ),
+        capacity=st.integers(min_value=0, max_value=30),
+    )
+    def test_1d_matches_2d(self, items: list[tuple[int, int]], capacity: int) -> None:
+        """The space-optimized alternate must always agree with the 2D table."""
+        weights = [w for w, _ in items]
+        values = [v for _, v in items]
+        assert knapsack(weights, values, capacity) == knapsack_2d(
+            weights, values, capacity
+        )

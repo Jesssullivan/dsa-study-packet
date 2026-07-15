@@ -41,6 +41,8 @@ def edmonds_karp(
     adj: list[list[int]] = [[] for _ in range(num_nodes)]
 
     for u, v, cap in edges:
+        # += (not =): parallel edges between the same u, v must accumulate
+        # capacity rather than one silently overwriting another.
         capacity[u][v] += cap
         adj[u].append(v)
         adj[v].append(u)  # reverse edge for residual graph
@@ -64,6 +66,8 @@ def edmonds_karp(
         node = sink
         while node != source:
             prev = parent[node]
+            # Residual update: subtract along the path we used, credit the
+            # reverse edge so a later augmenting path can "undo" this flow.
             capacity[prev][node] -= path_flow
             capacity[node][prev] += path_flow
             node = prev
@@ -82,6 +86,8 @@ def _bfs(
 ) -> list[int] | None:
     """BFS to find an augmenting path. Returns parent array or None."""
     parent = [-1] * num_nodes
+    # Sentinel: parent[source] = source (not -1) marks source as visited
+    # while still distinguishing it from an untouched node.
     parent[source] = source
     queue: deque[int] = deque([source])
 

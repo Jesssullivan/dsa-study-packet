@@ -6,9 +6,9 @@ Problem:
     exceeding capacity. Each item can be taken at most once.
 
 Approach:
-    Classic DP. Include both the 2D tabulation (for clarity) and the
-    space-optimized 1D version (iterate capacity backwards to avoid
-    reusing items in the same row).
+    Classic DP. knapsack_2d is the full tabulation (for clarity);
+    knapsack is the space-optimized 1D alternate (iterate capacity
+    backwards to avoid reusing items in the same row).
 
 When to use:
     Resource allocation with constraints — "maximize value under weight
@@ -46,6 +46,7 @@ def knapsack_2d(
     return dp[n][capacity]
 
 
+# --- space-optimized 1D alternate (rolling array over a 2D table) ---
 def knapsack(
     weights: Sequence[int],
     values: Sequence[int],
@@ -59,6 +60,9 @@ def knapsack(
     dp = [0] * (capacity + 1)
 
     for w, v in zip(weights, values, strict=True):
+        # capacity walked high-to-low so dp[c - w] still holds last row's
+        # (item i-1) value -- forward iteration would let one item get
+        # counted twice in the same pass (unbounded, not 0/1)
         for c in range(capacity, w - 1, -1):
             dp[c] = max(dp[c], dp[c - w] + v)
 

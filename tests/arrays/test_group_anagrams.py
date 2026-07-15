@@ -1,6 +1,9 @@
 """Tests for the group-anagrams problem."""
 
-from algo.arrays.group_anagrams import group_anagrams
+from hypothesis import given
+from hypothesis import strategies as st
+
+from algo.arrays.group_anagrams import group_anagrams, group_anagrams_countkey
 
 
 def _normalize(groups: list[list[str]]) -> list[list[str]]:
@@ -34,3 +37,31 @@ class TestGroupAnagrams:
     def test_empty_strings(self) -> None:
         result = group_anagrams(["", ""])
         assert _normalize(result) == [["", ""]]
+
+    @given(
+        strs=st.lists(
+            st.text(alphabet="abc", min_size=0, max_size=8),
+            min_size=0,
+            max_size=20,
+        ),
+    )
+    def test_every_input_string_appears_exactly_once(self, strs: list[str]) -> None:
+        result = group_anagrams(strs)
+        flattened = [s for group in result for s in group]
+        assert sorted(flattened) == sorted(strs)
+
+
+class TestGroupAnagramsCountkey:
+    """Cross-check the count-key alternate against the primary implementation."""
+
+    @given(
+        strs=st.lists(
+            st.text(alphabet="abc", min_size=0, max_size=8),
+            min_size=0,
+            max_size=20,
+        ),
+    )
+    def test_matches_primary(self, strs: list[str]) -> None:
+        assert _normalize(group_anagrams_countkey(strs)) == _normalize(
+            group_anagrams(strs)
+        )
