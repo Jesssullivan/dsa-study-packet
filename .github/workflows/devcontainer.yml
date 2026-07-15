@@ -1,8 +1,8 @@
 name: devcontainer-smoke
 
 # Proves a stranger's Codespace works: the container builds on Linux with NO
-# secrets, and the core practice loop runs green end-to-end. challenge-done
-# runs TWICE on purpose — the second call exercises the re-mark sed branch
+# secrets, and the editor-first practice loop runs green end-to-end. challenge-done
+# runs TWICE on purpose. The second call exercises the re-mark sed branch
 # that once hid a BSD-only flag (#34).
 
 on:
@@ -14,6 +14,11 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - "scripts/strip_solution.py"
+      - "scripts/practice_workspace.py"
+      - "scripts/scaffold_status.py"
+      - ".github/agents/**"
+      - ".github/prompts/**"
+      - ".vscode/**"
       - ".github/workflows/devcontainer.yml"
   pull_request:
     paths:
@@ -22,6 +27,11 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - "scripts/strip_solution.py"
+      - "scripts/practice_workspace.py"
+      - "scripts/scaffold_status.py"
+      - ".github/agents/**"
+      - ".github/prompts/**"
+      - ".vscode/**"
       - ".github/workflows/devcontainer.yml"
   workflow_dispatch:
 
@@ -42,10 +52,34 @@ jobs:
             just --version
             bash .devcontainer/welcome.sh
             uv run pytest tests/arrays -q
-            just interview arrays two_sum
+            PRACTICE_NO_OPEN=1 just practice-start comments arrays two_sum
+            just practice-status
+            if just practice-test; then
+              echo "locked workspace unexpectedly ran tests" >&2
+              exit 1
+            fi
+            sed -i \
+              -e 's|# RESTATE:.*|# RESTATE: return two distinct indices whose values sum to the target.|' \
+              -e 's|# EXAMPLE:.*|# EXAMPLE: [2, 7], 9 returns (0, 1); negatives remain valid.|' \
+              -e 's|# INVARIANT:.*|# INVARIANT: seen maps each prior value to its index.|' \
+              -e 's|# APPROACH:.*|# APPROACH: O(n^2) pairs; use a hash map for O(n) time.|' \
+              -e 's|# TESTS:.*|# TESTS: cover the concrete pair and one edge case.|' \
+              -e 's|# COMPLEXITY:.*|# COMPLEXITY: O(n) time and O(n) space.|' \
+              -e '/# ==== THINKING GATE:/d' \
+              -e 's|    raise NotImplementedError|    seen: dict[int, int] = {}\n    for index, value in enumerate(nums):\n        complement = target - value\n        if complement in seen:\n            return (seen[complement], index)\n        seen[value] = index\n    raise ValueError("no two elements sum to target")|' \
+              .challenges/workspace/two_sum.py
+            sed -i \
+              -e 's|# from algo.arrays.two_sum import two_sum|from algo.arrays.two_sum import two_sum|' \
+              -e '/# def test_concrete_example()/,+1 s|^# ||' \
+              -e '/def test_concrete_example()/,+1 s|assert ...|assert two_sum([2, 7, 11, 15], 9) == (0, 1)|' \
+              .challenges/workspace/test_two_sum_candidate.py
+            just practice-status
+            just practice-next | tee /tmp/practice-next.txt
+            grep -q '^STATE: CLOSE$' /tmp/practice-next.txt
+            just practice-test
+            just practice-finish "smoke: trace one edge before tests"
+            just practice-finish "smoke: trace one edge before tests"
             just challenge-done arrays two_sum
             just challenge-done arrays two_sum
-            just solution arrays two_sum
-            just rep "smoke arrays/two_sum C2 L2 A2 R2 P2 h0 ci"
             just study-spaced 3
             just public-boundary

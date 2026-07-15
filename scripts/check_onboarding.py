@@ -1,15 +1,11 @@
-"""CI guard: fail if the first-run onboarding surfaces drift out of agreement.
+"""Guard the native Codespaces editor-practice onboarding contract.
 
-A learner's first ten minutes touch a handful of files — the README, the
-Codespaces WELCOME, the devcontainer banner + launch script + secret
-declarations, and the `just doctor` preflight. They must tell one story: the
-same first line to say, the same interviewer-secret names, the same one-time
-setup pointers. This guard is the single source of truth for that agreement.
-It does not generate the surfaces; it just refuses to let them drift apart.
-
-Edit a surface, keep it in step with the rest (and with the SURFACES table
-below); where a surface genuinely lacks a string it should carry, fix the
-surface rather than weaken its row.
+The learner should see the same four workspace slash commands in the public
+onboarding, the Codespaces banner, and VS Code's prompt recommendations. Each
+prompt must route through the portable ``just practice-start`` interface and
+the Interviewer agent without a direct edit tool. Codespaces must not
+resurrect the old folder-open terminals or provision external agent CLIs and
+credentials.
 """
 
 from __future__ import annotations
@@ -19,67 +15,151 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# The one line a learner says to start a rep — identical across every surface.
-THE_LINE = "Start my first practice rep."
-
-# The interviewer-secret environment variables, named identically everywhere
-# they appear so a learner who sets one can grep for it and trust the match.
-SECRET_VARS = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY")
-
-# The product name, so a rebrand cannot silently leave a surface behind.
 BRAND = "The DSA Woodshed"
+PARADIGMS = ("reacto", "clarp", "umpire", "comments")
+SLASH_COMMANDS = tuple(f"/{name}" for name in PARADIGMS)
 
-# Relative file -> the substrings it MUST contain. Verified against the tree.
+# Relative file -> substrings it must contain.
 SURFACES: dict[str, tuple[str, ...]] = {
-    "README.md": (BRAND, THE_LINE, *SECRET_VARS, "WELCOME.md"),
+    "README.md": (
+        BRAND,
+        *SLASH_COMMANDS,
+        "just practice-start",
+        "just practice-next",
+        "just practice-finish",
+    ),
     "WELCOME.md": (
-        THE_LINE,
-        *SECRET_VARS,
-        "claude setup-token",
-        "github.com/settings/codespaces",
+        *SLASH_COMMANDS,
+        "just practice-start",
+        "just practice-next",
+        "just practice-finish",
     ),
-    ".devcontainer/welcome.sh": (BRAND, THE_LINE, *SECRET_VARS),
-    ".devcontainer/launch-agent.sh": (
-        THE_LINE,
-        "CLAUDE_CODE_OAUTH_TOKEN",
+    ".devcontainer/welcome.sh": (
+        BRAND,
+        *SLASH_COMMANDS,
+        "/continue",
+        "just practice-start",
+        "just practice-next",
+        "just practice-finish",
+    ),
+    ".devcontainer/devcontainer.json": (
+        "GitHub.copilot-chat",
+        "setup.sh --tools",
+        "setup.sh --sync",
+        "setup.sh --seed",
+    ),
+    ".devcontainer/setup.sh": ("--tools", "--sync", "--seed"),
+    ".vscode/settings.json": (
+        "chat.useAgentsMdFile",
+        "github.copilot.chat.codeGeneration.useInstructionFiles",
+        "chat.promptFilesRecommendations",
+        "github.copilot.enable",
+        "github.copilot.nextEditSuggestions.enabled",
+        *PARADIGMS,
+        "continue",
+    ),
+    ".vscode/tasks.json": (
+        "practice-start",
+        "practice-next",
+        "practice-test",
+        "practice-watch",
+        "practice-repl",
+        "practice-open",
+        "practice-finish",
+    ),
+    ".github/agents/interviewer.agent.md": (
+        "target: vscode",
+        "read/readFile",
+        "execute/runInTerminal",
+        "execute/getTerminalOutput",
+        "`AGENTS.md`",
+        "just practice-next",
+    ),
+    **{
+        f".github/prompts/{name}.prompt.md": (
+            f"name: {name}",
+            "agent: 'Interviewer'",
+            f"just practice-start {name}",
+        )
+        for name in PARADIGMS
+    },
+    ".github/prompts/continue.prompt.md": (
+        "name: continue",
+        "agent: 'Interviewer'",
+        "just practice-next",
+        "STATE:",
+        "NEXT:",
+        "Never edit the candidate workspace",
+    ),
+}
+
+# Relative file -> substrings that would restore superseded startup behavior
+# or escape the read/execute-only interviewer boundary.
+FORBIDDEN: dict[str, tuple[str, ...]] = {
+    ".devcontainer/devcontainer.json": (
+        "anthropic.claude-code",
         "ANTHROPIC_API_KEY",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "OPENAI_API_KEY",
     ),
-    ".devcontainer/devcontainer.json": SECRET_VARS,
-    "scripts/doctor.py": (THE_LINE, "ANTHROPIC_API_KEY", "OPENAI_API_KEY"),
+    ".devcontainer/setup.sh": (
+        "npm install -g @openai/codex",
+        "seed_claude_json",
+        "codex login",
+    ),
+    ".vscode/tasks.json": (
+        '"runOn": "folderOpen"',
+        ".devcontainer/launch-agent.sh",
+        "exec bash",
+    ),
+    ".github/agents/interviewer.agent.md": (
+        "edit/editFiles",
+        "edit/createFile",
+        "edit/applyPatch",
+    ),
+    **{f".github/prompts/{name}.prompt.md": ("\ntools:",) for name in PARADIGMS},
+    ".github/prompts/continue.prompt.md": ("\ntools:",),
 }
 
 REMEDY = (
-    "onboarding drift — these surfaces must agree; "
-    "see scripts/check_onboarding.py SURFACES"
+    "Codespaces onboarding drift: keep slash prompts, the portable just "
+    "interface, and native no-auto-terminal startup in agreement; see "
+    "scripts/check_onboarding.py"
 )
 
 
 def check(root: Path) -> list[str]:
-    """Return one "file: missing ..." line per surface/substring that drifted.
-
-    Testable against any tree that mirrors the repo layout: only the SURFACES
-    entries under ``root`` are consulted, so a temporary copy works.
-    """
+    """Return one actionable line per missing or forbidden contract string."""
     failures: list[str] = []
-    for rel, required in SURFACES.items():
+    files = set(SURFACES) | set(FORBIDDEN)
+    for rel in sorted(files):
         path = root / rel
         if not path.exists():
             failures.append(f"{rel}: missing file")
             continue
         text = path.read_text()
-        failures.extend(f'{rel}: missing "{needle}"' for needle in required if needle not in text)
+        failures.extend(
+            f'{rel}: missing "{needle}"'
+            for needle in SURFACES.get(rel, ())
+            if needle not in text
+        )
+        failures.extend(
+            f'{rel}: contains forbidden "{needle}"'
+            for needle in FORBIDDEN.get(rel, ())
+            if needle in text
+        )
     return failures
 
 
 def main() -> int:
     failures = check(ROOT)
     if failures:
-        print("Onboarding drift (first-run surfaces disagree):", file=sys.stderr)
+        print("Codespaces onboarding drift:", file=sys.stderr)
         for failure in failures:
             print(f"  {failure}", file=sys.stderr)
         print(f"  {REMEDY}", file=sys.stderr)
         return 1
-    print(f"Onboarding guard passed; {len(SURFACES)} first-run surfaces agree.")
+    print(f"Onboarding guard passed; {len(SURFACES)} native surfaces agree.")
     return 0
 
 

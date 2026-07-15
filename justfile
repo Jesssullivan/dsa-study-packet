@@ -1,4 +1,4 @@
-# dsa-study-packet — algorithm practice
+# dsa-study-packet: algorithm practice
 set dotenv-load := false
 
 default:
@@ -52,6 +52,7 @@ lint:
     uv run python scripts/check_doc_counts.py
     uv run python scripts/check_agent_instructions.py
     uv run python scripts/check_onboarding.py
+    uv run python scripts/check_clarity.py
     uv run python scripts/check_no_stubs.py
     uv run python scripts/validate_appendix_schema.py
 
@@ -281,7 +282,7 @@ challenge topic problem:
     mkdir -p ".challenges/{{ topic }}"
     if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
     uv run python scripts/strip_solution.py "$src"
-    echo "Challenge: $src — implement the functions to make tests pass"
+    echo "Challenge: $src. Implement the functions to make tests pass."
     echo "  Run:  just study {{ topic }}"
     echo "  Peek: just solution {{ topic }} {{ problem }}"
     uv run pytest "tests/{{ topic }}/test_{{ problem }}.py" -v 2>&1 | tail -20 || true
@@ -301,12 +302,12 @@ challenge-done topic problem:
     set -euo pipefail
     progress=".challenges/progress.md"
     touch "$progress"
-    entry="- [x] {{ topic }}/{{ problem }} — $(date +%Y-%m-%d)"
+    entry="- [x] {{ topic }}/{{ problem }} $(date +%Y-%m-%d)"
     if ! grep -q "{{ topic }}/{{ problem }}" "$progress" 2>/dev/null; then
         echo "$entry" >> "$progress"
     else
         # BSD (macOS) sed needs `-i ''`; GNU (Linux) sed rejects it. Try the BSD
-        # form, fall back to the GNU form — same idiom as the `new` recipe above.
+        # form, then fall back to the GNU form, as in the `new` recipe above.
         sed -i '' "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress" 2>/dev/null \
             || sed -i "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress"
     fi
@@ -332,7 +333,7 @@ practice-day day="12":
 study-tonight:
     @uv run python scripts/practice_day.py 12
 
-# Reset the practice slate: restore stripped solutions, clear progress + rep log
+# Reset the legacy challenge slate; current editor workspace/history are preserved.
 challenge-reset:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -350,51 +351,72 @@ challenge-reset:
             echo "restored: $dest"
             restored=$((restored+1))
         done < <(find .challenges -name '*.py.solution' -type f)
-        rm -f .challenges/progress.md .challenges/reps.md
+        rm -f .challenges/progress.md
         find .challenges -type d -empty -delete 2>/dev/null || true
     fi
-    echo "Slate reset: $restored solution(s) restored; progress and rep log cleared."
+    echo "Legacy challenge slate reset: $restored solution(s) restored; progress cleared; rep log and editor history preserved."
 
-# Preflight: check the toolchain and optional interviewer CLIs
+# Preflight: check the practice toolchain and optional editor/agent helpers.
 doctor:
     @python3 scripts/doctor.py
 
-# Interview mode: cold problem — statement only (no Approach/Complexity), no auto-tests
-interview topic problem:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    src="src/algo/{{ topic }}/{{ problem }}.py"
-    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
-    if [ ! -f "$src" ]; then echo "Error: $src not found"; exit 1; fi
-    mkdir -p ".challenges/{{ topic }}"
-    if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
-    uv run python scripts/strip_solution.py --cold "$src" >/dev/null
-    uv run python scripts/strip_solution.py --print-statement "$src"
-    echo "Interview (cold): CLARP at the board first, then implement in $src"
-    echo "  Verify: just study {{ topic }}   Restore: just solution {{ topic }} {{ problem }}"
-    echo "  Log:    just rep \"{{ topic }}/{{ problem }} C_ L_ A_ R_ P_ <one fix>\""
+# Start or resume an editor-first rep (reacto, clarp, umpire, or comments).
+# Omit topic/problem to draw the next spaced-repetition problem.
+practice-start paradigm *selection:
+    @uv run python scripts/practice_workspace.py start {{ paradigm }} {{ selection }}
 
-# Rung-2 comment-driven rep: cold stub + think-aloud scaffold, code locked
+# Start a fresh rep and archive any current workspace.
+practice-new paradigm *selection:
+    @uv run python scripts/practice_workspace.py start {{ paradigm }} {{ selection }} --fresh
+
+# Show comment-gate and candidate-test status for the current rep.
+practice-status:
+    @uv run python scripts/practice_workspace.py status
+
+# Print one machine-readable state and one next action for the current rep.
+practice-next:
+    @uv run python scripts/practice_workspace.py next
+
+# Run only the current problem's reference tests plus candidate-owned tests.
+practice-test:
+    @uv run python scripts/practice_workspace.py test
+
+# Re-run the current rep's focused tests whenever its workspace changes.
+practice-watch:
+    @uv run python scripts/practice_workspace.py watch
+
+# Load the current candidate implementation in an interactive Python prompt.
+practice-repl:
+    @uv run python scripts/practice_workspace.py repl
+
+# Reopen the current candidate source and test tabs.
+practice-open:
+    @uv run python scripts/practice_workspace.py open
+
+# Print the current rep metadata (agent/tooling interface).
+practice-current:
+    @uv run python scripts/practice_workspace.py current
+
+# Pair the private rep note and spaced-review update for the current workspace.
+practice-finish note:
+    @uv run python scripts/practice_workspace.py finish {{ quote(note) }}
+
+# Print a cold committed problem statement. Omit both values to draw one.
+practice-present *selection:
+    @uv run python scripts/practice_workspace.py present {{ selection }}
+
+# Print the committed reference implementation without changing working files.
+practice-reference topic problem:
+    @uv run python scripts/practice_workspace.py reference {{ topic }} {{ problem }}
+
+# Board/talk compatibility entry point: cold presentation, no file mutation.
+interview *selection:
+    @just practice-present {{ selection }}
+    @echo "Interview (cold): reason out loud first. Start an editor rep only when requested."
+
+# Compatibility entry point: plain comment-driven isolated editor rep.
 interview-comment topic problem:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    src="src/algo/{{ topic }}/{{ problem }}.py"
-    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
-    if [ ! -f "$src" ]; then echo "Error: $src not found"; exit 1; fi
-    mkdir -p ".challenges/{{ topic }}"
-    if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
-    uv run python scripts/strip_solution.py --cold --scaffold "$src" >/dev/null
-    uv run python scripts/strip_solution.py --print-statement "$src"
-    if command -v code >/dev/null 2>&1; then
-        line="$(grep -n 'RESTATE:' "$src" | head -1 | cut -d: -f1)"
-        code --goto "$src:${line:-1}" -r 2>/dev/null \
-            || echo "  (open $src at the RESTATE line to begin)"
-    else
-        echo "  Open $src at the RESTATE line to begin."
-    fi
-    echo "Fill the five comments top-to-bottom (keep each '# LABEL:' prefix),"
-    echo "then save; delete the LOCK line yourself when you're ready to code."
-    echo "  Verify: just study {{ topic }}   Restore: just solution {{ topic }} {{ problem }}"
+    @just practice-start comments {{ topic }} {{ problem }}
 
 # Block until a file is saved (rung-2 turn-taking; exit 0=saved, 2=timeout)
 wait file timeout="300":

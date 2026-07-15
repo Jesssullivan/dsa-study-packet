@@ -1,9 +1,10 @@
 """Spaced-repetition drill scheduler.
 
-Ranks the Core 42 by review urgency from .challenges/progress.md: never-attempted
+Ranks the core problem set by review urgency from .challenges/progress.md:
+never-attempted
 problems come first, then those longest since their last review. Prints the next
-problems to drill with their `just interview` commands (cold present — the
-ladder's default; `just challenge` remains the learning-mode alternative).
+problems as isolated CLARP editor reps; swap the paradigm argument for REACTO,
+UMPIRE, or plain comments without changing the draw.
 
 Usage:
     python scripts/study_schedule.py [N]   # default 5
@@ -14,6 +15,7 @@ from __future__ import annotations
 import contextlib
 import re
 import sys
+from collections import deque
 from datetime import date, datetime
 from pathlib import Path
 
@@ -31,7 +33,10 @@ def _completed(progress: Path = PROGRESS) -> dict[str, str]:
     done: dict[str, str] = {}
     if progress.exists():
         for line in progress.read_text().splitlines():
-            m = re.match(r"- \[x\] (\S+/\S+)\s*—?\s*(.*)", line)
+            m = re.match(
+                r"- \[x\] ([a-z0-9_]+/[a-z0-9_]+)\s*(?:\u2014|:)?\s*(.*)",
+                line,
+            )
             if m:
                 done[m.group(1)] = m.group(2).strip()
     return done
@@ -45,16 +50,37 @@ def _days_since(datestr: str) -> int:
     return (date.today() - d).days
 
 
+def _interleave_topics(entries: list[QueueEntry]) -> list[QueueEntry]:
+    """Round-robin equal-urgency entries without reordering within a topic."""
+    by_topic: dict[str, deque[QueueEntry]] = {}
+    for entry in entries:
+        by_topic.setdefault(entry[1], deque()).append(entry)
+
+    interleaved: list[QueueEntry] = []
+    while by_topic:
+        exhausted: list[str] = []
+        for topic, topic_entries in by_topic.items():
+            interleaved.append(topic_entries.popleft())
+            if not topic_entries:
+                exhausted.append(topic)
+        for topic in exhausted:
+            del by_topic[topic]
+    return interleaved
+
+
 def ranked_queue(progress: Path = PROGRESS) -> list[QueueEntry]:
-    """Return drills ranked by review urgency."""
+    """Return drills by urgency, interleaving topics within each tie bucket."""
     done = _completed(progress)
-    ranked: list[QueueEntry] = []
+    buckets: dict[int, list[QueueEntry]] = {}
     for topic, problems in CORE_42.items():
         for problem in problems:
             key = f"{topic}/{problem}"
             urgency = _NEVER if key not in done else _days_since(done[key])
-            ranked.append((urgency, topic, problem))
-    ranked.sort(key=lambda item: item[0], reverse=True)
+            buckets.setdefault(urgency, []).append((urgency, topic, problem))
+
+    ranked: list[QueueEntry] = []
+    for urgency in sorted(buckets, reverse=True):
+        ranked.extend(_interleave_topics(buckets[urgency]))
     return ranked
 
 
@@ -63,10 +89,10 @@ def format_queue(count: int = 5, progress: Path = PROGRESS) -> str:
     ranked = ranked_queue(progress)
     total = len(ranked)
     drilled = sum(1 for u, _, _ in ranked if u != _NEVER)
-    lines = [f"# Spaced-repetition queue — {drilled}/{total} attempted", ""]
+    lines = [f"# Spaced-repetition queue: {drilled}/{total} attempted", ""]
     for urgency, topic, problem in ranked[:count]:
         tag = "new" if urgency == _NEVER else f"{urgency}d since review"
-        lines.append(f"just interview {topic} {problem}    # {tag}")
+        lines.append(f"just practice-start clarp {topic} {problem}    # {tag}")
     return "\n".join(lines)
 
 

@@ -6,6 +6,19 @@
   "python.testing.unittestEnabled": false,
   "ruff.nativeServer": "on",
   "ruff.organizeImports": true,
+  "chat.useAgentsMdFile": true,
+  "github.copilot.chat.codeGeneration.useInstructionFiles": false,
+  "chat.promptFilesRecommendations": {
+    "reacto": true,
+    "clarp": true,
+    "umpire": true,
+    "comments": true,
+    "continue": true
+  },
+  "github.copilot.enable": {
+    "*": false
+  },
+  "github.copilot.nextEditSuggestions.enabled": false,
   "editor.formatOnSave": true,
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"

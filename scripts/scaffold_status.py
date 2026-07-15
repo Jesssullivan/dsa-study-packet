@@ -1,7 +1,7 @@
 """Presence-gate a rung-2 comment scaffold: which sections are filled, and is
 coding still locked?
 
-Working-tree agent tool only — NEVER wire into `just lint` or CI: the scaffold
+Working-tree agent tool only. NEVER wire into `just lint` or CI: the scaffold
 deliberately contains `raise NotImplementedError`, which `check_no_stubs.py`
 rightly rejects in committed code.
 
@@ -21,14 +21,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from strip_solution import LOCK_SENTINEL, SCAFFOLD_SEEDS
 
-LABELS = tuple(seed.split(":", 1)[0].removeprefix("# ") for seed in SCAFFOLD_SEEDS)
 
-
-def section_status(text: str) -> dict[str, str]:
+def section_status(
+    text: str,
+    seeds: tuple[str, ...] = SCAFFOLD_SEEDS,
+    lock_sentinel: str = LOCK_SENTINEL,
+) -> dict[str, str]:
+    labels = tuple(seed.split(":", 1)[0].removeprefix("# ") for seed in seeds)
     lines = [line.strip() for line in text.splitlines()]
-    markers = tuple(f"# {label}:" for label in LABELS)
+    markers = tuple(f"# {label}:" for label in labels)
     status: dict[str, str] = {}
-    for label, seed, marker in zip(LABELS, SCAFFOLD_SEEDS, markers, strict=True):
+    for label, seed, marker in zip(labels, seeds, markers, strict=True):
         starts = [i for i, line in enumerate(lines) if line.startswith(marker)]
         if not starts:
             status[label] = "missing"
@@ -36,7 +39,12 @@ def section_status(text: str) -> dict[str, str]:
         start = starts[0]
         block = [lines[start]]
         for line in lines[start + 1 :]:
-            if line.startswith(markers) or line == LOCK_SENTINEL:
+            if line.startswith(markers) or line == lock_sentinel:
+                break
+            # Once the candidate unlocks, executable code follows the final
+            # marker. It is not evidence that the final reasoning comment was
+            # filled in.
+            if line and not line.startswith("#"):
                 break
             if line:
                 block.append(line)

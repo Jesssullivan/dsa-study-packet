@@ -1,60 +1,42 @@
 # Welcome to the woodshed
 
-You're in **The DSA Woodshed** — where you slow down the one weak passage and
-run it clean. When this Codespace opens you should see a **split terminal**: the
-left pane is your interviewer (or guidance for getting one), the right pane is a
-shell with the crib sheet. If VS Code Desktop asks **"Allow Automatic Tasks?"** — click
-**Allow** (the browser client doesn't ask).
+Start in the editor. Open Copilot Chat and choose one comment format:
 
-Say the line and you're practicing:
+```text
+/reacto
+/clarp
+/umpire
+/comments
+```
 
-> Start my first practice rep.
+The command draws the next due problem. Add a topic and problem when you want
+one directly, such as `/reacto arrays two_sum`.
 
-No credential? Nothing is locked: Copilot Chat (sidebar → pick the
-**Interviewer** agent) and the solo loop (`just interview arrays two_sum`,
-method on `reference-sheets/10`) work with zero keys. Prefer writing your
-thinking down? `just interview-comment arrays two_sum` seeds a comment
-scaffold into the stub — fill it, save, and your interviewer picks it up.
-`just doctor` checks the toolchain.
+Two gitignored files open under `.challenges/workspace/`: your source and your
+test file. Fill the reasoning comments, save, and delete the `THINKING GATE`
+yourself. Then implement and add examples or edge cases. The interviewer does
+not write your code, tests, or gate.
 
-## One-time setup: an interviewer that's already running when you attach
+Enter `/continue` after a save, or use the terminal controls:
 
-Optional, takes two minutes, and every future Codespace opens straight into a
-live interviewer.
+```bash
+just practice-next
+just practice-test
+just practice-watch
+just practice-repl
+just practice-open
+```
 
-**Claude Code — pick ONE:**
+Finish with one useful correction:
 
-- **Subscription token** (Pro/Max, no per-token billing — recommended): on any
-  machine with a browser, run `claude setup-token`, copy the printed token
-  immediately (it is not saved anywhere), and store it as a Codespaces secret
-  named `CLAUDE_CODE_OAUTH_TOKEN` at
-  [github.com/settings/codespaces](https://github.com/settings/codespaces).
-  It lasts one year; rerun `claude setup-token` to renew.
-- **API key** (pay-as-you-go): store a key from console.anthropic.com as the
-  secret `ANTHROPIC_API_KEY`.
-- Do **not** set both — the API key silently wins and bills your API account.
+```bash
+just practice-finish "state the one fix"
+```
 
-**Codex:** store an OpenAI key as the secret `OPENAI_API_KEY`. The container
-logs the Codex TUI in for you on first build (the bare env var alone does not).
-ChatGPT-plan login isn't recommended here — its auth refreshes every ~8 days
-and goes stale in an ephemeral container.
+Copilot is optional. `just practice-start reacto` begins the same rep from a
+terminal. Codespaces needs no repository API key and starts no external agent.
+Claude Code, Codex, and other CLIs are optional tools you launch and
+authenticate yourself.
 
-**The one click people forget:** Codespaces secrets are granted per-repository.
-When you create a new repo from this template, revisit
-[github.com/settings/codespaces](https://github.com/settings/codespaces) and
-add the new repo to your secret's access list — otherwise the key silently
-isn't injected and you'll land on the no-key path.
-
-## Choosing your interviewer's brain
-
-Defaults are deliberately unpinned so the interviewer improves as vendors ship:
-
-- **Claude subscribers**: your plan default is already right — Sonnet-class on
-  Pro (fast, warm, cheap), Opus-class on Max (deepest judgment). API-key users:
-  `claude --model sonnet` is the metered sweet spot; `--model opus` for mock
-  days.
-- **Codex**: rides the CLI's current default model; the repo config only sets
-  medium reasoning effort so conversational turns stay snappy.
-- **Copilot Free**: model is auto-selected. Copilot Pro users can pick a
-  Claude Sonnet-class model in the Chat model picker — noticeably better
-  interviewer tone.
+For a slower surface, ask for an untimed conversational rep. Use timed
+board-style practice only when narration under a clock is today's target.

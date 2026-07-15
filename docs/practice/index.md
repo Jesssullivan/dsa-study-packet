@@ -1,73 +1,46 @@
 ---
-title: Practice Exercises
+title: Advanced Exercises
 ---
 
-# Practice Exercises
+# Advanced Exercises
 
-Exercises designed for practical problem-solving rounds where the interviewer
-shows you unfamiliar code and asks you to analyze it.
+Use these after ordinary editor reps when you want to practice reading
+unfamiliar code, finding operational risks, or decomposing an open-ended
+system. They supplement the [Practice Drills](../challenges/index.md); they do
+not replace the comments, code, and tests loop.
 
----
+## Code reading
 
-## Tonight's Block
+The Python files are intentionally buggy or inefficient. For each exercise:
 
-Use the sheet-11 conductor from the terminal; it prints the timed block, current
-spaced-repetition draws, and the stop condition.
+1. Read signatures and docstrings.
+2. Trace one execution path.
+3. Test empty, large, malformed, and concurrent inputs where relevant.
+4. Estimate the time and space cost of the hot path.
+5. Propose two or three fixes, ordered by impact.
 
-```bash
-just study-tonight        # Day 12
-just practice-day 12      # same block, explicit day
-just practice-day 13      # taper day when ready
-```
+| Exercise | File | Focus |
+|----------|------|-------|
+| Caching Service | `src/practice/code_reading/ex01_caching_service.py` | eviction, thread safety |
+| Flight Data Pipeline | `src/practice/code_reading/ex02_flight_data_pipeline.py` | streaming, batching, failures |
+| Rate Limiter | `src/practice/code_reading/ex03_rate_limiter.py` | token buckets, windows, concurrency |
 
----
+Check for unbounded memory, nested work on the hot path, missing validation,
+shared mutable state, blocking I/O, and calls inside loops. Explain the impact
+before proposing a change.
 
-## Code Reading Exercises
+## Problem decomposition
 
-These files contain intentionally buggy or suboptimal code. Your job: identify all issues, propose fixes, and estimate the complexity impact of each fix.
+The open-ended prompts train scope, interfaces, tradeoffs, and test strategy.
 
-| Exercise | File | Domain |
-|----------|------|--------|
-| Caching Service | `src/practice/code_reading/ex01_caching_service.py` | Cache design, eviction, thread safety |
-| Flight Data Pipeline | `src/practice/code_reading/ex02_flight_data_pipeline.py` | Streaming, batching, error handling |
-| Rate Limiter | `src/practice/code_reading/ex03_rate_limiter.py` | Token bucket, sliding window, concurrency |
+| Exercise | File | Focus |
+|----------|------|-------|
+| Vehicle Tracking | `src/practice/decomposition/ex02_vehicle_tracking.md` | geospatial indexing, live updates |
 
-### How to work through code reading exercises
+State assumptions, split the system into parts, identify the riskiest seam,
+and describe how you would verify it. An untimed conversational rep works well
+for a first pass; use an observed mock when concise narration is the target.
 
-1. **Skim** -- read function signatures and docstrings first
-2. **Trace** -- pick one execution path and follow it end to end
-3. **Question** -- "What happens when input is empty? Very large? Malformed?"
-4. **Measure** -- estimate time/space complexity of the hot path
-5. **Propose** -- suggest 2-3 improvements ranked by impact
-
----
-
-## Problem Decomposition Exercises
-
-These are open-ended system design and algorithm decomposition prompts. Practice talking through them out loud -- record yourself.
-
-| Exercise | File | Domain |
-|----------|------|--------|
-| Vehicle Tracking | `src/practice/decomposition/ex02_vehicle_tracking.md` | Geospatial indexing, real-time updates |
-
-### What they're evaluating
-
-- Can you read and understand code you didn't write?
-- Can you identify performance bottlenecks?
-- Can you spot bugs and edge cases?
-- Can you suggest improvements with clear reasoning?
-- Do you communicate your thought process clearly?
-
----
-
-## Checklist for Code Review
-
-Scan every code reading exercise for these red flags:
-
-- [ ] **Nested loops** -- O(n^2) or worse hiding in plain sight
-- [ ] **No streaming** -- loading all data into memory
-- [ ] **Missing error handling** -- no try/except, no input validation
-- [ ] **Thread safety** -- shared mutable state without locks
-- [ ] **N+1 queries** -- database call inside a loop
-- [ ] **Unbounded caches** -- no eviction policy, no TTL
-- [ ] **Synchronous I/O** -- blocking calls in async context
+For a longer scheduled block, run `just practice-day 12` and follow the
+printed stop conditions. Use the daily conductor only when you intend to run
+the full block.

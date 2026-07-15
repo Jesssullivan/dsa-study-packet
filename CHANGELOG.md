@@ -2,12 +2,48 @@
 
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
-are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases — see
+are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## [Unreleased]
 
-## [v2026.7.0] — 2026-07-09
+### Added
+
+- Editor-first practice workspaces under gitignored
+  `.challenges/workspace/`: paradigm-specific reasoning comments, a
+  candidate-owned test tab, a candidate-owned `THINKING GATE`, and focused
+  reference-plus-candidate test, watch, REPL, status, and reopen recipes.
+- Native Copilot workspace prompts: `/reacto`, `/clarp`, `/umpire`, and
+  `/comments`. The slash invocation is the mode choice and draws from
+  spaced repetition when no problem is supplied.
+- `just practice-next`, which returns one stable state and one next action, and
+  `just practice-finish`, which records the rep and schedules review together.
+- A clarity guard for agent and onboarding word budgets, ambiguous command
+  placeholders, and em dashes on the learner control plane.
+
+### Changed
+
+- Codespaces now defaults to its built-in Copilot Chat and the portable
+  `just practice-*` loop. It no longer requires interviewer secrets or
+  auto-starts an external CLI in a split terminal; external agents remain
+  manual options.
+- VS Code applies the root `AGENTS.md` authority once; the generated
+  `.github/copilot-instructions.md` remains available to GitHub.com without
+  duplicating the persona in Codespaces prompts.
+- Starting a rep renders from the committed reference source into an isolated
+  candidate workspace instead of rewriting `src/algo/`. Candidates record
+  reasoning in live comments, save explicitly, remove the thinking gate
+  themselves, implement, and add focused tests.
+- Conversational and board-style practice remain available as slower
+  and mock-practice modes, while the normal Codespaces path begins in the
+  editor.
+- Agent handoff now uses the compact THINK, BUILD, REFLECT, and CLOSE state
+  loop. Generic practice-day routing no longer captures single-rep requests.
+- Repository onboarding, local documentation, learning paths, and the 14-day
+  calendar now share one editor-first flow and a smaller Start, Practice,
+  Library, Method, and Project information architecture.
+
+## [v2026.7.0] - 2026-07-09
 
 First tagged release: the packet as a one-click, agent-conducted practice
 environment, with its reading surface live at https://dsa-woodshed.space.
