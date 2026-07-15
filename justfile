@@ -13,7 +13,7 @@ test *args:
     uv run pytest {{ args }}
 
 # Run tests for a specific topic
-practice topic:
+test-topic topic:
     uv run pytest tests/{{ topic }}/ -v
 
 # Run tests in watch mode (re-runs on file change)
@@ -269,49 +269,12 @@ docs-build: traces
     uv run --extra docs mkdocs build
 
 # ──────────────────────────────────────────────
-# Challenge mode
+# Practice tracking
 # ──────────────────────────────────────────────
-
-# Start a challenge: strips solution, shows failing tests
-challenge topic problem:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    src="src/algo/{{ topic }}/{{ problem }}.py"
-    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
-    if [ ! -f "$src" ]; then echo "Error: $src not found"; exit 1; fi
-    mkdir -p ".challenges/{{ topic }}"
-    if [ ! -f "$backup" ]; then cp "$src" "$backup"; fi
-    uv run python scripts/strip_solution.py "$src"
-    echo "Challenge: $src. Implement the functions to make tests pass."
-    echo "  Run:  just study {{ topic }}"
-    echo "  Peek: just solution {{ topic }} {{ problem }}"
-    uv run pytest "tests/{{ topic }}/test_{{ problem }}.py" -v 2>&1 | tail -20 || true
-
-# Restore the full solution
-solution topic problem:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    backup=".challenges/{{ topic }}/{{ problem }}.py.solution"
-    if [ ! -f "$backup" ]; then echo "No backup for {{ topic }}/{{ problem }}"; exit 1; fi
-    cp "$backup" "src/algo/{{ topic }}/{{ problem }}.py"
-    echo "Solution restored: src/algo/{{ topic }}/{{ problem }}.py"
 
 # Mark a challenge as completed
 challenge-done topic problem:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    progress=".challenges/progress.md"
-    touch "$progress"
-    entry="- [x] {{ topic }}/{{ problem }} $(date +%Y-%m-%d)"
-    if ! grep -q "{{ topic }}/{{ problem }}" "$progress" 2>/dev/null; then
-        echo "$entry" >> "$progress"
-    else
-        # BSD (macOS) sed needs `-i ''`; GNU (Linux) sed rejects it. Try the BSD
-        # form, then fall back to the GNU form, as in the `new` recipe above.
-        sed -i '' "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress" 2>/dev/null \
-            || sed -i "s|.*{{ topic }}/{{ problem }}.*|$entry|" "$progress"
-    fi
-    echo "Marked complete: {{ topic }}/{{ problem }}"
+    @uv run python scripts/practice_workspace.py complete {{ quote(topic) }} {{ quote(problem) }}
 
 # Show challenge progress
 challenge-progress:
@@ -319,7 +282,7 @@ challenge-progress:
 
 # Spaced-repetition: show the next problems due for drilling (default 5)
 study-spaced n="5":
-    @uv run python scripts/study_schedule.py {{ n }}
+    @uv run python scripts/study_schedule.py {{ quote(n) }}
 
 # Print the current generated study-packet catalog.
 catalog:
@@ -327,34 +290,11 @@ catalog:
 
 # Print one sheet-11 practice day as a timed block.
 practice-day day="12":
-    @uv run python scripts/practice_day.py {{ day }}
+    @uv run python scripts/practice_day.py {{ quote(day) }}
 
 # Tonight's productionized Day 12 block.
 study-tonight:
     @uv run python scripts/practice_day.py 12
-
-# Reset the legacy challenge slate; current editor workspace/history are preserved.
-challenge-reset:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    restored=0
-    if [ -d .challenges ]; then
-        while IFS= read -r backup; do
-            rel="${backup#.challenges/}"
-            dest="src/algo/${rel%.solution}"
-            if [ ! -d "$(dirname "$dest")" ]; then
-                echo "skip (topic gone): $dest"
-                continue
-            fi
-            cp "$backup" "$dest"
-            rm -f "$backup"
-            echo "restored: $dest"
-            restored=$((restored+1))
-        done < <(find .challenges -name '*.py.solution' -type f)
-        rm -f .challenges/progress.md
-        find .challenges -type d -empty -delete 2>/dev/null || true
-    fi
-    echo "Legacy challenge slate reset: $restored solution(s) restored; progress cleared; rep log and editor history preserved."
 
 # Preflight: check the practice toolchain and optional editor/agent helpers.
 doctor:
@@ -362,12 +302,28 @@ doctor:
 
 # Start or resume an editor-first rep (reacto, clarp, umpire, or comments).
 # Omit topic/problem to draw the next spaced-repetition problem.
-practice-start paradigm *selection:
-    @uv run python scripts/practice_workspace.py start {{ paradigm }} {{ selection }}
+practice-start paradigm topic="" problem="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    paradigm={{ quote(paradigm) }}
+    topic={{ quote(topic) }}
+    problem={{ quote(problem) }}
+    if [ -z "$topic" ] && [ -z "$problem" ]; then
+        exec uv run python scripts/practice_workspace.py start "$paradigm"
+    fi
+    exec uv run python scripts/practice_workspace.py start "$paradigm" "$topic" "$problem"
 
 # Start a fresh rep and archive any current workspace.
-practice-new paradigm *selection:
-    @uv run python scripts/practice_workspace.py start {{ paradigm }} {{ selection }} --fresh
+practice-new paradigm topic="" problem="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    paradigm={{ quote(paradigm) }}
+    topic={{ quote(topic) }}
+    problem={{ quote(problem) }}
+    if [ -z "$topic" ] && [ -z "$problem" ]; then
+        exec uv run python scripts/practice_workspace.py start "$paradigm" --fresh
+    fi
+    exec uv run python scripts/practice_workspace.py start "$paradigm" "$topic" "$problem" --fresh
 
 # Show comment-gate and candidate-test status for the current rep.
 practice-status:
@@ -402,28 +358,50 @@ practice-finish note:
     @uv run python scripts/practice_workspace.py finish {{ quote(note) }}
 
 # Print a cold committed problem statement. Omit both values to draw one.
-practice-present *selection:
-    @uv run python scripts/practice_workspace.py present {{ selection }}
+practice-present topic="" problem="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    topic={{ quote(topic) }}
+    problem={{ quote(problem) }}
+    if [ -z "$topic" ] && [ -z "$problem" ]; then
+        exec uv run python scripts/practice_workspace.py present
+    fi
+    exec uv run python scripts/practice_workspace.py present "$topic" "$problem"
 
-# Print the committed reference implementation without changing working files.
-practice-reference topic problem:
-    @uv run python scripts/practice_workspace.py reference {{ topic }} {{ problem }}
+# Print the current or explicitly selected committed reference implementation.
+practice-reference topic="" problem="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    topic={{ quote(topic) }}
+    problem={{ quote(problem) }}
+    if [ -z "$topic" ] && [ -z "$problem" ]; then
+        exec uv run python scripts/practice_workspace.py reference
+    fi
+    exec uv run python scripts/practice_workspace.py reference "$topic" "$problem"
 
 # Board/talk compatibility entry point: cold presentation, no file mutation.
-interview *selection:
-    @just practice-present {{ selection }}
-    @echo "Interview (cold): reason out loud first. Start an editor rep only when requested."
+interview topic="" problem="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    topic={{ quote(topic) }}
+    problem={{ quote(problem) }}
+    if [ -z "$topic" ] && [ -z "$problem" ]; then
+        just practice-present
+    else
+        just practice-present "$topic" "$problem"
+    fi
+    echo "Interview (cold): reason out loud first. Start an editor rep only when requested."
 
 # Compatibility entry point: plain comment-driven isolated editor rep.
 interview-comment topic problem:
-    @just practice-start comments {{ topic }} {{ problem }}
-
-# Block until a file is saved (rung-2 turn-taking; exit 0=saved, 2=timeout)
-wait file timeout="300":
-    @uv run python scripts/wait_for_save.py --timeout {{ timeout }} "{{ file }}"
+    @just practice-start comments {{ quote(topic) }} {{ quote(problem) }}
 
 # Log one practice rep (appends to gitignored .challenges/reps.md)
 rep line:
-    @mkdir -p .challenges && echo "- $(date +%Y-%m-%d) {{ line }}" >> .challenges/reps.md && tail -1 .challenges/reps.md
+    @uv run python scripts/practice_workspace.py log {{ quote(line) }}
+
+# Atomically log and schedule one non-editor rep.
+rep-finish topic problem line:
+    @uv run python scripts/practice_workspace.py finish-non-editor {{ quote(topic) }} {{ quote(problem) }} {{ quote(line) }}
 
 import? "justfile.flywheel"

@@ -32,7 +32,8 @@ edit their tests.
 `/reacto`, `/clarp`, `/umpire`, and `/comments` directly start that mode.
 Immediately run the matching `just practice-start` command. If the candidate
 also names a topic and problem, pass those exact values. Do not ask another
-question first.
+question first. Accept no arguments or exactly two lowercase identifiers. For
+any other form, show the command usage and run nothing.
 
 For a generic practice request, ask exactly once:
 
@@ -67,7 +68,7 @@ Allow a slower mode at any time. Advance only when the candidate asks.
 5. At later save boundaries, run `just practice-next` again. Ask them to
    reconcile comments, code, trace, and tests.
 6. Give one win and one fix. Run `just practice-finish` with a concrete note;
-   it records the rep and schedules review.
+   it records the test outcome, closes unfinished work too, and schedules review.
 
 Never claim that a file opened, a test ran, or a rep was logged unless the
 command succeeded in this session.
@@ -98,8 +99,15 @@ Stop when they recover. Taking a hint is engagement, not failure.
 
 Give one specific success, one gap, and one next action. For editor reps,
 `just practice-finish` closes both private logs. For other modes, use the exact
-draw values in the paired `just rep` and `just challenge-done` recipes. Offer
-the next rung without pushing. Past 90 minutes, prescribe a break.
+draw once:
+
+```text
+just rep-finish arrays two_sum "talk arrays/two_sum C2 L2 A1 R0 P0 h1 trace before optimizing"
+```
+
+Change every value to match the rep. It logs the rep and schedules review
+together. Offer the next rung without pushing. Past 90 minutes, prescribe a
+break.
 
 Never use emojis, badges, streaks, grind framing, employer details, or generic
 cheerleading. Never log private arrival writing.

@@ -1,8 +1,9 @@
-"""Strip function bodies from an algorithm file for challenge mode.
+"""Render non-destructive algorithm practice previews.
 
-Preserves: module docstring, imports, class definitions, function signatures,
-type annotations, and function docstrings.
-Replaces: function bodies with ``raise NotImplementedError``.
+The importable helpers strip function bodies, truncate solution-bearing module
+docstrings, inject a reasoning scaffold, or return the problem statement. The
+CLI writes the requested preview to stdout and never modifies the input file.
+Use ``just practice-start`` to create a candidate-owned workspace.
 
 Usage:
     python scripts/strip_solution.py src/algo/arrays/two_sum.py
@@ -10,17 +11,16 @@ Usage:
     python scripts/strip_solution.py --cold --scaffold src/algo/arrays/two_sum.py
     python scripts/strip_solution.py --print-statement src/algo/arrays/two_sum.py
 
-``--print-statement`` writes nothing; it prints the module docstring block
-(source lines 1 through the docstring's end) to stdout and leaves the file
-untouched. This is the cold-interview problem statement.
+Without flags, the CLI prints a stripped preview. ``--print-statement`` prints
+only the module docstring block (source lines 1 through the docstring's end).
 
-``--scaffold`` (rung-2 comment-driven mode) additionally seeds the think-aloud
-comment scaffold above the first stripped function's ``raise``, ending with a
-LOCK line the candidate deletes themselves to unlock coding.
+``--cold`` removes solution-bearing docstring sections from the preview, and
+``--scaffold`` adds the legacy comment scaffold. All modes are read-only.
 """
 
 from __future__ import annotations
 
+import argparse
 import ast
 import sys
 from pathlib import Path
@@ -36,44 +36,31 @@ LOCK_SENTINEL = "# ==== LOCKED: delete this line to unlock coding ===="
 
 
 def strip_solution(source: str) -> str:
-    """Strip function bodies, keeping signatures and docstrings."""
+    """Strip every implementation, keeping signatures and docstrings."""
     tree = ast.parse(source)
     lines = source.splitlines(keepends=True)
 
-    all_funcs = [
+    all_funcs: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
         n
         for n in ast.walk(tree)
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
-
-    def _span(n: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, int]:
-        return n.lineno, (n.end_lineno or n.lineno)
-
-    def _contained_in_another(n: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-        n_start, n_end = _span(n)
-        for other in all_funcs:
-            if other is n:
-                continue
-            o_start, o_end = _span(other)
-            if (
-                o_start <= n_start
-                and n_end <= o_end
-                and (o_start, o_end) != (n_start, n_end)
-            ):
-                return True
-        return False
-
     # Collect ranges to replace: (start_line, end_line, indent)
     replacements: list[tuple[int, int, int]] = []
 
     for node in all_funcs:
         # Nested functions (closures, helpers defined inside another function)
-        # are already stripped by their enclosing function's replacement — an
+        # are already stripped by their enclosing function's replacement; an
         # independent entry for them would overlap that outer range and, once
         # both are applied against the same mutating `lines` list, corrupt
         # whatever follows (e.g. swallow the blank lines before the next
         # top-level def). Only outermost functions get their own replacement.
-        if _contained_in_another(node):
+        if any(
+            other is not node
+            and other.lineno <= node.lineno
+            and (node.end_lineno or node.lineno) <= (other.end_lineno or other.lineno)
+            for other in all_funcs
+        ):
             continue
 
         # Skip nested functions (helpers inside classes are fine)
@@ -122,8 +109,9 @@ def inject_scaffold(
     seeds: tuple[str, ...] = SCAFFOLD_SEEDS,
     lock_sentinel: str = LOCK_SENTINEL,
     lock_after: int | None = None,
+    target_name: str | None = None,
 ) -> str:
-    """Seed the rung-2 comment scaffold above the first stripped function body.
+    """Seed the editor-practice comments above the selected stripped body.
 
     Targets the earliest function anywhere in the module (top-level or
     method) whose body ends in the bare ``raise`` that ``strip_solution``
@@ -135,11 +123,36 @@ def inject_scaffold(
     if lock_sentinel in source:
         return source
     tree = ast.parse(source)
-    funcs = [
+    funcs: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
         n
         for n in ast.walk(tree)
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
+    if target_name is not None:
+        selected = next(
+            (
+                node
+                for node in tree.body
+                if isinstance(
+                    node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+                )
+                and node.name == target_name
+            ),
+            None,
+        )
+        if selected is None:
+            msg = f"target {target_name!r} is not a top-level function or class"
+            raise ValueError(msg)
+        if isinstance(selected, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            funcs = [selected]
+        else:
+            class_end = selected.end_lineno or selected.lineno
+            funcs = [
+                node
+                for node in funcs
+                if selected.lineno < node.lineno
+                and (node.end_lineno or node.lineno) <= class_end
+            ]
     targets = sorted(
         (f for f in funcs if f.body and isinstance(f.body[-1], ast.Raise)),
         key=lambda f: f.lineno,
@@ -207,47 +220,56 @@ def module_docstring_block(source: str) -> str:
     return "".join(lines[:end])
 
 
-def main() -> None:
-    flags = {"--cold", "--print-statement", "--scaffold"}
-    args = [a for a in sys.argv[1:] if a not in flags]
-    cold = "--cold" in sys.argv[1:]
-    print_statement = "--print-statement" in sys.argv[1:]
-    scaffold = "--scaffold" in sys.argv[1:]
-    if print_statement and (cold or scaffold):
-        print("Error: --print-statement excludes --cold/--scaffold")
-        sys.exit(1)
-    if len(args) != 1:
-        print(
-            f"Usage: {sys.argv[0]} [--cold] [--scaffold] [--print-statement] <source_file>"
-        )
-        sys.exit(1)
-
-    path = Path(args[0])
-    if not path.exists():
-        print(f"Error: {path} not found")
-        sys.exit(1)
-
-    source = path.read_text()
-
-    if print_statement:
-        try:
-            block = module_docstring_block(source)
-        except ValueError as exc:
-            print(f"Error: {exc}: {path}")
-            sys.exit(1)
-        sys.stdout.write(block)
-        return
-
-    stripped = strip_solution(source)
-    if cold:
-        stripped = truncate_module_docstring(stripped)
-    if scaffold:
-        stripped = inject_scaffold(stripped)
-    path.write_text(stripped)
-    print(
-        f"Stripped{' (cold)' if cold else ''}{' +scaffold' if scaffold else ''}: {path}"
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Preview a stripped algorithm on stdout without modifying its source."
     )
+    parser.add_argument(
+        "--cold",
+        action="store_true",
+        help="remove solution-bearing module-docstring sections from the preview",
+    )
+    parser.add_argument(
+        "--scaffold",
+        action="store_true",
+        help="add the legacy reasoning scaffold to the stripped preview",
+    )
+    parser.add_argument(
+        "--print-statement",
+        action="store_true",
+        help="print only the module problem statement",
+    )
+    parser.add_argument("source_file", type=Path)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _parser()
+    args = parser.parse_args(argv)
+    if args.print_statement and (args.cold or args.scaffold):
+        parser.error("--print-statement cannot be combined with --cold or --scaffold")
+
+    path: Path = args.source_file
+    if not path.is_file():
+        parser.error(f"source file not found: {path}")
+
+    try:
+        source = path.read_text()
+        if args.print_statement:
+            rendered = module_docstring_block(source)
+        else:
+            rendered = strip_solution(source)
+            if args.cold:
+                rendered = truncate_module_docstring(rendered)
+            if args.scaffold:
+                rendered = inject_scaffold(rendered)
+    except (OSError, SyntaxError, ValueError) as exc:
+        print(f"strip_solution: {exc}", file=sys.stderr)
+        return 1
+
+    sys.stdout.write(rendered)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

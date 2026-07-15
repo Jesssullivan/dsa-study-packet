@@ -75,8 +75,8 @@ just packet
 
 `just` is the front door. Cache-first Bazel builds use `just remote-*`, never
 raw `bazel`. `//:booklet` is the neutral PDF composition surface for private
-overlays. The repository also generates the site, algorithm pages, and
-reference-sheet PDFs from the tracked source.
+overlays. The tracked source also generates local docs, algorithm pages, and
+reference-sheet PDFs; the reading site syncs that content separately.
 
 ## Repository map
 

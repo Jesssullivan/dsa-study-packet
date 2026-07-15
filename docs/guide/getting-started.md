@@ -75,8 +75,9 @@ your code, tests, or gate. Save detection is explicit, so enter `/continue`
 after a save or run `just practice-next`.
 
 The workspace is gitignored. Starting a different rep archives the previous
-workspace under `.challenges/history/`. Starting the same one resumes it. The
-complete implementation under `src/algo/` remains unchanged.
+workspace under `.challenges/history/`. Starting the same unfinished rep
+resumes it; starting after closeout creates a new rep. The complete
+implementation under `src/algo/` remains unchanged.
 
 ## 3. Use focused feedback
 
@@ -102,7 +103,20 @@ just practice-finish "trace the example before running tests"
 ```
 
 The goal is a useful correction, not a solve count. An unfinished
-implementation can still produce a good rep.
+implementation or failing test can still produce a good rep. At `STATE:
+CLOSE`, `practice-finish` reruns the focused tests once and records the result.
+An earlier closeout records `not_run`. Either path closes the rep instead of
+trapping you in it.
+
+For a talk-only or board rep, use one atomic closeout with the exact draw:
+
+```bash
+just rep-finish arrays two_sum \
+  "talk arrays/two_sum C2 L2 A1 R0 P0 h1 trace before optimizing"
+```
+
+Change the values to match the rep. The command logs it and schedules review
+together.
 
 ## 5. Run locally
 

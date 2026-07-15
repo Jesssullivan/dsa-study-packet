@@ -1,4 +1,4 @@
-"""Presence-gate a rung-2 comment scaffold: which sections are filled, and is
+"""Presence-gate an editor-practice scaffold: which sections are filled, and is
 coding still locked?
 
 Working-tree agent tool only. NEVER wire into `just lint` or CI: the scaffold

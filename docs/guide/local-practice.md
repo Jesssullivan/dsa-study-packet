@@ -70,6 +70,10 @@ just practice-finish "one fix"
 The committed solution under `src/algo/` remains unchanged, and your workspace
 stays gitignored. Run `just doctor` when the toolchain looks wrong.
 
+Candidate tests are trusted local Python, not a sandbox. The runner bounds test
+time and cleans the pytest process group, but candidate tests must not launch
+detached or background daemons.
+
 Claude Code, Codex, and other external agents are optional. Install,
 authenticate, and launch the one you already use; the repository does not
 start one or require its credentials. A direct `just` session works without

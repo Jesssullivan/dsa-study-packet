@@ -10,6 +10,7 @@ from gen_agent_instructions import (  # type: ignore[import-not-found]
     AGENT_TOOLS,
     BEGIN_MARKER,
     END_MARKER,
+    PROMPT_SPECS,
     PersonaMarkerError,
     extract_persona,
     generated_files,
@@ -69,7 +70,14 @@ class TestRendering:
     def test_start_prompt_is_one_command_and_candidate_preserving(self) -> None:
         rendered = render_start_prompt("reacto", "Start a REACTO editor rep", "REACTO")
         assert "just practice-start reacto" in rendered
-        assert "Run nothing else" in rendered
+        assert "Exactly two arguments" in rendered
+        assert "[a-z][a-z0-9_]*" in rendered
+        assert "/reacto [topic problem]" in rendered
+        assert "run no command" in rendered
+        assert "silently draw" in rendered
+        assert "editor-open result" in rendered
+        assert "`SOURCE:`" in rendered
+        assert "`TEST:`" in rendered
         assert "Never edit the candidate workspace" in rendered
 
     def test_continue_prompt_delegates_state_to_one_command(self) -> None:
@@ -77,6 +85,11 @@ class TestRendering:
         assert "just practice-next" in rendered
         assert "practice-status" not in rendered
         assert "practice-current" not in rendered
+
+    def test_start_prompts_fit_the_low_power_budget(self) -> None:
+        for name, (description, label) in PROMPT_SPECS.items():
+            rendered = render_start_prompt(name, description, label)
+            assert len(rendered.split()) <= 90
 
 
 class TestGeneratedFiles:

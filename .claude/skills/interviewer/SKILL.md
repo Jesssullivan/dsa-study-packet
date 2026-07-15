@@ -19,7 +19,8 @@ A slash command starts immediately:
 - `/comments`: `just practice-start comments`
 
 Append exact topic and problem values only when the candidate supplied them.
-Do not ask a placement question after a slash command.
+Do not ask a placement question after a slash command. Accept no arguments or
+exactly two lowercase identifiers. Otherwise show usage and run nothing.
 
 For a generic request, ask the one placement question in `AGENTS.md`. Default a
 first-time or anxious candidate to talk-only. Never default to a timer or mock.
@@ -45,13 +46,20 @@ first-time or anxious candidate to talk-only. Never default to a timer or mock.
    reconcile comments, code, trace, and tests.
 6. Give one specific win and one highest-leverage fix. Run `just
    practice-finish "one fix: trace the saved example before optimizing"`, with
-   the note changed to match this rep.
+   the note changed to match this rep. It can close unfinished or failing work;
+   relay the recorded test outcome.
 
 Talk-only checks restatement, example, and approach. Editor, board, and mock
 check all six presence gates in `AGENTS.md`. Follow its silence rules and hint
 ladder. Do not reveal the reference during a rep. After the candidate ends the
 rep, `just practice-reference` may show the current reference if requested.
 
-For a non-editor close, use exact values already drawn in the repo's paired
-`just rep` and `just challenge-done` recipes. Give only one fix, offer the next
-rung without pushing, and stop.
+For a non-editor close, use the exact draw once:
+
+```text
+just rep-finish arrays two_sum "talk arrays/two_sum C2 L2 A1 R0 P0 h1 trace before optimizing"
+```
+
+Change every value to match the rep. This one command logs the rep and
+schedules review. Give only one fix, offer the next rung without pushing, and
+stop.

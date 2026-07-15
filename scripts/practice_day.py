@@ -86,13 +86,18 @@ def _literal_drills(day: PracticeDay) -> list[tuple[str, str]]:
     drills: list[tuple[str, str]] = []
     for code in re.findall(r"`([^`]+)`", day.drills):
         parts = code.split()
-        if len(parts) == 2 and all(re.fullmatch(r"[a-z_]+", part) for part in parts):
+        if len(parts) == 2 and all(
+            re.fullmatch(r"[a-z][a-z0-9_]*", part) for part in parts
+        ):
             drills.append((parts[0], parts[1]))
     return drills
 
 
 def cold_draws(day: PracticeDay) -> list[tuple[str, str, str]]:
     """Return concrete cold draw commands for a practice day."""
+    if _clean_md(day.drills).lower() == "none":
+        return []
+
     literal = _literal_drills(day)
     draws = [(topic, problem, "sheet 11") for topic, problem in literal]
     review_match = re.search(r"(\d+)\s+review draws?", day.drills)
@@ -127,15 +132,35 @@ def render_day(day_number: int) -> str:
         raise SystemExit(f"unknown practice day {day_number}; valid days: {valid}")
 
     day = days[day_number]
+    draws = cold_draws(day)
     lines = [
         f"# Practice Day {day.day}: {date.today().isoformat()}",
-        "",
-        "Stop condition: run this block, log the reps, then stop building.",
         "",
         f"- Catalog now: {core_count()} core drills, {reference_sheet_count()} reference sheets",
         f"- Focus: {day.focus}",
         f"- Observer: {day.watching}",
         f"- Sheets open: {day.sheets}",
+    ]
+    if not draws:
+        lines += [
+            "",
+            "## Rest day",
+            "",
+            "Stop condition: take the scheduled rest, then stop.",
+            "",
+            "No draws today. Rest and return on the next scheduled day.",
+            "",
+            "## Closeout",
+            "",
+            "- Take the scheduled rest. Do not draw or schedule a rep.",
+            "- If the focus offers a light review, choose it manually; never auto-draw.",
+            "- Read only the sheets listed for today, if any, then stop.",
+        ]
+        return "\n".join(lines)
+
+    lines += [
+        "",
+        "Stop condition: run this block, log the reps, then stop building.",
         "",
         "## Four-hour block",
         "",
@@ -143,12 +168,8 @@ def render_day(day_number: int) -> str:
     for slot, work in load_allocation():
         lines.append(f"- {slot}: {work}")
 
-    lines += [
-        "",
-        "## Editor reps",
-        "",
-    ]
-    for index, (topic, problem, tag) in enumerate(cold_draws(day), start=1):
+    lines += ["", "## Editor reps", ""]
+    for index, (topic, problem, tag) in enumerate(draws, start=1):
         lines.append(f"{index}. `just practice-start clarp {topic} {problem}`  # {tag}")
 
     if day.day == 12:

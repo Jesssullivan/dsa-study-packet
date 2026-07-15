@@ -4,7 +4,9 @@ title: Reference Sheets
 
 # Reference Sheets
 
-Printable reference sheets covering everything from Python stdlib to interview-day logistics, whiteboard performance under pressure, and a day-by-day two-week ramp. Print them out or keep them open as tabs during study sessions.
+Printable reference sheets covering Python, algorithms, interview-day
+logistics, observable reasoning under pressure, and a two-week editor-first
+ramp. Print them or keep them open beside the editor. Board work is optional.
 
 ```bash
 just packet  # generate printable PDF packet
@@ -24,4 +26,4 @@ just packet  # generate printable PDF packet
 | 08 | [Cross-Reference Guide](08-cross-reference-guide.md) | Master lookup: problem description to implementation, decision tree, keyword cheat sheet |
 | 09 | [Python 3.14 & Modern Patterns](09-python-314-and-modern-patterns.md) | PEP 750 t-strings, PEP 649 lazy annotations, PEP 695 type syntax, Hypothesis, typing |
 | 10 | [Whiteboard Performance & Panic Protocol](10-whiteboard-performance-protocol.md) | What's actually scored, the CLARP loop, panic first-aid, collaboration scripts, on-camera practice + a 2-week ramp |
-| 11 | [14-Day Whiteboard Ramp](11-14-day-whiteboard-ramp.md) | Day-by-day schedule: on each day, which drills to run and which printed sheets to keep open |
+| 11 | [14-Day Interview Practice Ramp](11-14-day-whiteboard-ramp.md) | Editor-first daily drills, review work, rest, and optional observed practice |

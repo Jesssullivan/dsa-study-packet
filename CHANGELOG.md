@@ -27,6 +27,9 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
   `just practice-*` loop. It no longer requires interviewer secrets or
   auto-starts an external CLI in a split terminal; external agents remain
   manual options.
+- Codespaces installs its three small command-line tools from versioned,
+  checksum-verified release archives, pins the base image and workflow actions,
+  and exports the tool path for clean editor terminals.
 - VS Code applies the root `AGENTS.md` authority once; the generated
   `.github/copilot-instructions.md` remains available to GitHub.com without
   duplicating the persona in Codespaces prompts.
@@ -34,6 +37,8 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
   candidate workspace instead of rewriting `src/algo/`. Candidates record
   reasoning in live comments, save explicitly, remove the thinking gate
   themselves, implement, and add focused tests.
+- Helper functions and classes stay as candidate-owned cold stubs during tests
+  and in the REPL; committed helper implementations are never injected.
 - Conversational and board-style practice remain available as slower
   and mock-practice modes, while the normal Codespaces path begins in the
   editor.
@@ -42,6 +47,9 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 - Repository onboarding, local documentation, learning paths, and the 14-day
   calendar now share one editor-first flow and a smaller Start, Practice,
   Library, Method, and Project information architecture.
+- Destructive legacy recipes that rewrote tracked algorithm sources were
+  removed. The unused save-polling hook is gone too; `/continue` is the explicit
+  turn boundary. Editor practice stays in the isolated `.challenges/workspace/`.
 
 ## [v2026.7.0] - 2026-07-09
 
@@ -57,7 +65,7 @@ environment, with its reading surface live at https://dsa-woodshed.space.
   five-part reasoning scaffold (restate, example, invariant, approach,
   complexity) with a candidate-owned LOCK line, reviewed at save boundaries
   instead of interrupting mid-typing.
-- `just doctor`, a full-slate `just challenge-reset`, and a genericized
+- `just doctor`, a full-slate challenge reset helper, and a genericized
   `practice-day` skill so the daily 4-5h block runs the same way for any
   candidate.
 

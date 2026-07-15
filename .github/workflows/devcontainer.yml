@@ -1,9 +1,8 @@
 name: devcontainer-smoke
 
 # Proves a stranger's Codespace works: the container builds on Linux with NO
-# secrets, and the editor-first practice loop runs green end-to-end. challenge-done
-# runs TWICE on purpose. The second call exercises the re-mark sed branch
-# that once hid a BSD-only flag (#34).
+# secrets, and the editor-first practice loop runs green end-to-end. The final
+# challenge-done calls keep the legacy compatibility path idempotent.
 
 on:
   push:
@@ -14,7 +13,9 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - "scripts/strip_solution.py"
+      - "scripts/core42.py"
       - "scripts/practice_workspace.py"
+      - "scripts/rep_schema.py"
       - "scripts/scaffold_status.py"
       - ".github/agents/**"
       - ".github/prompts/**"
@@ -27,7 +28,9 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - "scripts/strip_solution.py"
+      - "scripts/core42.py"
       - "scripts/practice_workspace.py"
+      - "scripts/rep_schema.py"
       - "scripts/scaffold_status.py"
       - ".github/agents/**"
       - ".github/prompts/**"
@@ -40,14 +43,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Build devcontainer and run the practice loop
-        uses: devcontainers/ci@v0.3
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
         with:
           push: never
           runCmd: |
             set -euxo pipefail
-            export PATH="$HOME/.local/bin:$PATH"
+            bash --noprofile --norc -c 'command -v uv; command -v just; command -v watchexec'
             uv --version
             just --version
             bash .devcontainer/welcome.sh

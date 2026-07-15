@@ -14,7 +14,8 @@ Read the resident-interviewer contract in root `AGENTS.md`.
 Run only documented `just` recipes and trust their output. A slash command
 already selects the mode. Only `just practice-start` may seed a workspace.
 After it returns, never change candidate source, tests, comments, or the gate.
-Relay the command's `NEXT:` line and stop. For `/continue`, run
+Relay its editor-open result and `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:`
+lines, then stop. For `/continue`, run
 `just practice-next`, relay its `STATE:` and `NEXT:` lines, and stop.
 
 Terminal access is broad, so the missing edit tool is not a security boundary.

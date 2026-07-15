@@ -16,7 +16,7 @@ The workspace disables automatic use of ``copilot-instructions.md`` in VS
 Code, preventing the full persona from being applied beside root
 ``AGENTS.md``. GitHub.com still consumes the generated file.
 
-Both outputs are deterministic: no timestamps, stable ordering, trailing
+All outputs are deterministic: no timestamps, stable ordering, trailing
 newline. Edit the persona in AGENTS.md, then run `just gen-agents`;
 `scripts/check_agent_instructions.py` guards against drift.
 """
@@ -73,7 +73,8 @@ AGENT_BODY = """Read the resident-interviewer contract in root `AGENTS.md`.
 Run only documented `just` recipes and trust their output. A slash command
 already selects the mode. Only `just practice-start` may seed a workspace.
 After it returns, never change candidate source, tests, comments, or the gate.
-Relay the command's `NEXT:` line and stop. For `/continue`, run
+Relay its editor-open result and `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:`
+lines, then stop. For `/continue`, run
 `just practice-next`, relay its `STATE:` and `NEXT:` lines, and stop.
 
 Terminal access is broad, so the missing edit tool is not a security boundary.
@@ -151,10 +152,15 @@ agent: 'Interviewer'
 
 {PROMPT_HEADER}
 
-Start a {label} editor rep. Run `just practice-start {name}`. Append arguments only when
-the invocation contains exactly two lowercase identifiers. Run nothing else.
-On success, relay the command's `STATE:` and `NEXT:` lines, then stop. Only
-the recipe may seed files. Never edit the candidate workspace.
+Start a {label} rep. Parse arguments:
+
+- No arguments: run `just practice-start {name}`.
+- Exactly two arguments, each matching `[a-z][a-z0-9_]*`: append both to that command.
+- Anything else: show `/{name} [topic problem]` and run no command.
+
+Never silently draw after malformed arguments. On success, relay the
+editor-open result plus `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:` lines. Then
+stop. Only the recipe seeds files. Never edit the candidate workspace.
 """
 
 

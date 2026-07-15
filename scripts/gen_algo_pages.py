@@ -436,7 +436,6 @@ def _gen_summary(
         "* [Home](index.md)",
         "* Start Here",
         "    * [Getting Started](guide/getting-started.md)",
-        "    * [Practice Drills](challenges/index.md)",
         "    * [Local VS Code](guide/local-practice.md)",
         "* Practice",
         "    * [Practice Drills](challenges/index.md)",

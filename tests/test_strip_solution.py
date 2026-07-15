@@ -1,4 +1,4 @@
-"""Tests for the --print-statement docstring printer in scripts/strip_solution.py.
+"""Tests for the read-only transforms in scripts/strip_solution.py.
 
 Guards the AST-backed statement printer that replaced the fragile awk line in
 the ``interview`` recipe. The old ``awk 'c<2 {print} /\"\"\"/ {c++}'`` counted
@@ -8,12 +8,14 @@ was a single line (both quotes on one line never reached the count of two).
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
+SCRIPT = _SCRIPTS / "strip_solution.py"
 sys.path.insert(0, str(_SCRIPTS))
 
 import strip_solution  # type: ignore[import-not-found]  # noqa: E402
@@ -129,3 +131,48 @@ def test_nested_closure_does_not_swallow_the_following_def() -> None:
     assert '"""Other docstring."""' in stripped
     # The two blank separator lines between `outer` and `other` must survive.
     assert "\n\n\ndef other(x: int) -> int:" in stripped
+
+
+def test_cli_prints_stripped_preview_without_modifying_source(tmp_path: Path) -> None:
+    source_file = tmp_path / "problem.py"
+    source_file.write_text(MULTI_LINE)
+
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), str(source_file)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert source_file.read_text() == MULTI_LINE
+    assert "raise NotImplementedError" in proc.stdout
+    assert "secret_body" not in proc.stdout
+
+
+def test_cli_scaffold_preview_is_also_read_only(tmp_path: Path) -> None:
+    source_file = tmp_path / "problem.py"
+    source_file.write_text(MULTI_LINE)
+
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "--cold", "--scaffold", str(source_file)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert source_file.read_text() == MULTI_LINE
+    assert strip_solution.LOCK_SENTINEL in proc.stdout
+
+
+def test_cli_help_states_that_source_is_not_modified() -> None:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "--help"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0
+    assert "stdout without modifying its source" in proc.stdout

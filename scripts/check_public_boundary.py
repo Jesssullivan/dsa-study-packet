@@ -9,10 +9,12 @@ list, so the public guard cannot itself disclose what it guards against.
 
 from __future__ import annotations
 
+import io
 import os
 import re
 import subprocess
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,14 +39,69 @@ FORBIDDEN_CONTENT = (
 )
 
 
-def tracked_files() -> list[str]:
+def tracked_index_texts() -> dict[str, tuple[str, ...]]:
+    """Return every text blob currently present in the Git index by path.
+
+    Reading the index separately matters when a staged file differs from, or
+    has been deleted from, the working tree. ``git cat-file --batch`` keeps the
+    guard fast while still handling symlink blobs and conflicted index stages.
+    """
     result = subprocess.run(
-        ["git", "ls-files", "-z"],
+        ["git", "ls-files", "--stage", "-z"],
         cwd=ROOT,
         check=True,
         stdout=subprocess.PIPE,
     )
-    return [path for path in result.stdout.decode().split("\0") if path]
+    paths: list[str] = []
+    entries: list[tuple[str, str]] = []
+    for raw_entry in result.stdout.split(b"\0"):
+        if not raw_entry:
+            continue
+        metadata, raw_path = raw_entry.split(b"\t", 1)
+        mode, object_id, _stage = metadata.decode("ascii").split()
+        rel = os.fsdecode(raw_path)
+        paths.append(rel)
+        # A gitlink points at a commit, not a file blob. Keep its path for the
+        # structural rules, but there is no file content for this guard to read.
+        if mode != "160000":
+            entries.append((rel, object_id))
+
+    texts: defaultdict[str, list[str]] = defaultdict(list)
+    for rel in paths:
+        texts[rel]
+    if not entries:
+        return {rel: tuple(versions) for rel, versions in texts.items()}
+
+    blobs = subprocess.run(
+        ["git", "cat-file", "--batch"],
+        cwd=ROOT,
+        check=True,
+        input="".join(f"{object_id}\n" for _, object_id in entries).encode(),
+        stdout=subprocess.PIPE,
+    ).stdout
+    stream = io.BytesIO(blobs)
+    for (rel, expected_id) in entries:
+        header = stream.readline().decode("ascii").rstrip("\n").split()
+        if len(header) != 3 or header[0] != expected_id or header[1] != "blob":
+            raise RuntimeError(f"unexpected git cat-file response for {rel}")
+        size = int(header[2])
+        data = stream.read(size)
+        if len(data) != size or stream.read(1) != b"\n":
+            raise RuntimeError(f"truncated git cat-file response for {rel}")
+        text = decode_text(data)
+        if text is not None and text not in texts[rel]:
+            texts[rel].append(text)
+
+    return {rel: tuple(versions) for rel, versions in texts.items()}
+
+
+def decode_text(data: bytes) -> str | None:
+    if b"\0" in data:
+        return None
+    try:
+        return data.decode()
+    except UnicodeDecodeError:
+        return None
 
 
 def read_text(path: Path) -> str | None:
@@ -56,22 +113,16 @@ def read_text(path: Path) -> str | None:
     try:
         data = path.read_bytes()
     except FileNotFoundError:
-        # ``git ls-files`` still reports an index entry while that tracked
-        # file is being deleted in the working tree. The committed result has
-        # no blob to scan, so treat the pending deletion the same way.
+        # The caller scans the index separately, so a missing working-tree
+        # copy does not omit staged or committed content.
         return None
-    if b"\0" in data:
-        return None
-    try:
-        return data.decode()
-    except UnicodeDecodeError:
-        return None
+    return decode_text(data)
 
 
 def main() -> int:
     failures: list[str] = []
 
-    for rel in tracked_files():
+    for rel, index_texts in tracked_index_texts().items():
         lowered = rel.lower()
         if lowered.endswith(FORBIDDEN_PATH_SUFFIXES):
             failures.append(f"{rel}: tracked SOPS secret file is not public-safe")
@@ -85,14 +136,18 @@ def main() -> int:
         if rel == SELF:
             continue
 
-        text = read_text(ROOT / rel)
-        if text is None:
-            continue
+        working_text = read_text(ROOT / rel)
+        versions = list(index_texts)
+        if working_text is not None and working_text not in versions:
+            versions.append(working_text)
 
-        for line_no, line in enumerate(text.splitlines(), start=1):
-            for label, pattern in FORBIDDEN_CONTENT:
-                if pattern.search(line):
-                    failures.append(f"{rel}:{line_no}: {label}: {line.strip()}")
+        for text in versions:
+            for line_no, line in enumerate(text.splitlines(), start=1):
+                for label, pattern in FORBIDDEN_CONTENT:
+                    if pattern.search(line):
+                        failure = f"{rel}:{line_no}: {label}: {line.strip()}"
+                        if failure not in failures:
+                            failures.append(failure)
 
     if failures:
         print("Public boundary check failed:", file=sys.stderr)

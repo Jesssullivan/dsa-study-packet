@@ -1,12 +1,15 @@
 {
 	"name": "dsa-study-packet: interview woodshedding",
-	"image": "mcr.microsoft.com/devcontainers/base:bookworm",
+	"image": "mcr.microsoft.com/devcontainers/base:bookworm@sha256:bb7b81b6e5be17b5267f92f4ffda534fea37dab1df97b5e86c1f9b91da5c0b5d",
 	"onCreateCommand": "bash .devcontainer/setup.sh --tools",
 	"updateContentCommand": "bash .devcontainer/setup.sh --sync",
 	"postCreateCommand": "bash .devcontainer/setup.sh --seed",
 	"waitFor": "updateContentCommand",
 	"containerEnv": {
 		"UV_PYTHON_PREFERENCE": "only-managed"
+	},
+	"remoteEnv": {
+		"PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
 	},
 	"customizations": {
 		"vscode": {

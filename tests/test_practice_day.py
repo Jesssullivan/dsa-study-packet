@@ -39,3 +39,19 @@ def test_day_12_render_uses_spaced_repetition_draws() -> None:
     assert "just practice-test" in rendered
     assert "just practice-finish" in rendered
     assert "just challenge-done" not in rendered
+
+
+def test_rest_days_do_not_draw_or_start_reps() -> None:
+    for day_number in (7, 14):
+        day = practice_day.load_days()[day_number]
+        rendered = practice_day.render_day(day_number)
+
+        assert practice_day.cold_draws(day) == []
+        assert "No draws today" in rendered
+        assert "just practice-" not in rendered
+        assert "never auto-draw" in rendered
+        assert "Four-hour block" not in rendered
+        assert "Editor reps" not in rendered
+        assert "log the reps" not in rendered
+        assert "run this block" not in rendered
+        assert "take the scheduled rest, then stop" in rendered

@@ -33,12 +33,11 @@ whole contract.
 | Layer | What | Where | Public? |
 |-------|------|-------|---------|
 | **L1: knowledge** | algorithms, tests, concepts, reference sheets 01–09 | this repo | ✅ |
-| **L2: practice method** | sheets 10–11, `just practice-start` / `just practice-test` / `just interview` / `just rep`, spaced repetition | this repo | ✅ |
+| **L2: practice method** | sheets 10–11, `just practice-start` / `just practice-test` / `just interview` / `just practice-finish` / `just rep-finish`, spaced repetition | this repo | ✅ |
 | **L3: private overlay** | employer/panel front & back matter, people, dates, tailored positioning, personal rep logs | a private downstream repo | ⛔ never here |
 
-The distinction that keeps this publishable: L2 is a *method* ("how to stay
-reason, code, test, and narrate under observation," a general, teachable
-skill); L3 is a
+The distinction that keeps this publishable: L2 is a *method* ("how to reason,
+code, test, and narrate under observation," a general, teachable skill); L3 is a
 *dossier* (who is on Tuesday's panel). Method publishes; dossier never touches
 this tree. **If a sentence only makes sense for one employer, it is L3.**
 
