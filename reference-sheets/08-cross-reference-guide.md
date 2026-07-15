@@ -128,6 +128,12 @@
 | "Count set bits 0..n" | DP: dp[i] = dp[i>>1] + (i&1) | `src/algo/bit_manipulation/counting_bits.py` | O(n) |
 | "Reverse bits of integer" | Bit-by-bit or D&C | `src/algo/bit_manipulation/reverse_bits.py` | O(1) |
 
+### Math & Number Theory
+
+| When You See... | Use This Pattern | Implementation | Complexity |
+|---|---|---|---|
+| "All primes up to n" / "pi(n)" | Sieve of Eratosthenes | `src/algo/math/sieve_of_eratosthenes.py` | O(n log log n) |
+
 ### Sorting
 
 | When You See... | Use This Pattern | Implementation | Complexity |

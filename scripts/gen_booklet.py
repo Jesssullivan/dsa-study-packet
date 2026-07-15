@@ -43,6 +43,7 @@ TOPIC_ORDER: list[tuple[str, str]] = [
     ("strings", "Strings"),
     ("recursion", "Recursion"),
     ("bit_manipulation", "Bit Manipulation"),
+    ("math", "Math \\& Number Theory"),
     ("patterns", "Patterns"),
 ]
 

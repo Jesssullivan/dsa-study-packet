@@ -40,11 +40,40 @@ def strip_solution(source: str) -> str:
     tree = ast.parse(source)
     lines = source.splitlines(keepends=True)
 
+    all_funcs = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+
+    def _span(n: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, int]:
+        return n.lineno, (n.end_lineno or n.lineno)
+
+    def _contained_in_another(n: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        n_start, n_end = _span(n)
+        for other in all_funcs:
+            if other is n:
+                continue
+            o_start, o_end = _span(other)
+            if (
+                o_start <= n_start
+                and n_end <= o_end
+                and (o_start, o_end) != (n_start, n_end)
+            ):
+                return True
+        return False
+
     # Collect ranges to replace: (start_line, end_line, indent)
     replacements: list[tuple[int, int, int]] = []
 
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+    for node in all_funcs:
+        # Nested functions (closures, helpers defined inside another function)
+        # are already stripped by their enclosing function's replacement — an
+        # independent entry for them would overlap that outer range and, once
+        # both are applied against the same mutating `lines` list, corrupt
+        # whatever follows (e.g. swallow the blank lines before the next
+        # top-level def). Only outermost functions get their own replacement.
+        if _contained_in_another(node):
             continue
 
         # Skip nested functions (helpers inside classes are fine)

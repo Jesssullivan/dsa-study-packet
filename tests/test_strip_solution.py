@@ -62,6 +62,24 @@ def solve(nums: list[int]) -> int:
     return nums[0]
 '''
 
+NESTED_CLOSURE_THEN_DEF = '''"""Module doc."""
+
+
+def outer(nums: list[int]) -> int:
+    """Outer docstring."""
+    def helper(x: int) -> int:
+        y = x * 2
+        z = y + 1
+        return z
+
+    return helper(nums[0])
+
+
+def other(x: int) -> int:
+    """Other docstring."""
+    return x + 1
+'''
+
 
 def test_multi_line_docstring_prints_only_the_statement() -> None:
     block = strip_solution.module_docstring_block(MULTI_LINE)
@@ -95,3 +113,19 @@ def test_second_triple_quoted_string_never_reaches_solution_body() -> None:
 def test_missing_docstring_raises_value_error() -> None:
     with pytest.raises(ValueError):
         strip_solution.module_docstring_block(NO_DOCSTRING)
+
+
+def test_nested_closure_does_not_swallow_the_following_def() -> None:
+    # Regression: ast.walk() also yields the nested `helper` closure inside
+    # `outer`. Treating it as its own replacement target — overlapping
+    # `outer`'s own range — corrupted the line count once both replacements
+    # were applied against the same mutating line list, swallowing the blank
+    # separator lines (and could eat into `other` itself).
+    stripped = strip_solution.strip_solution(NESTED_CLOSURE_THEN_DEF)
+    assert "raise NotImplementedError" in stripped
+    assert "def helper" not in stripped
+    assert "secret_body" not in stripped
+    assert "def other(x: int) -> int:" in stripped
+    assert '"""Other docstring."""' in stripped
+    # The two blank separator lines between `outer` and `other` must survive.
+    assert "\n\n\ndef other(x: int) -> int:" in stripped
