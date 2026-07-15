@@ -37,4 +37,5 @@ CORE_42: dict[str, list[str]] = {
     "recursion": ["generate_parentheses", "flatten_nested_list"],
     "bit_manipulation": ["single_number"],
     "sorting": ["quickselect"],
+    "math": ["sieve_of_eratosthenes"],
 }

@@ -80,6 +80,7 @@ plugins:
         - greedy
         - heaps
         - linked_lists
+        - math
         - patterns
         - recursion
         - searching

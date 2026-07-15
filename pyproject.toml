@@ -180,5 +180,11 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["algo", "concepts"]
 
+[tool.ruff.lint.flake8-builtins]
+# "math" is both a topic dir (src/algo/math, tests/math) and a stdlib module;
+# the topic name is intentional (matches TOPIC_ORDER / core42.py), so allow it
+# rather than suppress the rule wholesale.
+allowed-modules = ["math"]
+
 [tool.ruff.format]
 docstring-code-format = true

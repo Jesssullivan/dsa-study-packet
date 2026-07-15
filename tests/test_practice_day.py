@@ -13,7 +13,7 @@ import practice_day  # type: ignore[import-not-found]  # noqa: E402
 
 
 def test_catalog_counts_current_core_and_sheets() -> None:
-    assert catalog.core_count() == 42
+    assert catalog.core_count() == 43
     assert catalog.reference_sheet_count() == 11
 
 

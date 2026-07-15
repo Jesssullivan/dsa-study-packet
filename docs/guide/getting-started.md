@@ -19,7 +19,7 @@ actually happens; the site is there to unstick you, not to read passively.
 !!! tip "The one-sentence loop"
     Browse a pattern on the site → `just challenge` it in the terminal →
     `just study` until tests go green → `just challenge-done`. Repeat across the
-    [Core 42](../challenges/index.md).
+    [Core 43](../challenges/index.md).
 
 ---
 
@@ -136,7 +136,7 @@ Grade each pass as you mark it complete:
 | :x: | Could not solve |
 
 Re-drill every :warning: and :x: **first** the next session. A practical weekly
-rhythm: one full pass of the [Core 42](../challenges/index.md) per day, leading
+rhythm: one full pass of the [Core 43](../challenges/index.md) per day, leading
 with yesterday's misses, until the whole set is green from memory.
 
 !!! tip "Start small"
@@ -146,7 +146,7 @@ with yesterday's misses, until the whole set is green from memory.
     just study arrays
     ```
     The [Daily Drill](../challenges/index.md) page lists copy-paste blocks for all
-    42 problems, topic by topic.
+    43 problems, topic by topic.
 
 ---
 
@@ -206,7 +206,7 @@ the latest build straight from the web:
 
     ---
 
-    Copy-paste blocks for all 42 core problems.
+    Copy-paste blocks for all 43 core problems.
 
     [:octicons-arrow-right-24: Daily Drill](../challenges/index.md)
 

@@ -38,7 +38,11 @@ def _title(name: str) -> str:
 
 
 def _topic_title(topic: str) -> str:
-    special = {"dp": "Dynamic Programming", "stacks_queues": "Stacks & Queues"}
+    special = {
+        "dp": "Dynamic Programming",
+        "stacks_queues": "Stacks & Queues",
+        "math": "Math & Number Theory",
+    }
     return special.get(topic, _title(topic))
 
 

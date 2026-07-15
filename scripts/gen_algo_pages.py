@@ -229,6 +229,7 @@ def _topic_title(topic: str) -> str:
         "bit_manipulation": "Bit Manipulation",
         "sliding_window": "Sliding Window",
         "two_pointers": "Two Pointers",
+        "math": "Math & Number Theory",
     }
     if topic in special:
         return special[topic]

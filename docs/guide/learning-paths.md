@@ -49,7 +49,7 @@ just challenge-progress            # see what you have cleared
 | **1 · Foundations** | Scanning a sequence with auxiliary state | Python fluency, [Big-O basics](../reference/04-big-o-complexity.md) | 11 |
 | **2 · Graphs & Trees** | Traversal, ordering, weighted/heuristic search | Path 1, [data-structure sheet](../reference/02-data-structures.md) | 16 |
 | **3 · DP & Backtracking** | Recursion trees, then memoized optimization | Path 1, recursion comfort | 16 |
-| **4 · Systems & CS Fundamentals** | Building-block structures + the theory behind them | Path 1, [system-design sheet](../reference/06-system-design.md) | 14 + appendix |
+| **4 · Systems & CS Fundamentals** | Building-block structures + the theory behind them | Path 1, [system-design sheet](../reference/06-system-design.md) | 15 + appendix |
 
 !!! note "Suggested sequencing"
     Do **Foundations first** — every other path leans on hashing, pointers, and
@@ -267,6 +267,7 @@ the [system-design](../reference/06-system-design.md) and
 | 12 | [`bit_manipulation/single_number`](../algorithms/bit_manipulation/single_number.md) | XOR identities |
 | 13 | [`bit_manipulation/counting_bits`](../algorithms/bit_manipulation/counting_bits.md) | DP over bit patterns |
 | 14 | [`bit_manipulation/reverse_bits`](../algorithms/bit_manipulation/reverse_bits.md) | Fixed-width bit operations |
+| 15 | [`math/sieve_of_eratosthenes`](../algorithms/math/sieve_of_eratosthenes.md) | Precompute primes once, amortize over many queries |
 
 ??? note "Drill commands (run in order)"
     ```bash
@@ -284,6 +285,7 @@ the [system-design](../reference/06-system-design.md) and
     just challenge bit_manipulation single_number
     just challenge bit_manipulation counting_bits
     just challenge bit_manipulation reverse_bits
+    just challenge math sieve_of_eratosthenes
     ```
 
 ### Appendix reading (study, don't drill)
