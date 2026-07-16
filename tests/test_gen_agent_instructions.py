@@ -7,13 +7,18 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from gen_agent_instructions import (  # type: ignore[import-not-found]
+    AGENT_TOOLS,
+    AGENTS,
     BEGIN_MARKER,
     END_MARKER,
+    PROMPT_SPECS,
     PersonaMarkerError,
     extract_persona,
     generated_files,
+    render_continue_prompt,
     render_copilot_instructions,
     render_interviewer_agent,
+    render_start_prompt,
 )
 
 
@@ -47,24 +52,64 @@ class TestExtractPersona:
 class TestRendering:
     def test_outputs_inline_persona_and_end_with_newline(self) -> None:
         persona = "persona body"
-        for rendered in (
-            render_copilot_instructions(persona),
-            render_interviewer_agent(persona),
-        ):
-            assert persona in rendered
-            assert rendered.endswith("\n")
+        rendered = render_copilot_instructions(persona)
+        assert persona in rendered
+        assert rendered.endswith("\n")
 
-    def test_agent_file_has_frontmatter(self) -> None:
-        rendered = render_interviewer_agent("persona body")
+    def test_repo_wide_persona_is_scoped_to_practice(self) -> None:
+        rendered = render_copilot_instructions(extract_persona(AGENTS.read_text()))
+        assert "For repository maintenance" in " ".join(rendered.split())
+
+    def test_agent_file_is_thin_adapter_without_direct_edit_tools(self) -> None:
+        rendered = render_interviewer_agent()
         assert rendered.startswith("---\nname: Interviewer\n")
+        assert "target: vscode\n" in rendered
+        assert "`AGENTS.md`" in rendered
+        assert "practice-start" in rendered
+        assert "edit/editFiles" not in rendered
+        assert "not a security boundary" in rendered
+        assert rendered.endswith("\n")
+        for tool in AGENT_TOOLS:
+            assert f"  - {tool}\n" in rendered
+
+    def test_start_prompt_is_one_command_and_candidate_preserving(self) -> None:
+        rendered = render_start_prompt("reacto", "Start a REACTO editor rep", "REACTO")
+        assert "just practice-start reacto" in rendered
+        assert "Exactly two arguments" in rendered
+        assert "[a-z][a-z0-9_]*" in rendered
+        assert "/reacto [topic problem]" in rendered
+        assert "run no command" in rendered
+        assert "silently draw" in rendered
+        assert "editor-open result" in rendered
+        assert "`SOURCE:`" in rendered
+        assert "`TEST:`" in rendered
+        assert "Never edit the candidate workspace" in rendered
+
+    def test_continue_prompt_delegates_state_to_one_command(self) -> None:
+        rendered = render_continue_prompt()
+        assert "just practice-next" in rendered
+        assert "practice-status" not in rendered
+        assert "practice-current" not in rendered
+
+    def test_start_prompts_fit_the_low_power_budget(self) -> None:
+        for name, (description, label) in PROMPT_SPECS.items():
+            rendered = render_start_prompt(name, description, label)
+            assert len(rendered.split()) <= 90
 
 
 class TestGeneratedFiles:
     def test_deterministic_and_targets_expected_paths(self) -> None:
         first, second = generated_files(), generated_files()
         assert first == second
-        rels = sorted(p.name for p in first)
-        assert rels == ["copilot-instructions.md", "interviewer.agent.md"]
+        assert {path.name for path in first} == {
+            "clarp.prompt.md",
+            "comments.prompt.md",
+            "continue.prompt.md",
+            "copilot-instructions.md",
+            "interviewer.agent.md",
+            "reacto.prompt.md",
+            "umpire.prompt.md",
+        }
 
     def test_committed_files_match_ssot(self) -> None:
         # The same invariant the CI drift guard enforces: a failure here means

@@ -84,23 +84,44 @@ def load_allocation(path: Path = RAMP) -> list[tuple[str, str]]:
 
 def _literal_drills(day: PracticeDay) -> list[tuple[str, str]]:
     drills: list[tuple[str, str]] = []
-    for topic, problem in re.findall(r"`([a-z_]+)\s+([a-z_]+)`", day.drills):
-        drills.append((topic, problem))
+    for code in re.findall(r"`([^`]+)`", day.drills):
+        parts = code.split()
+        if len(parts) == 2 and all(
+            re.fullmatch(r"[a-z][a-z0-9_]*", part) for part in parts
+        ):
+            drills.append((parts[0], parts[1]))
     return drills
 
 
 def cold_draws(day: PracticeDay) -> list[tuple[str, str, str]]:
     """Return concrete cold draw commands for a practice day."""
+    if _clean_md(day.drills).lower() == "none":
+        return []
+
     literal = _literal_drills(day)
-    if literal:
-        return [(topic, problem, "sheet 11") for topic, problem in literal]
+    draws = [(topic, problem, "sheet 11") for topic, problem in literal]
+    review_match = re.search(r"(\d+)\s+review draws?", day.drills)
+    if literal and review_match is None:
+        return draws
 
     count_match = re.search(r"(\d+)\s+cold draws?", day.drills)
-    count = int(count_match.group(1)) if count_match else 1
-    draws: list[tuple[str, str, str]] = []
-    for urgency, topic, problem in ranked_queue()[:count]:
+    if count_match is None:
+        count_match = re.search(r"study-spaced\s+(\d+)", day.drills)
+    count = (
+        int(review_match.group(1))
+        if review_match is not None
+        else int(count_match.group(1))
+        if count_match is not None
+        else 1
+    )
+    seen = {(topic, problem) for topic, problem in literal}
+    for urgency, topic, problem in ranked_queue():
+        if (topic, problem) in seen:
+            continue
         tag = "new" if urgency == _NEVER else f"{urgency}d since review"
         draws.append((topic, problem, tag))
+        if len(draws) == len(literal) + count:
+            break
     return draws
 
 
@@ -111,15 +132,35 @@ def render_day(day_number: int) -> str:
         raise SystemExit(f"unknown practice day {day_number}; valid days: {valid}")
 
     day = days[day_number]
+    draws = cold_draws(day)
     lines = [
-        f"# Practice Day {day.day} — {date.today().isoformat()}",
-        "",
-        "Stop condition: run this block, log the reps, then stop building.",
+        f"# Practice Day {day.day}: {date.today().isoformat()}",
         "",
         f"- Catalog now: {core_count()} core drills, {reference_sheet_count()} reference sheets",
         f"- Focus: {day.focus}",
         f"- Observer: {day.watching}",
         f"- Sheets open: {day.sheets}",
+    ]
+    if not draws:
+        lines += [
+            "",
+            "## Rest day",
+            "",
+            "Stop condition: take the scheduled rest, then stop.",
+            "",
+            "No draws today. Rest and return on the next scheduled day.",
+            "",
+            "## Closeout",
+            "",
+            "- Take the scheduled rest. Do not draw or schedule a rep.",
+            "- If the focus offers a light review, choose it manually; never auto-draw.",
+            "- Read only the sheets listed for today, if any, then stop.",
+        ]
+        return "\n".join(lines)
+
+    lines += [
+        "",
+        "Stop condition: run this block, log the reps, then stop building.",
         "",
         "## Four-hour block",
         "",
@@ -127,28 +168,26 @@ def render_day(day_number: int) -> str:
     for slot, work in load_allocation():
         lines.append(f"- {slot}: {work}")
 
-    lines += [
-        "",
-        "## Cold draws",
-        "",
-    ]
-    for index, (topic, problem, tag) in enumerate(cold_draws(day), start=1):
-        lines.append(f"{index}. `just interview {topic} {problem}`  # {tag}")
+    lines += ["", "## Editor reps", ""]
+    for index, (topic, problem, tag) in enumerate(draws, start=1):
+        lines.append(f"{index}. `just practice-start clarp {topic} {problem}`  # {tag}")
 
     if day.day == 12:
         lines += [
             "",
             "Day 12 rule: run the draws back-to-back with the observer. If the",
-            "block gets tight, complete the first two through IDE verification and",
-            "use the third as board-only panel pressure plus rubric scoring.",
+            "block gets tight, complete the first two through focused tests and",
+            "use the third as an optional board-style rep plus rubric scoring.",
         ]
 
     lines += [
         "",
         "## Closeout",
         "",
-        "- After each board rep: 2 min tape review, score C/L/A/R/P, log one fix.",
-        "- Then run `just study <topic>` and `just challenge-done <topic> <problem>`.",
+        "- After each rep: 2 min review, name one win and one fix.",
+        "- Use `/continue` or `just practice-next` whenever the next step is unclear.",
+        '- Run `just practice-test`, then `just practice-finish "one specific fix"`.',
+        "- Board-style practice is optional. Run `just interview` with that rep's printed values when selected.",
         "- No passive playlist. One targeted refresher only if a rep exposed the miss.",
     ]
     return "\n".join(lines)

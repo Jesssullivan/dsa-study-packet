@@ -4,105 +4,70 @@ title: The DSA Woodshed
 
 # The DSA Woodshed
 
-A woodshed for technical interviews: DSA drills with tests, an evidence-based
-practice method with a resident agent interviewer, and printable
-non-electronic study packets.
+Practice technical interviews in a real editor: explain the problem in
+comments, implement a solution, write focused tests, and keep one correction.
 
 <div class="grid cards" markdown>
 
--   :material-code-braces:{ .lg .middle } **Core + Extended Drills**
+-   :material-rocket-launch:{ .lg .middle } **Start**
 
     ---
 
-    Typed Python 3.14+, generated drill catalog
+    Open Codespaces and begin an editor rep.
 
-    [:octicons-arrow-right-24: Algorithms](algorithms/index.md)
+    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
 
--   :material-test-tube:{ .lg .middle } **Test-Backed Practice**
-
-    ---
-
-    Property-based testing with Hypothesis, class-based pytest
-
-    [:octicons-arrow-right-24: Challenges](challenges/index.md)
-
--   :material-book-open-variant:{ .lg .middle } **Concepts**
+-   :material-code-braces:{ .lg .middle } **Practice Drills**
 
     ---
 
-    T-strings, typing, Hypothesis, benchmarking, FFT, Flask, Pydantic
+    Choose from 43 core drills and extended problems.
 
-    [:octicons-arrow-right-24: Concepts](concepts/index.md)
+    [:octicons-arrow-right-24: Choose a Drill](challenges/index.md)
 
--   :material-file-document-multiple:{ .lg .middle } **Reference Sheets**
+-   :material-account-voice:{ .lg .middle } **Method**
 
     ---
 
-    Printable cheat sheets from stdlib to system design
+    Learn the comment-first loop and its practice modes.
 
-    [:octicons-arrow-right-24: Reference](reference/index.md)
+    [:octicons-arrow-right-24: Getting Started](guide/getting-started.md)
+
+-   :material-book-open-variant:{ .lg .middle } **Library**
+
+    ---
+
+    Review complete solutions, concepts, and printable sheets.
+
+    [:octicons-arrow-right-24: Browse Reference](reference/index.md)
 
 </div>
 
----
+## Your first rep
 
-## Quick Start
+Open Copilot Chat in Codespaces and enter `/reacto`, `/clarp`, `/umpire`, or
+`/comments`. With no arguments, the command draws the next due problem. Add a
+topic and problem to choose one, such as `/reacto arrays two_sum`.
 
-```bash
-direnv allow          # nix devshell + python 3.14 venv
-just test             # pytest + Hypothesis
-just lint             # ruff + mypy strict
-just docs             # this site, locally
-just packet           # latest printable PDF packet
-```
-
----
-
-## Interview Flow
-
-| Stage | Round | Focus |
-|-------|-------|-------|
-| 1 | Pre-screen | Headhunter chats with CTO and hiring manager based on FOSS contributions, PR experience, etc. |
-| 2 | Hiring manager interview | Role fit, experience, expectations. |
-| 3 | Engineering lead interview | Technical depth, architecture thinking, team dynamics. |
-| 4 | Backend algo deep dive | 1-3 hrs coding. Graphs, DP, strings, optimization. |
-| 5 | Frontend / cross-team engineering | 1-3 hrs. Cross-team collaboration, full-stack breadth. |
-| 6 | On-site intensive | 6-8 hrs. All-day in-person interviews across multiple rounds. |
-| 7 | Executive or bar-raiser interview | Mission fit, judgment, team fit. |
-| 8 | Offer & negotiation | Offer terms, agreements, logistics. |
-
----
-
-## Daily Drill
-
-Core algorithms for repeated drills. Challenge mode strips solutions so you
-re-implement from the signature and docstring alone.
+Your source and test file open under `.challenges/workspace/`. Fill the
+reasoning comments, save, then delete the `THINKING GATE` yourself. Implement,
+add focused tests, and enter `/continue` for the next instruction. Copilot is
+optional; `just practice-start reacto` starts the same loop.
 
 ```bash
-just challenge graphs dijkstra    # strip solution
-just study graphs                 # watch mode — tests re-run on save
-just solution graphs dijkstra     # peek if stuck
-just challenge-done graphs dijkstra
-just challenge-progress
+just practice-next
+just practice-test
+just practice-repl
+just practice-finish "one fix"
 ```
 
-The [decision tree](guide/when-to-use-what.md) maps problem signals to patterns.
-The [cross-reference guide](reference/08-cross-reference-guide.md) maps patterns to implementations.
-The [interview practice evidence](guide/interview-practice-evidence.md) page
-backs the sheet-11 four-hour loop with research and targeted video refreshers.
+The committed solutions under `src/algo/` stay unchanged. Your workspace and
+rep history remain private and gitignored.
 
-[:material-rocket-launch: Start Drilling](challenges/index.md){ .md-button .md-button--primary }
-[:material-map: Decision Tree](guide/when-to-use-what.md){ .md-button }
+Use the [decision tree](guide/when-to-use-what.md) when pattern selection is
+the gap, or browse [complete implementations](algorithms/index.md) after a rep.
+The [practice evidence](guide/interview-practice-evidence.md) explains the
+larger method. A printable packet is also available for offline review.
 
----
-
-## Printable Packet
-
-Printable reference: decision trees, pattern keywords, selected notes, and every
-algorithm with full implementation.
-
+[:material-map: Read the Full Loop](guide/getting-started.md){ .md-button .md-button--primary }
 [:material-download: Download PDF](assets/booklet.pdf){ .md-button }
-
-<div markdown class="pdf-viewer">
-<iframe src="assets/booklet.pdf" width="100%" height="800px" style="border: 1px solid #ccc; border-radius: 8px;"></iframe>
-</div>

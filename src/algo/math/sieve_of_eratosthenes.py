@@ -1,4 +1,4 @@
-"""Sieve of Eratosthenes — all primes up to n.
+"""Sieve of Eratosthenes: all primes up to n.
 
 Problem:
     Given a non-negative integer n, return every prime number less than or
@@ -17,8 +17,8 @@ Approach:
 When to use:
     Precomputing all primes up to n for many repeated queries (primality
     checks, factorization prep, counting primes / pi(n)). Contrast with
-    per-number trial division, which costs O(sqrt(n)) *per query* — the
-    sieve amortizes that cost across every number up to n in one pass.
+    per-number trial division, which costs O(sqrt(n)) *per query*. The sieve
+    amortizes that cost across every number up to n in one pass.
 
 Complexity:
     Time:  O(n log log n)
@@ -50,7 +50,7 @@ def sieve_of_eratosthenes(n: int) -> list[int]:
     return [i for i, prime in enumerate(is_prime) if prime]
 
 
-# --- Pythonic slice-assignment + comprehension form ---
+# Pythonic slice-assignment and comprehension form
 def sieve_slices(n: int) -> list[int]:
     """Return every prime <= n via strided slice assignment.
 

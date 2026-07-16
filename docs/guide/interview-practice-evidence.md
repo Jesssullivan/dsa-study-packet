@@ -5,9 +5,10 @@ title: Interview Practice Evidence
 # Interview Practice Evidence
 
 Use this page to decide what to do with a four-hour study block. The short
-answer: do cold board reps, close them in the IDE, review a little tape, then
-watch or read exactly the thing your rep exposed. Do not turn video into a
-second passive curriculum.
+answer: do cold editor reps with comments, code, tests, and a trace; review a
+little tape; then watch or read exactly what the rep exposed. Board work and
+observed mocks are optional pressure variants. Do not turn video into a second
+passive curriculum.
 
 For senior technical interviews, bias every rep toward explicit assumptions,
 constraints, traceability, verification, failure modes, and calm collaboration
@@ -25,25 +26,23 @@ If the day goes badly, do not extend the block. Stop with a clean next rep. Pani
 training works by repeated recoveries, not by grinding until the nervous system
 learns that the board is punishment.
 
-## The Daily Block
+## Why The Loop Works
 
-Four to five hours is a **ceiling** of effortful deliberate practice, not a quota to
-pad with passive video (Ericsson 1993). Run it as three to four focused sub-blocks
-with real breaks, and **interleave** the draws (`just study-spaced 3`) rather than
-blocking one topic (Rohrer & Taylor 2007). To run it operably — timed, gated, with
-drills picked and reps logged for you — use the `practice-day` skill.
+Four to five hours is a **ceiling** of effortful deliberate practice, not a
+quota to pad with passive video (Ericsson 1993). Sheet 11 turns that ceiling
+into the actual daily schedule; `just practice-day <day>` renders it without a
+second copy here.
 
-| # | Block | Time | What you do | Why |
-|---|-------|------|-------------|-----|
-| 0 | Arrival ritual | 10 min | slow breathing → expressive-write the worries → say "I'm excited" out loud | Ma 2017; Ramirez & Beilock 2011; Brooks 2014 |
-| 1 | Cold whiteboard reps | 75–90 min | `just interview` (cold), stand, record, CLARP out loud, get interrupted | Roediger 2006; Beilock 2001; Ericsson & Simon 1980 |
-| 2 | IDE close + verify | 60–75 min | implement the board solution, `just study` until green, narrate board≠typed, mark done | interviewing.io; Cepeda 2006 |
-| — | break | 15 min | a real break | Ericsson 1993 |
-| 3 | Targeted input | 30–45 min | ONE video or 2–3 worked examples matched to a **logged** miss | Sweller 1988 |
-| 4 | Observed mock (~3×/wk) | 30–45 min | full mock with a person or camera; take hints | interviewing.io; Daryanto 2025 |
+The schedule interleaves retrieval instead of blocking one topic (Rohrer &
+Taylor 2007), makes reasoning observable through comments and narration
+(Ericsson & Simon 1980), verifies it with code and tests, and uses real breaks
+to protect effort quality (Ericsson 1993). Targeted input comes only after a rep
+exposes a specific miss (Sweller 1988). Optional observation adds pressure
+practice without making every session a mock (Beilock 2001).
 
-Close every sub-block: 2 min tape review, score the sheet 10 §5 rubric, `just rep
-"…"`, name one fix for tomorrow, stop clean.
+The `practice-day` skill routes the printed schedule. The interviewer closes
+each editor rep with one fix and `just practice-finish`; an optional non-editor
+rep closes once with `just rep-finish`.
 
 ## Video Shelf
 
@@ -63,20 +62,20 @@ compare. If the video becomes entertainment, close it and do another cold rep.
 
 ### Watch a real interview narrated (think-aloud demos)
 
-For Block 4 prep — study *how* strong candidates keep reasoning visible, take hints,
-and recover when stuck. Every URL was confirmed live. Watch one, then do your own
-recorded rep in the same shape.
+For observed-practice prep, study *how* strong candidates keep reasoning visible,
+take hints, and recover when stuck. Every URL was confirmed live. Watch one,
+then do your own recorded rep in the same shape.
 
 | Need | Watch |
 |------|-------|
-| The canonical think-out-loud arc (restate → example → approach → code → analyze) | [How to: Work at Google — Example Coding Interview](https://www.youtube.com/watch?v=XKu_SEDAykw) (Life at Google) |
+| The canonical think-out-loud arc (restate → example → approach → code → analyze) | [How to: Work at Google: Example Coding Interview](https://www.youtube.com/watch?v=XKu_SEDAykw) (Life at Google) |
 | Continuous narration in a real mock | [Mock Google Coding Interview with a Meta Intern](https://www.youtube.com/watch?v=46dZH7LDbf8) (NeetCode) |
 | Coached intake ritual + verbalizing | [Google Coding Interview With A High School Student](https://www.youtube.com/watch?v=qz9tKlF431k) (Clément Mihailescu) |
 | Getting stuck and recovering gracefully | [Google Coding Interview With A Normal Software Engineer](https://www.youtube.com/watch?v=rw4s4M3hFfs) (Clément Mihailescu) |
 | Authentic anonymous mock + hint-taking | [Python interview with an interviewing.io engineer](https://www.youtube.com/watch?v=mDYOy7k8kOQ) (interviewing.io) |
 | Meta-skills: communicate, manage getting stuck | [How To Pass Your Coding Interviews](https://www.youtube.com/watch?v=z3h0JGANLoI) (Nick White + Clément Mihailescu) |
 | Early-career structured intake | [Mock Coding Interview with a Student](https://www.youtube.com/watch?v=jfg5WMYqA48) (Cracking FAANG) |
-| Brute-force-then-optimize aloud, from the CtCI author | [Cracking the Coding Interview — Gayle Laakmann McDowell](https://www.youtube.com/watch?v=aClxtDcdpsQ) (Dice) |
+| Brute-force-then-optimize aloud, from the CtCI author | [Cracking the Coding Interview: Gayle Laakmann McDowell](https://www.youtube.com/watch?v=aClxtDcdpsQ) (Dice) |
 
 ## Research Backing
 
@@ -96,8 +95,8 @@ recorded rep in the same shape.
 | Interviewers explicitly advise structured preparation and clear discussion of your role, work, and problem solving. | [Google Careers interview tips](https://www.google.com/about/careers/applications/interview-tips/) |
 | Pressure hurts most on under-practiced, working-memory-heavy problems. So over-practice core patterns to automaticity, and rehearse under the exact social-evaluative condition (camera/person). | [Beilock and Carr, 2001, choking under pressure](https://doi.org/10.1037/0096-3445.130.4.701) |
 | Reappraising nerves *as excitement* ("I'm excited") outperforms trying to calm down. Use a one-second opener before the room. | [Brooks, 2014, get excited](https://doi.org/10.1037/a0035325) |
-| Coding interviews score explicit dimensions — communication, problem-solving, technical competency, testing — so silence and unexplained work cost you directly, independent of the final answer. | [Tech Interview Handbook, coding rubrics](https://www.techinterviewhandbook.org/coding-interview-rubrics/) |
-| Taking a hint is a positive signal, and a single nervous round is statistically normal even for strong candidates. Talk to keep the process visible, not to sound polished. *(The hint statistic reflects candidates' desire to advance — a rapport proxy — not a literal hire vote.)* | [interviewing.io, what the best interviews have in common](https://interviewing.io/blog/best-technical-interviews-common) |
+| Coding interviews score explicit dimensions: communication, problem-solving, technical competency, and testing. Silence and unexplained work cost you directly, independent of the final answer. | [Tech Interview Handbook, coding rubrics](https://www.techinterviewhandbook.org/coding-interview-rubrics/) |
+| Taking a hint is a positive signal, and a single nervous round is statistically normal even for strong candidates. Talk to keep the process visible, not to sound polished. *(The hint statistic reflects candidates' desire to advance, a rapport proxy, not a literal hire vote.)* | [interviewing.io, what the best interviews have in common](https://interviewing.io/blog/best-technical-interviews-common) |
 
 ## What Not To Do
 

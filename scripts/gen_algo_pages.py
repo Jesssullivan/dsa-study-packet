@@ -3,10 +3,10 @@
 Reads all algorithm source files under src/algo/{topic}/{problem}.py,
 parses their module docstrings, and generates:
 
-- docs/algorithms/{topic}/{problem}.md  — per-problem pages
-- docs/algorithms/{topic}/index.md      — per-topic index tables
-- docs/algorithms/index.md              — top-level grid of all topics
-- docs/SUMMARY.md                       — literate-nav sidebar
+- docs/algorithms/{topic}/{problem}.md: per-problem pages
+- docs/algorithms/{topic}/index.md: per-topic index tables
+- docs/algorithms/index.md: top-level grid of all topics
+- docs/SUMMARY.md: literate-nav sidebar
 
 Run automatically by mkdocs-gen-files during `mkdocs build`.
 """
@@ -19,8 +19,7 @@ from pathlib import Path
 
 import mkdocs_gen_files
 
-# Reuse the challenge-mode body stripper so the web "attempt" view matches the
-# CLI `just challenge` scaffold exactly.
+# Reuse the body stripper so the web attempt view matches the isolated starter.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from strip_solution import strip_solution
 
@@ -76,7 +75,7 @@ flowchart TD
     F -- No --> G["For each neighbor v<br/>of u with weight w"]
     G --> H{"d + w < dist[v]?"}
     H -- Yes --> I["dist[v] = d + w<br/>Push (d+w, v) to heap"]
-    H -- No --> J["Skip — no improvement"]
+    H -- No --> J["Skip: no improvement"]
     I --> G
     J --> G
     G -- "All neighbors<br/>processed" --> C
@@ -92,7 +91,7 @@ flowchart TD
     B --> C{"Queue empty?"}
     C -- Yes --> D{"len(order) == V?"}
     D -- Yes --> E["Return order<br/>(valid topological sort)"]
-    D -- No --> F["Return [] — cycle detected"]
+    D -- No --> F["Return []: cycle detected"]
     C -- No --> G["Dequeue node u<br/>Append u to order"]
     G --> H["For each neighbor v of u:<br/>in-degree[v] -= 1"]
     H --> I{"in-degree[v] == 0?"}
@@ -150,12 +149,15 @@ def _parse_docstring(source: str) -> dict[str, str]:
     for i, match in enumerate(section_headers):
         name = match.group(1)
         start = match.end()
-        end = section_headers[i + 1].start() if i + 1 < len(section_headers) else len(docstring)
+        end = (
+            section_headers[i + 1].start()
+            if i + 1 < len(section_headers)
+            else len(docstring)
+        )
         body = docstring[start:end].strip()
         # Dedent: remove leading 4-space indent from continuation lines
         dedented = "\n".join(
-            line[4:] if line.startswith("    ") else line
-            for line in body.splitlines()
+            line[4:] if line.startswith("    ") else line for line in body.splitlines()
         )
         sections[name] = dedented.strip()
 
@@ -290,8 +292,8 @@ def _gen_problem_page(
             "",
             "| | |",
             "|---|---|",
-            f'| **Time** | `{info["time"]}` |',
-            f'| **Space** | `{info["space"]}` |',
+            f"| **Time** | `{info['time']}` |",
+            f"| **Space** | `{info['space']}` |",
             "",
         ]
 
@@ -340,17 +342,17 @@ def _gen_problem_page(
     )
 
     lines += [
-        '=== "Challenge"',
+        '=== "Try it"',
         "",
         '    !!! question "Implement it yourself"',
         "",
         "        Fill in the bodies below from the signatures and docstrings, then",
         "        check yourself against the **Reveal Solution** tab.",
         "",
-        f"        Drilling locally? `just challenge {topic} {problem}` strips the file"
-        f" and `just study {topic}` re-runs the tests on every save.",
+        f"        Drilling locally? `just practice-start comments {topic} {problem}`"
+        " opens an isolated starter file and focused test tab.",
         "",
-        f'    ```python title="{problem}.py — your task"',
+        f'    ```python title="{problem}.py: your task"',
         stripped_block,
         "    ```",
         "",
@@ -417,14 +419,10 @@ def _gen_algorithms_index(
         probs = topics[topic]
         count = len(probs)
         # Show up to 3 problem names as highlights
-        highlights = ", ".join(
-            _title_from_filename(p) for p, _ in sorted(probs)[:3]
-        )
+        highlights = ", ".join(_title_from_filename(p) for p, _ in sorted(probs)[:3])
         if count > 3:
             highlights += ", ..."
-        lines.append(
-            f"| [{title}]({topic}/index.md) | {count} | {highlights} |"
-        )
+        lines.append(f"| [{title}]({topic}/index.md) | {count} | {highlights} |")
 
     lines.append("")
     return "\n".join(lines)
@@ -436,62 +434,75 @@ def _gen_summary(
     """Generate the SUMMARY.md for literate-nav."""
     lines = [
         "* [Home](index.md)",
-        "* Algorithms",
-        "    * [Overview](algorithms/index.md)",
+        "* Start Here",
+        "    * [Getting Started](guide/getting-started.md)",
+        "    * [Local VS Code](guide/local-practice.md)",
+        "* Practice",
+        "    * [Practice Drills](challenges/index.md)",
+        "    * [Learning Paths](guide/learning-paths.md)",
+        "    * [Advanced Exercises](practice/index.md)",
+        "    * [Progress](challenges/progress.md)",
+        "* Library",
+        "    * Algorithms",
+        "        * [Overview](algorithms/index.md)",
     ]
 
     for topic in sorted(topics):
         title = _topic_title(topic)
-        lines.append(f"    * {title}")
-        lines.append(f"        * [Overview](algorithms/{topic}/index.md)")
+        lines.append(f"        * {title}")
+        lines.append(f"            * [Overview](algorithms/{topic}/index.md)")
         for problem, _ in sorted(topics[topic], key=lambda x: x[0]):
             name = _title_from_filename(problem)
-            lines.append(f"        * [{name}](algorithms/{topic}/{problem}.md)")
+            lines.append(f"            * [{name}](algorithms/{topic}/{problem}.md)")
 
     # Concepts section
-    lines.append("* Concepts")
-    lines.append("    * [Overview](concepts/index.md)")
+    lines.append("    * Concepts")
+    lines.append("        * [Overview](concepts/index.md)")
     concept_files = sorted(CONCEPTS_SRC.glob("*.py"))
     for f in concept_files:
         if f.name == "__init__.py":
             continue
         name = _title_from_filename(f.stem)
         slug = f.stem.replace("_", "-")
-        lines.append(f"    * [{name}](concepts/{slug}.md)")
+        lines.append(f"        * [{name}](concepts/{slug}.md)")
 
-    # Reference section — link to docs/reference/ wrapper pages (not source sheets)
-    lines.append("* Reference")
-    lines.append("    * [Overview](reference/index.md)")
+    # Reference section links to docs/reference wrapper pages.
+    lines.append("    * Reference")
+    lines.append("        * [Overview](reference/index.md)")
     ref_docs = sorted((ROOT / "docs" / "reference").glob("*.md"))
     for f in ref_docs:
         if f.name == "index.md":
             continue
-        lines.append(f"    * [{_doc_title(f)}](reference/{f.name})")
+        lines.append(f"        * [{_doc_title(f)}](reference/{f.name})")
 
-    # Practice and Challenges
-    lines.append("* [Practice](practice/index.md)")
-    lines.append("* Challenges")
-    lines.append("    * [Daily Drill](challenges/index.md)")
-    lines.append("    * [Progress](challenges/progress.md)")
+    lines.append("    * [Printables](printables.md)")
 
-    # Printables (booklet + reference-sheet PDFs)
-    lines.append("* [Printables](printables.md)")
-
-    # Guide
-    lines.append("* Guide")
+    # Method and project guidance.
+    lines.append("* Method")
     guide_order = {
-        "getting-started.md": 10,
-        "learning-paths.md": 20,
         "interview-practice-evidence.md": 30,
         "when-to-use-what.md": 40,
         "source-of-truth.md": 50,
+        "getting-started.md": 90,
+        "learning-paths.md": 90,
+        "local-practice.md": 90,
     }
     guide_docs = sorted(
         (ROOT / "docs" / "guide").glob("*.md"),
         key=lambda f: (guide_order.get(f.name, 100), f.name),
     )
     for f in guide_docs:
+        if f.name in {
+            "getting-started.md",
+            "learning-paths.md",
+            "local-practice.md",
+            "source-of-truth.md",
+        }:
+            continue
         lines.append(f"    * [{_doc_title(f)}](guide/{f.name})")
+
+    lines.append("* Project")
+    lines.append("    * [Source of Truth](guide/source-of-truth.md)")
 
     lines.append("")
     return "\n".join(lines)
@@ -506,8 +517,7 @@ def main() -> None:
     topics: dict[str, list[tuple[str, dict[str, str]]]] = {}
 
     topic_dirs = sorted(
-        d for d in ALGO_SRC.iterdir()
-        if d.is_dir() and d.name != "__pycache__"
+        d for d in ALGO_SRC.iterdir() if d.is_dir() and d.name != "__pycache__"
     )
 
     for topic_dir in topic_dirs:

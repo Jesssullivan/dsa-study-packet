@@ -1,7 +1,7 @@
 """Validate the extended rep-log line convention (non-blocking by design).
 
-The resident-interviewer persona (AGENTS.md) closes every rep with a `just rep`
-log line. The extended convention is:
+The resident-interviewer persona (AGENTS.md) atomically closes each non-editor
+rep with a `just rep-finish` log-and-review update. The extended convention is:
 
     <mode> <topic>/<problem> C<0-2> L<0-2> A<0-2> R<0-2> P<0-2> h<0-5> <one fix>
 
@@ -11,9 +11,9 @@ highest hint level used (0-5). The trailing free text is the one fix to carry
 into the next rep.
 
 Lines logged before this convention existed may omit the leading `mode`
-token, the trailing `h<n>` token, or both — those still parse as valid
+token, the trailing `h<n>` token, or both; those still parse as valid
 ("legacy"). Nothing here ever blocks a practice session: run with no
-arguments to lint `.challenges/reps.md` (silently skipped if absent — it is
+arguments to lint `.challenges/reps.md` (silently skipped if absent because it is
 gitignored personal state and may not exist) and print warnings only, exit 0.
 Pass a single line to validate just that line. Pass --strict to exit 1 if any
 checked line is invalid.
@@ -34,10 +34,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REPS_LOG = ROOT / ".challenges" / "reps.md"
 
-MODES = ("talk", "comment", "cold", "reacto", "mock")
+MODES = ("talk", "comment", "comments", "cold", "reacto", "clarp", "umpire", "mock")
+EDITOR_MODES = ("comment", "comments", "reacto", "clarp", "umpire")
 SCORE_LETTERS = ("C", "L", "A", "R", "P")
 
-_SLUG_RE = re.compile(r"[a-z][a-z_]*")
+_SLUG_RE = re.compile(r"[a-z][a-z0-9_]*")
 _HINT_TOKEN_RE = re.compile(r"h\d+")
 _LOG_PREFIX_RE = re.compile(r"^-\s+\d{4}-\d{2}-\d{2}\s+(?P<rest>.+)$")
 
@@ -57,6 +58,7 @@ class RepLine:
     hint_level: int | None
     fix: str
     is_legacy: bool
+    is_compact: bool = False
 
 
 def _parse_scored_token(letter: str, token: str, low: int, high: int) -> int:
@@ -86,6 +88,22 @@ def parse_rep_line(line: str) -> RepLine:
     topic, _, problem = slug.partition("/")
     if not _SLUG_RE.fullmatch(topic) or not _SLUG_RE.fullmatch(problem):
         raise RepLineError(f"malformed topic/problem slug: {slug!r}")
+
+    # Editor-first closeout intentionally asks for one fix, not a five-row
+    # scorecard. Its compact line remains structured by mode and exact slug.
+    if tokens and re.fullmatch(r"C\d+", tokens[0]) is None:
+        if mode not in EDITOR_MODES:
+            raise RepLineError("compact lines are only valid for editor modes")
+        return RepLine(
+            mode=mode,
+            topic=topic,
+            problem=problem,
+            scores={},
+            hint_level=None,
+            fix=" ".join(tokens),
+            is_legacy=False,
+            is_compact=True,
+        )
 
     scores: dict[str, int] = {}
     for letter in SCORE_LETTERS:

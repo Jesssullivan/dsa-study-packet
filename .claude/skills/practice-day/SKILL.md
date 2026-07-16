@@ -1,87 +1,48 @@
 ---
 name: practice-day
-description: Conduct the candidate's daily 4–5h whiteboard + IDE interview-practice block. Use when the candidate says "run my practice day", "let's practice", "start today's block", or at the start of a study session. Picks interleaved cold drills, gates timed sub-blocks (arrival ritual → cold whiteboard CLARP reps → IDE close+verify → targeted input → observed mock → tape review), logs reps. Trains confident, non-panicked reasoning-out-loud under observation for senior/DoD-level technical interviews — not LeetCode volume. Grounded in the science in docs/guide/interview-practice-evidence.md.
+description: Conduct an explicitly requested full 4 to 5 hour interview-practice day, multi-block practice session, or short 90-minute block. Default to editor-first coding reps with real tests, breaks, targeted review, and an optional board or observed mock. Do not trigger on a generic request to practice one problem.
 ---
 
-# Practice Day Conductor
+# Practice day conductor
 
-Run ONE focused deliberate-practice day (~4–5h ceiling) from the repo root.
-The target is: *make the candidate's reasoning inspectable while the problem moves,
-without panicking.* Structure the day as 3–4 effortful sub-blocks with real breaks —
-effortful practice degrades past ~90 min without recovery (Ericsson 1993). 4–5h is a
-**ceiling**, not a quota to pad with passive video.
+Read the persona block in repo-root `AGENTS.md`; it is authoritative. Use this
+skill only when the candidate explicitly requests a full practice day,
+multi-block session, or 90-minute block. Route a generic single-rep request to
+the `interviewer` skill.
 
-## Before you start
-- Confirm the whiteboard, a phone/camera to record, and the printed desk stack
-  (sheets 01/03/05/10/11 + booklet) are ready.
-- Ask the mode: **full day** (~4–5h, all blocks) or **short** (~90 min = ritual + Block 1 + close).
-- Draw today's problems **interleaved**: `just study-spaced 3`. Interleave topics;
-  never block one topic for the whole day (Rohrer & Taylor 2007) unless the interview
-  is explicitly single-topic.
+Ask whether they want the full 4 to 5 hour ceiling or the short 90-minute
+block. Offer the arrival reset once. Never treat regulation as a gate or score.
 
-## The blocks — announce each, time it, don't overrun
+## Full day or numbered day
 
-### 0 · Arrival ritual (10 min) — anxiety inoculation
-Have the candidate do, in order: **(a)** default to **4 physiological sighs**
-(double inhale through the nose, long exhale; ~30s total — see the arrival reset
-in the AGENTS.md persona). Slow diaphragmatic breathing, ~4–6 breaths/min, is the
-named alternative if that's already their practice (Ma 2017); **(b)** ~5 min
-**expressive writing** — free-write the worries about the interview, then set it
-aside (Ramirez & Beilock 2011); **(c)** one **reappraisal** line out loud: *"my
-heart rate is my body getting me ready — I'm up for this"* (Jamieson 2010; Brooks
-2014, "I'm excited" beats "calm down"). Never say "just relax." Never scored,
-never logged.
+If the candidate supplied a day number, run `just practice-day <day>`. For an
+unnumbered full day, ask which sheet-11 day (1 through 14) they are running,
+then run the same command. The command is the schedule authority.
 
-### 1 · Cold whiteboard reps (75–90 min) — retrieval + think-aloud, observed
-Per drawn problem: `just interview <topic> <problem>` — **cold**: statement only,
-solution stripped (retrieval practice beats rereading — Roediger & Karpicke 2006).
-**Recording ON** (rehearse the exact social-evaluative condition — choking is worst
-on under-practiced, working-memory-heavy problems, Beilock 2001/2004). The candidate
-**stands** and runs **CLARP out loud** (sheet 10 §2): Clarify → Lay out → Attack →
-Run → Polish. This runs as rung 3 in the AGENTS.md persona — interrupt cadence and
-the hint ladder live there, not here. Concurrent narration does not impair solving
-(Ericsson & Simon 1980); silence is lost signal. 2–4 problems.
+Relay its focus, breaks, and exact editor commands. If it prints `## Rest day`,
+relay the rest plan and stop. Otherwise run only its printed commands, one at a
+time, following the `AGENTS.md` editor state loop. Do not invent another block,
+draw, or schedule.
 
-### 2 · IDE close + verify (60–75 min) — make it actually run
-Implement each board solution in the stripped file; `just study <topic>` until tests
-pass. The candidate narrates aloud where the typed version diverged from the board
-version and why (shipping more working code that runs clean correlates with
-advancing — interviewing.io). Then `just challenge-done <topic> <problem>` (feeds
-spaced repetition — Cepeda 2006).
+## Short block
 
-**— BREAK 15 min (a real break) —**
+1. Run `just study-spaced 3` and let the candidate choose one printed command,
+   or use the first.
+2. Run that exact `just practice-start` command. Default to CLARP unless the
+   candidate requested REACTO, UMPIRE, or plain comments.
+3. Follow the `AGENTS.md` editor state loop. The candidate owns the source,
+   tests, comments, and gate.
+4. Close with one win, one fix, and `just practice-finish "one specific fix"`.
+   Stop at 90 minutes even if work remains.
 
-### 3 · Targeted input (30–45 min) — only what a rep exposed
-Read today's rubric scores + logged misses. Pick exactly ONE: a single
-mock-interview video matched to the weakness (Video Shelf in
-`docs/guide/interview-practice-evidence.md`), OR 2–3 worked examples of the pattern
-that cost the most (worked examples help for genuinely new patterns — Sweller 1988).
-No passive playlist grinding.
-
-### 4 · Observed mock (30–45 min; ~3×/week) — the real stressor
-Default: the resident agent runs this rung as the interviewer — full realistic
-cadence, one mid-problem constraint change, follow-up probing, per the AGENTS.md
-persona.
-
-**Optional variant — human observer.** If a person is sitting in instead (early on,
-someone who just watches and asks "why?" is enough; a technical peer or a second
-LLM interviewer works later — Daryanto 2025), hand them the sheet 10 §5 rubric to
-score the rep and let them run the interruptions; the agent drops to shadow —
-watching and logging only, no interrupting.
-
-Hints are normal here either way: **taking a hint is a positive signal, not a
-failure** (interviewing.io).
-
-## Close every block
-- **2 min** tape review, no more. Score the sheet 10 §5 rubric.
-- `just rep "<topic>/<problem> C_ L_ A_ R_ P_ <one fix for tomorrow>"`.
-- Name ONE thing to fix next rep. **Stop clean** — never grind past a bad rep.
-  Panic training works by repeated recoveries, not by punishing the nervous system.
+For an optional board or observed mock printed by the conductor, follow the
+persona cadence and close once with `just rep-finish <topic> <problem> "<rep
+line>"`. Never close it with separate log and review commands.
 
 ## Standing rules
-- Interleave, not block. Cold-first, always. Out-loud, always. Record, always.
-- One anti-panic reframe to repeat: a single nervous round is statistically normal
-  even for strong candidates (interviewing.io) — it is a collaboration, not a verdict.
-- **Public boundary:** never put employer/panel specifics, req numbers, or personal
-  rep logs into this repo. This skill trains the general skill only; tailored prep
-  lives in the private overlay.
+
+- Editor-first is the default. Whiteboard is an optional requested variant.
+- Prefer retrieval and coding over passive review.
+- Never exceed 90 minutes without a real break.
+- Never edit candidate-owned files or solve the problem.
+- Keep employer details and personal logs outside tracked public files.

@@ -32,12 +32,12 @@ whole contract.
 
 | Layer | What | Where | Public? |
 |-------|------|-------|---------|
-| **L1 — knowledge** | algorithms, tests, concepts, reference sheets 01–09 | this repo | ✅ |
-| **L2 — practice method** | sheets 10–11, `just interview` / `just rep`, spaced repetition | this repo | ✅ |
-| **L3 — private overlay** | employer/panel front & back matter, people, dates, tailored positioning, personal rep logs | a private downstream repo | ⛔ never here |
+| **L1: knowledge** | algorithms, tests, concepts, reference sheets 01–09 | this repo | ✅ |
+| **L2: practice method** | sheets 10–11, `just practice-start` / `just practice-test` / `just interview` / `just practice-finish` / `just rep-finish`, spaced repetition | this repo | ✅ |
+| **L3: private overlay** | employer/panel front & back matter, people, dates, tailored positioning, personal rep logs | a private downstream repo | ⛔ never here |
 
-The distinction that keeps this publishable: L2 is a *method* ("how to stay
-calm and narrate at a whiteboard" — a general, teachable skill); L3 is a
+The distinction that keeps this publishable: L2 is a *method* ("how to reason,
+code, test, and narrate under observation," a general, teachable skill); L3 is a
 *dossier* (who is on Tuesday's panel). Method publishes; dossier never touches
 this tree. **If a sentence only makes sense for one employer, it is L3.**
 
@@ -58,7 +58,7 @@ downstream. Composition is **overlay, not bundle**: the neutral booklet is
 compiled *here* from *this* tree (so it cannot contain employer text), and a
 private lane `\includepdf`s the finished PDF between its own front and back
 matter. The two bodies of text only ever meet as adjacent pages in a private
-output — never in source. Delete the private repo and this SSOT is unchanged
+output, never in source. Delete the private repo and this SSOT is unchanged
 and complete. `examples/overlay-demo/` is a self-contained, fork-me
 demonstration of the pattern with placeholder content.
 
@@ -68,10 +68,10 @@ demonstration of the pattern with placeholder content.
 tracked file contains secret-shaped content or secret-file paths: tracked SOPS
 or dotenv files, age keys, GitHub tokens, private-key blocks, legacy secret
 tripwires. Name-specific tripwires (employers, panels, private repo names) are
-deliberately **not** listed here — the private downstream repo scans this tree
+deliberately **not** listed here. The private downstream repo scans this tree
 with its own marker list, so the public guard cannot itself disclose what it
 guards against. Neutrality is a machine check, not a promise.
-Personal rep scores (`.challenges/reps.md`) are gitignored by default —
+Personal rep scores (`.challenges/reps.md`) are gitignored by default;
 publish aggregates deliberately, or not at all.
 
 ## Who Owns The Practice Method
@@ -81,11 +81,11 @@ question about it; none restates another's answer.
 
 | Surface | Owns | Does not own |
 |---------|------|---------------|
-| [Sheet 10](../reference/10-whiteboard-performance-protocol.md) | the CLARP method + self-review rubric — *how* to perform | no calendar, no daily loop |
-| [Sheet 11](../reference/11-14-day-whiteboard-ramp.md) | the 14-day calendar + daily loop — *when*. Its prose feeds `scripts/practice_day.py` closely — edit sheet 11 itself for loop changes, never this table | no method detail, no rubric |
-| [Evidence page](interview-practice-evidence.md) | *why* — research citations and the video shelf | no calendar, no rubric scoring |
+| [Sheet 10](../reference/10-whiteboard-performance-protocol.md) | the CLARP method + self-review rubric: *how* to perform | no calendar, no daily loop |
+| [Sheet 11](../reference/11-14-day-whiteboard-ramp.md) | the 14-day editor-first calendar: *when*. Its prose feeds `scripts/practice_day.py`; edit sheet 11 itself for loop changes | no method detail, no rubric |
+| [Evidence page](interview-practice-evidence.md) | *why*: research citations and the video shelf | no calendar, no rubric scoring |
 | `AGENTS.md` persona | *how* the resident interviewer behaves during a rep; regenerates the `.github` surfaces via `just gen-agents` | no citations, no calendar |
-| Skills (`practice-day`, `interviewer`) | routing — which rung, which `just` command runs next | no method content of its own |
+| Skills (`practice-day`, `interviewer`) | routing: which mode and `just` command runs next | no method content of its own |
 
 A change landing on the wrong row is the drift tell: a calendar edit inside
 sheet 10, a rubric row inside the evidence page, or a citation inside
@@ -98,4 +98,4 @@ sheet 10, a rubric row inside the evidence page, or a citation inside
 | Add/extend a study or practice sheet | `reference-sheets/NN-*.md` + one-line `docs/reference/NN-*.md` wrapper; nav + PDF pick it up | L1/L2 |
 | Add an algorithm | `src/algo/<topic>/<problem>.py` + tests; booklet and site regenerate | L1 |
 | Prep for a specific employer/panel | Create a lane in the private downstream repo; author front/back matter there | L3 |
-| Keep practice tapes / mock scripts / rep scores | Private repo or gitignored local dir — never tracked here | L3 |
+| Keep practice tapes / mock scripts / rep scores | Private repo or gitignored local dir, never tracked here | L3 |

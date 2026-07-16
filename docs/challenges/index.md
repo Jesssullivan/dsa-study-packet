@@ -1,200 +1,79 @@
 ---
-title: Daily Drill
+title: Practice Drills
 ---
 
-# Daily Drill
+# Practice Drills
 
-The core drill set. All of it. Every day. Seven days.
+Let the review queue choose the next problem, or select one when you know the
+skill you want to isolate. One rep should produce one useful correction, not a
+larger solve count.
 
-Challenge mode strips each implementation, leaving the signature and docstring.
-You re-implement from scratch and run tests to verify.
+## Start in the editor
 
----
+Choose a comment format in Copilot Chat:
 
-## How It Works
-
-```bash
-just challenge <topic> <problem>  # strip solution → you implement
-just study <topic>                # watch mode — re-runs tests on save
-just solution <topic> <problem>   # restore if stuck
-just challenge-done <t> <p>       # mark complete
-just challenge-progress           # see stats
+```text
+/reacto
+/clarp
+/umpire
+/comments
 ```
 
----
-
-## The Core Set
-
-Copy-paste the full block to strip the whole set at once, or work topic by topic.
-
-### Arrays (4)
+No arguments are needed. To select a drill, add its topic and name, such as
+`/clarp graphs dijkstra`. The direct terminal equivalent is:
 
 ```bash
-just challenge arrays two_sum
-just challenge arrays group_anagrams
-just challenge arrays product_except_self
-just challenge arrays top_k_frequent
+just practice-start clarp graphs dijkstra
 ```
 
-### Two Pointers (2)
+Fill the comments in your source file, save, and remove the `THINKING GATE`
+yourself. Then implement and add cases in your test file. Use `/continue` or
+`just practice-next` for one next instruction.
 
 ```bash
-just challenge two_pointers three_sum
-just challenge two_pointers trapping_rain_water
+just practice-test
+just practice-repl
+just practice-finish "one fix"
 ```
 
-### Sliding Window (2)
+## Core 43
 
-```bash
-just challenge sliding_window min_window_substring
-just challenge sliding_window longest_substring_no_repeat
-```
+The core set covers common patterns across sessions. `just catalog` prints the
+machine-readable list and current topic counts.
 
-### Stacks & Queues (2)
+| Topic | Problems |
+|-------|----------|
+| Arrays | `two_sum`, `group_anagrams`, `product_except_self`, `top_k_frequent` |
+| Two pointers | `three_sum`, `trapping_rain_water` |
+| Sliding window | `min_window_substring`, `longest_substring_no_repeat` |
+| Stacks and queues | `valid_parentheses`, `daily_temperatures` |
+| Searching | `binary_search`, `search_rotated_array` |
+| Linked lists | `reverse_linked_list`, `lru_cache` |
+| Trees | `validate_bst`, `level_order_traversal`, `trie` |
+| Graphs | `number_of_islands`, `topological_sort`, `course_schedule`, `dijkstra`, `a_star_search`, `bellman_ford`, `minimum_spanning_tree` |
+| Dynamic programming | `coin_change`, `edit_distance`, `knapsack`, `longest_increasing_subseq`, `longest_common_subseq` |
+| Heaps | `kth_largest`, `merge_k_sorted_lists` |
+| Backtracking | `subsets`, `combination_sum`, `n_queens` |
+| Greedy | `merge_intervals`, `jump_game` |
+| Strings | `valid_palindrome`, `longest_palindromic_substring` |
+| Recursion | `generate_parentheses`, `flatten_nested_list` |
+| Bit manipulation | `single_number` |
+| Sorting | `quickselect` |
+| Math | `sieve_of_eratosthenes` |
 
-```bash
-just challenge stacks_queues valid_parentheses
-just challenge stacks_queues daily_temperatures
-```
+Choose by the signal you want to improve: restating the problem, selecting an
+example, recognizing a pattern, implementing cleanly, testing, or explaining
+complexity. The [decision tree](../guide/when-to-use-what.md) helps with
+pattern selection. Inspect the [algorithm library](../algorithms/index.md)
+after the rep reaches a natural stopping point.
 
-### Searching (2)
+## More practice
 
-```bash
-just challenge searching binary_search
-just challenge searching search_rotated_array
-```
+The repository includes additional problems in the same topic directories.
+Any entry from `just catalog` can start with `just practice-start`. Use the
+[learning paths](../guide/learning-paths.md) when you want a curated order, or
+[Advanced Exercises](../practice/index.md) for code reading and open-ended
+decomposition.
 
-### Linked Lists (2)
-
-```bash
-just challenge linked_lists reverse_linked_list
-just challenge linked_lists lru_cache
-```
-
-### Trees (3)
-
-```bash
-just challenge trees validate_bst
-just challenge trees level_order_traversal
-just challenge trees trie
-```
-
-### Graphs (7)
-
-```bash
-just challenge graphs number_of_islands
-just challenge graphs topological_sort
-just challenge graphs course_schedule
-just challenge graphs dijkstra
-just challenge graphs a_star_search
-just challenge graphs bellman_ford
-just challenge graphs minimum_spanning_tree
-```
-
-### Dynamic Programming (5)
-
-```bash
-just challenge dp coin_change
-just challenge dp edit_distance
-just challenge dp knapsack
-just challenge dp longest_increasing_subseq
-just challenge dp longest_common_subseq
-```
-
-### Heaps (2)
-
-```bash
-just challenge heaps kth_largest
-just challenge heaps merge_k_sorted_lists
-```
-
-### Backtracking (3)
-
-```bash
-just challenge backtracking subsets
-just challenge backtracking combination_sum
-just challenge backtracking n_queens
-```
-
-### Greedy (2)
-
-```bash
-just challenge greedy merge_intervals
-just challenge greedy jump_game
-```
-
-### Strings (2)
-
-```bash
-just challenge strings valid_palindrome
-just challenge strings longest_palindromic_substring
-```
-
-### Recursion (2)
-
-```bash
-just challenge recursion generate_parentheses
-just challenge recursion flatten_nested_list
-```
-
-### Bit Manipulation (1)
-
-```bash
-just challenge bit_manipulation single_number
-```
-
-### Sorting (1)
-
-```bash
-just challenge sorting quickselect
-```
-
----
-
-## Tracking
-
-After each pass, mark status:
-
-| Mark | Meaning |
-|------|---------|
-| :white_check_mark: | From memory, under 25 min |
-| :warning: | Needed a hint or slow |
-| :x: | Could not solve |
-
-Re-drill all :warning: and :x: problems first the next day.
-
-```bash
-just challenge-progress
-```
-
----
-
-## Extended Practice
-
-The extended implementations are in the repo for deeper study:
-
-- **graphs**: clone_graph, word_ladder, network_delay_time, network_flow, geohash_grid, kd_tree
-- **dp**: climbing_stairs, traveling_salesman_dp, constraint_satisfaction
-- **two_pointers**: container_with_most_water
-- **stacks_queues**: min_stack
-- **searching**: find_minimum_rotated
-- **linked_lists**: merge_two_sorted
-- **trees**: max_depth, invert_tree
-- **heaps**: task_scheduler
-- **backtracking**: permutations
-- **greedy**: interval_scheduling
-- **strings**: valid_anagram, longest_common_prefix, string_to_integer_atoi
-- **recursion**: pow_x_n, letter_combinations_phone, tower_of_hanoi
-- **bit_manipulation**: counting_bits, reverse_bits
-- **sorting**: merge_sort_inversions
-- **patterns**: sliding_window (max_sum_subarray)
-
-Use `just challenge <topic> <problem>` on any of these the same way.
-
----
-
-## Tips
-
-- Talk out loud while solving — practice interview communication
-- 25 min per problem is interview pace
-- If you can't identify the pattern in 3 min, check the [decision tree](../guide/when-to-use-what.md)
+Untimed conversation and timed board-style reps can use the same catalog. The
+editor workspace is the default surface, not the only valid one.
