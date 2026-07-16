@@ -70,9 +70,10 @@ In the source file:
 6. Add focused tests, trace one example, and update comments that no longer
    match the code.
 
-The interviewer checks that each reasoning section is filled. It never writes
-your code, tests, or gate. Save detection is explicit, so enter `/continue`
-after a save or run `just practice-next`.
+The interviewer checks that saved reasoning comments are present, not that you
+used a particular prefix or label. It never writes your code, tests, or gate.
+Save detection is explicit, so enter `/continue` after a save or run `just
+practice-next`.
 
 The workspace is gitignored. Starting a different rep archives the previous
 workspace under `.challenges/history/`. Starting the same unfinished rep
