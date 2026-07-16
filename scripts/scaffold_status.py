@@ -130,8 +130,12 @@ def section_status(
     return status
 
 
-def _marker(seed: str) -> str:
-    return seed.split(":", 1)[0].removeprefix("# ") + ":"
+def _marker(seed: str) -> str | None:
+    body = _comment_body(seed)
+    label, separator, _prompt = body.partition(":")
+    if not separator:
+        return None
+    return label + ":"
 
 
 def _comment_body(comment: str) -> str:
@@ -515,6 +519,7 @@ def _legacy_evidence(
     lines = text.splitlines()
     by_row = {comment.row: comment for comment in comments}
     markers = tuple(_marker(seed) for seed in seeds)
+    labeled_markers = tuple(marker for marker in markers if marker is not None)
     pre: set[str] = set()
     post: set[str] = set()
     seen: set[str] = set()
@@ -527,12 +532,15 @@ def _legacy_evidence(
     ]
     pre_boundary = min([scope.first_code, *lock_rows])
     for index, (seed, marker) in enumerate(zip(seeds, markers, strict=True)):
+        prompt_body = _comment_body(seed)
         occurrence = next(
             (
                 comment
                 for comment in comments
                 if lines[comment.row - 1].strip().startswith("#")
-                and _comment_body(comment.text).casefold().startswith(marker.casefold())
+                and _comment_body(comment.text).casefold().startswith(
+                    (marker or prompt_body).casefold()
+                )
             ),
             None,
         )
@@ -540,13 +548,22 @@ def _legacy_evidence(
             continue
         claimed.add(occurrence.row)
         body = _comment_body(occurrence.text)
-        prompt = seed.split(":", 1)[1].strip()
-        answer = body[len(marker) :].strip()
-        key = (
-            None if _canonical(answer) == _canonical(prompt) else _evidence_key(answer)
-        )
+        if marker is None:
+            key = (
+                None
+                if _canonical(body) == _canonical(prompt_body)
+                else _evidence_key(body)
+            )
+        else:
+            prompt = seed.split(":", 1)[1].strip()
+            answer = body[len(marker) :].strip()
+            key = (
+                None
+                if _canonical(answer) == _canonical(prompt)
+                else _evidence_key(answer)
+            )
 
-        if key is None:
+        if marker is not None and key is None:
             for row in range(occurrence.row + 1, scope.end + 1):
                 line = lines[row - 1].strip()
                 if not line:
@@ -557,7 +574,7 @@ def _legacy_evidence(
                 continuation_body = _comment_body(continuation.text)
                 if any(
                     continuation_body.casefold().startswith(candidate.casefold())
-                    for candidate in markers
+                    for candidate in labeled_markers
                 ) or _canonical(line) == _canonical(lock_sentinel):
                     break
                 claimed.add(row)
@@ -584,13 +601,16 @@ def _natural_comment(
 ) -> str | None:
     body = _comment_body(comment)
     canonical = _canonical(body)
-    generated = {_canonical(_comment_body(seed)) for seed in seeds} | {
-        _canonical(seed.split(":", 1)[1]) for seed in seeds
-    }
+    generated = {_canonical(_comment_body(seed)) for seed in seeds}
+    generated.update(
+        _canonical(seed.split(":", 1)[1]) for seed in seeds if ":" in seed
+    )
     if canonical in generated or canonical == _canonical(_comment_body(lock_sentinel)):
         return None
     for seed in seeds:
         marker = _marker(seed)
+        if marker is None:
+            continue
         if body.casefold().startswith(marker.casefold()):
             answer = body[len(marker) :].strip()
             prompt = seed.split(":", 1)[1].strip()

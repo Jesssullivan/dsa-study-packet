@@ -335,6 +335,14 @@ def test_devcontainer_workflow_uses_pinned_actions_and_login_free_path() -> None
     workflow = (ROOT / ".github/workflows/devcontainer.yml").read_text()
     assert "export PATH=" not in workflow
     assert "bash --noprofile --norc" in workflow
+    assert "# RESTATE:" not in workflow
+    for prompt in (
+        "Write what this function should return",
+        "Work one ordinary example and one edge case",
+        "Note the simplest correct plan",
+    ):
+        assert prompt in workflow
+    assert "NEXT: Add 1 more ordinary reasoning comment above the gate" in workflow
     action_refs = [
         line.strip().removeprefix("- uses: ").split(" #", 1)[0]
         for line in workflow.splitlines()

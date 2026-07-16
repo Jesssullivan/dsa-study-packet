@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from catalog import selection_error
 from core42 import PRACTICE_TARGETS
 from rep_schema import RepLineError, parse_rep_line
 from scaffold_status import (
@@ -171,14 +172,14 @@ PARADIGMS: dict[str, Paradigm] = {
     "comments": Paradigm(
         title="comment-driven",
         seeds=(
-            "# RESTATE: the problem in your own words: inputs, outputs, constraints",
-            "# EXAMPLE: one concrete input/output pair, plus one edge case",
-            "# INVARIANT: what stays true at each step (loop/recursion invariant)",
-            "# APPROACH: pattern family + brute-force big-O, decided before any code",
-            "# TESTS: cases to add in the candidate test tab and what each proves",
-            "# COMPLEXITY: final time / space and remaining edges",
+            "# Write what this function should return and any assumptions in your own words.",
+            "# Work one ordinary example and one edge case by hand.",
+            "# Note the simplest correct plan and what must stay true while it runs.",
+            "# Narrate the next code choice before implementing it.",
+            "# Trace one example and note which tests prove the important edges.",
+            "# Record the final time and space costs plus anything still uncertain.",
         ),
-        lock_after=4,
+        lock_after=3,
     ),
 }
 
@@ -231,6 +232,13 @@ def _validate_problem(topic: str, problem: str) -> None:
         raise PracticeError("topic and problem must be lowercase Python identifiers")
 
 
+def _validate_practice_selection(root: Path, topic: str, problem: str) -> None:
+    """Reject non-canonical pairs before any source or test path is read."""
+    _validate_problem(topic, problem)
+    if (topic, problem) not in PRACTICE_TARGETS:
+        raise PracticeError(selection_error(topic, problem, root))
+
+
 def _draw_problem(root: Path) -> tuple[str, str]:
     queue = ranked_queue(_state_file(root, "progress.md"))
     if not queue:
@@ -243,11 +251,20 @@ def select_problem(
     root: Path, topic: str | None = None, problem: str | None = None
 ) -> tuple[str, str]:
     """Validate an explicit selection or draw one problem when both are absent."""
-    if (topic is None) != (problem is None):
-        raise PracticeError("provide both topic and problem, or omit both for a draw")
-    if topic is None or problem is None:
+    has_topic = topic not in (None, "")
+    has_problem = problem not in (None, "")
+    if has_topic != has_problem:
+        supplied = topic if has_topic else problem
+        raise PracticeError(
+            "provide both topic and problem, or omit both for a draw\n"
+            f"MATCH: one natural name, {supplied!r}, is not an exact pair\n"
+            f'NEXT: run `just catalog "{supplied}"` for exact topic/problem pairs.'
+        )
+    if not has_topic and not has_problem:
         topic, problem = _draw_problem(root)
-    _validate_problem(topic, problem)
+    assert topic is not None
+    assert problem is not None
+    _validate_practice_selection(root, topic, problem)
     return topic, problem
 
 
@@ -562,7 +579,7 @@ def render_candidate(source: str, paradigm: Paradigm, target: str | None = None)
 
 def present_problem(root: Path, topic: str, problem: str) -> str:
     """Return a cold statement from committed source without creating a rep."""
-    _validate_problem(topic, problem)
+    _validate_practice_selection(root, topic, problem)
     source_rel = Path("src/algo") / topic / f"{problem}.py"
     source = truncate_module_docstring(_committed_source(root, source_rel))
     try:
@@ -573,7 +590,7 @@ def present_problem(root: Path, topic: str, problem: str) -> str:
 
 def reference_solution(root: Path, topic: str, problem: str) -> str:
     """Return the committed implementation without touching working files."""
-    _validate_problem(topic, problem)
+    _validate_practice_selection(root, topic, problem)
     source_rel = Path("src/algo") / topic / f"{problem}.py"
     return _committed_source(root, source_rel)
 
@@ -1329,12 +1346,18 @@ def prepare_session(
     Returns ``(metadata, action, archived_path)`` where action is ``created``
     or ``resumed``. A different/fresh session archives the previous workspace.
     """
+    paradigm = PARADIGMS.get(paradigm_name)
+    if paradigm is None:
+        choices = ", ".join(PARADIGMS)
+        raise PracticeError(f"unknown paradigm {paradigm_name!r}; choose {choices}")
+
+    explicit = topic not in (None, "") or problem not in (None, "")
+    selected = select_problem(root, topic, problem) if explicit else None
     with _practice_lock(root):
-        paradigm = PARADIGMS.get(paradigm_name)
-        if paradigm is None:
-            choices = ", ".join(PARADIGMS)
-            raise PracticeError(f"unknown paradigm {paradigm_name!r}; choose {choices}")
-        topic, problem = select_problem(root, topic, problem)
+        if selected is None:
+            topic, problem = select_problem(root)
+        else:
+            topic, problem = selected
 
         workspace = _workspace(root)
         if workspace.is_symlink():
@@ -1344,12 +1367,18 @@ def prepare_session(
                 metadata = _read_metadata(root)
             except PracticeError:
                 metadata = None
-            if (
-                metadata is not None
-                and "finished_at" not in metadata
-                and _same_session(metadata, paradigm_name, topic, problem)
-            ):
-                return metadata, "resumed", None
+            if metadata is not None and "finished_at" not in metadata:
+                if _same_session(metadata, paradigm_name, topic, problem):
+                    return metadata, "resumed", None
+                current = (
+                    f"{metadata['paradigm']} {metadata['topic']}/{metadata['problem']}"
+                )
+                raise PracticeError(
+                    f"unfinished editor rep: {current}\n"
+                    'NEXT: run `just practice-finish "<one concrete fix>"`, '
+                    "then retry; or explicitly archive it with "
+                    f"`just practice-new {paradigm_name} {topic} {problem}`."
+                )
 
         source_rel = Path("src/algo") / topic / f"{problem}.py"
         reference_test_rel = Path("tests") / topic / f"test_{problem}.py"

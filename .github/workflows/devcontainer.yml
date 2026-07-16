@@ -64,17 +64,18 @@ jobs:
               exit 1
             fi
             sed -i \
-              -e 's|# RESTATE:.*|# TODO later|' \
-              -e 's|# EXAMPLE:.*|# [2, 7], 9 returns (0, 1); negatives remain valid.|' \
-              -e 's|# INVARIANT:.*|# Seen maps each prior value to its index.|' \
+              -e 's|# Write what this function should return and any assumptions in your own words.|# TODO later|' \
+              -e 's|# Work one ordinary example and one edge case by hand.|# [2, 7], 9 returns (0, 1); negatives remain valid.|' \
+              -e 's|# Note the simplest correct plan and what must stay true while it runs.|# Seen maps each prior value to its index.|' \
               .challenges/workspace/two_sum.py
             just practice-next | tee /tmp/practice-placeholder.txt
             grep -q '^STATE: THINK$' /tmp/practice-placeholder.txt
+            grep -Fqx 'NEXT: Add 1 more ordinary reasoning comment above the gate, save, then run /continue.' /tmp/practice-placeholder.txt
             sed -i \
               -e 's|# TODO later|# Return two distinct indices whose values sum to the target.|' \
-              -e '/# APPROACH:/d' \
-              -e '/# TESTS:/d' \
-              -e '/# COMPLEXITY:/d' \
+              -e '/# Narrate the next code choice before implementing it./d' \
+              -e '/# Trace one example and note which tests prove the important edges./d' \
+              -e '/# Record the final time and space costs plus anything still uncertain./d' \
               -e '/# ==== THINKING GATE:/d' \
               -e 's|    raise NotImplementedError|    seen: dict[int, int] = {}\n    for index, value in enumerate(nums):\n        complement = target - value\n        if complement in seen:\n            return (seen[complement], index)\n        seen[value] = index\n    raise ValueError("no two elements sum to target")|' \
               .challenges/workspace/two_sum.py
