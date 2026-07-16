@@ -23,6 +23,10 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 
 ### Changed
 
+- Editor practice now accepts ordinary Python comments without framework
+  prefixes. The practice loop records which comments were written after the
+  thinking phase, so natural comments around compact implementations can drive
+  BUILD, REFLECT, and CLOSE without special placement tricks.
 - Codespaces now defaults to its built-in Copilot Chat and the portable
   `just practice-*` loop. It no longer requires interviewer secrets or
   auto-starts an external CLI in a split terminal; external agents remain

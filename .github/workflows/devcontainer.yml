@@ -57,17 +57,24 @@ jobs:
             uv run pytest tests/arrays -q
             PRACTICE_NO_OPEN=1 just practice-start comments arrays two_sum
             just practice-status
+            just practice-next | tee /tmp/practice-think.txt
+            grep -q '^STATE: THINK$' /tmp/practice-think.txt
             if just practice-test; then
               echo "locked workspace unexpectedly ran tests" >&2
               exit 1
             fi
             sed -i \
-              -e 's|# RESTATE:.*|# RESTATE: return two distinct indices whose values sum to the target.|' \
-              -e 's|# EXAMPLE:.*|# EXAMPLE: [2, 7], 9 returns (0, 1); negatives remain valid.|' \
-              -e 's|# INVARIANT:.*|# INVARIANT: seen maps each prior value to its index.|' \
-              -e 's|# APPROACH:.*|# APPROACH: O(n^2) pairs; use a hash map for O(n) time.|' \
-              -e 's|# TESTS:.*|# TESTS: cover the concrete pair and one edge case.|' \
-              -e 's|# COMPLEXITY:.*|# COMPLEXITY: O(n) time and O(n) space.|' \
+              -e 's|# RESTATE:.*|# TODO later|' \
+              -e 's|# EXAMPLE:.*|# [2, 7], 9 returns (0, 1); negatives remain valid.|' \
+              -e 's|# INVARIANT:.*|# Seen maps each prior value to its index.|' \
+              .challenges/workspace/two_sum.py
+            just practice-next | tee /tmp/practice-placeholder.txt
+            grep -q '^STATE: THINK$' /tmp/practice-placeholder.txt
+            sed -i \
+              -e 's|# TODO later|# Return two distinct indices whose values sum to the target.|' \
+              -e '/# APPROACH:/d' \
+              -e '/# TESTS:/d' \
+              -e '/# COMPLEXITY:/d' \
               -e '/# ==== THINKING GATE:/d' \
               -e 's|    raise NotImplementedError|    seen: dict[int, int] = {}\n    for index, value in enumerate(nums):\n        complement = target - value\n        if complement in seen:\n            return (seen[complement], index)\n        seen[value] = index\n    raise ValueError("no two elements sum to target")|' \
               .challenges/workspace/two_sum.py
@@ -77,6 +84,21 @@ jobs:
               -e '/def test_concrete_example()/,+1 s|assert ...|assert two_sum([2, 7, 11, 15], 9) == (0, 1)|' \
               .challenges/workspace/test_two_sum_candidate.py
             just practice-status
+            just practice-next | tee /tmp/practice-build.txt
+            grep -q '^STATE: BUILD$' /tmp/practice-build.txt
+            sed -i \
+              -e 's|    seen: dict\[int, int\] = {}|    seen: dict[int, int] = {}\n    # Each value enters the lookup after its complement check.|' \
+              .challenges/workspace/two_sum.py
+            just practice-next | tee /tmp/practice-reflect-trace.txt
+            grep -q '^STATE: REFLECT$' /tmp/practice-reflect-trace.txt
+            sed -i \
+              -e 's|        if complement in seen:|        # For [2, 7] and 9, value 7 finds complement 2 at index 0.\n        if complement in seen:|' \
+              .challenges/workspace/two_sum.py
+            just practice-next | tee /tmp/practice-reflect-complexity.txt
+            grep -q '^STATE: REFLECT$' /tmp/practice-reflect-complexity.txt
+            sed -i \
+              -e 's|    raise ValueError("no two elements sum to target")|    # The lookup grows to n entries, so time and space are O(n).\n    raise ValueError("no two elements sum to target")|' \
+              .challenges/workspace/two_sum.py
             just practice-next | tee /tmp/practice-next.txt
             grep -q '^STATE: CLOSE$' /tmp/practice-next.txt
             just practice-test

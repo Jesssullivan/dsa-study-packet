@@ -43,7 +43,12 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core42 import PRACTICE_TARGETS
 from rep_schema import RepLineError, parse_rep_line
-from scaffold_status import section_status
+from scaffold_status import (
+    CommentEvidence,
+    CommentSnapshot,
+    _selected_target,
+    candidate_comment_snapshot,
+)
 from strip_solution import (
     inject_scaffold,
     module_docstring_block,
@@ -57,13 +62,18 @@ STATE_REL = Path(".challenges")
 WORKSPACE_REL = Path(".challenges/workspace")
 HISTORY_REL = Path(".challenges/history")
 METADATA_NAME = "session.json"
+COMMENT_RECEIPT_NAME = "comment-receipt.json"
 METADATA_SCHEMA = 4
+COMMENT_RECEIPT_SCHEMA = 1
 JOURNAL_REL = Path(".challenges/practice-closeout.json")
 NON_EDITOR_RECEIPTS_REL = Path(".challenges/non-editor-receipts.json")
 LOCK_REL = Path(".challenges/.practice.lock")
 MAX_HISTORY_ENTRIES = 100
 MAX_HISTORY_BYTES = 512 * 1024 * 1024
 MAX_NON_EDITOR_RECEIPTS = 100
+MAX_REQUIRED_PRE_CODE_COMMENTS = 3
+REQUIRED_POST_CODE_COMMENTS = 3
+MAX_COMMENT_RECEIPT_KEYS = 256
 DEFAULT_TEST_TIMEOUT_SECONDS = 120
 MAX_TEST_TIMEOUT_SECONDS = 900
 TEST_PROCESS_POLL_SECONDS = 0.02
@@ -95,6 +105,15 @@ class TestRun:
     @property
     def fresh(self) -> bool:
         return self.before == self.after
+
+
+@dataclass(frozen=True)
+class CommentReceipt:
+    """Private temporal evidence for comments added after the thinking phase."""
+
+    armed: bool
+    observed: frozenset[str]
+    accepted: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -620,8 +639,13 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 MODULE = {module!r}
 CANDIDATE = Path(__file__).with_name({candidate_name!r})
+CANDIDATE_TEST = Path(__file__).with_name(
+    f"test_{{CANDIDATE.stem}}_candidate.py"
+)
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_REL = {source_rel.as_posix()!r}
 TARGET = {target!r}
@@ -703,6 +727,14 @@ def pytest_collection_modifyitems(items: list[object]) -> None:
     parent = importlib.import_module(parent_name)
     sys.modules[MODULE] = _CANDIDATE_MODULE
     setattr(parent, child_name, _CANDIDATE_MODULE)
+    candidate_path = CANDIDATE_TEST.resolve()
+    if not any(
+        Path(str(getattr(item, "path", ""))).resolve() == candidate_path
+        for item in items
+    ):
+        raise pytest.UsageError(
+            "candidate test file collected no tests; add a top-level test_ function"
+        )
 '''
 
 
@@ -1424,11 +1456,196 @@ def _print_start(
     show_next(root, metadata)
 
 
-def _statuses(root: Path, metadata: dict[str, Any]) -> dict[str, str]:
-    source = (root / str(metadata["source"])).read_text()
+def _comment_evidence(source: str, metadata: dict[str, Any]) -> CommentEvidence:
+    return _comment_snapshot(source, metadata).evidence
+
+
+def _comment_snapshot(source: str, metadata: dict[str, Any]) -> CommentSnapshot:
     seeds = tuple(str(seed) for seed in metadata["seeds"])
     lock = str(metadata["lock"])
-    return section_status(source, seeds=seeds, lock_sentinel=lock)
+    pre_required, _ = _comment_requirements(metadata)
+    return candidate_comment_snapshot(
+        source,
+        seeds=seeds,
+        lock_sentinel=lock,
+        pre_code_count=len(metadata["pre_code_labels"]),
+        natural_pre_code_count=pre_required,
+        target=str(metadata["target"]),
+    )
+
+
+def _comment_receipt_path(root: Path) -> Path:
+    return _workspace(root) / COMMENT_RECEIPT_NAME
+
+
+def _comment_key_digest(session_id: str, key: str) -> str:
+    return hashlib.sha256(f"{session_id}\0{key}".encode()).hexdigest()
+
+
+def _comment_key_digests(
+    snapshot: CommentSnapshot, session_id: str
+) -> tuple[set[str], set[str], set[str], set[str]]:
+    all_keys = {
+        _comment_key_digest(session_id, key) for key in snapshot.all_keys
+    }
+    pre_keys = {
+        _comment_key_digest(session_id, key) for key in snapshot.pre_keys
+    }
+    anchored_post_keys = {
+        _comment_key_digest(session_id, key)
+        for key in snapshot.anchored_post_keys
+    }
+    legacy_post_keys = {
+        _comment_key_digest(session_id, key)
+        for key in snapshot.legacy_post_keys
+    }
+    return all_keys, pre_keys, anchored_post_keys, legacy_post_keys
+
+
+def _read_comment_receipt(
+    root: Path, metadata: dict[str, Any]
+) -> CommentReceipt | None:
+    path = _comment_receipt_path(root)
+    if not path.exists():
+        return None
+    if path.is_symlink() or not path.is_file():
+        raise PracticeError("comment receipt must be a regular file")
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PracticeError(f"invalid comment receipt: {exc}") from exc
+    expected_fields = {"schema", "session_id", "armed", "observed", "accepted"}
+    if not isinstance(value, dict) or set(value) != expected_fields:
+        raise PracticeError("invalid comment receipt fields")
+    if value["schema"] != COMMENT_RECEIPT_SCHEMA:
+        raise PracticeError("invalid comment receipt schema")
+    if value["session_id"] != metadata["session_id"]:
+        raise PracticeError("comment receipt belongs to a different practice session")
+    if type(value["armed"]) is not bool:
+        raise PracticeError("invalid comment receipt armed state")
+
+    def digest_set(field: str) -> frozenset[str]:
+        items = value[field]
+        if not isinstance(items, list) or len(items) > MAX_COMMENT_RECEIPT_KEYS:
+            raise PracticeError(f"invalid comment receipt {field} list")
+        if any(type(item) is not str or HEX_DIGEST.fullmatch(item) is None for item in items):
+            raise PracticeError(f"invalid comment receipt {field} digest")
+        if len(set(items)) != len(items):
+            raise PracticeError(f"duplicate comment receipt {field} digest")
+        return frozenset(items)
+
+    observed = digest_set("observed")
+    accepted = digest_set("accepted")
+    if not accepted <= observed:
+        raise PracticeError("comment receipt accepted keys were not observed")
+    return CommentReceipt(bool(value["armed"]), observed, accepted)
+
+
+def _comment_receipt_text(
+    metadata: dict[str, Any], receipt: CommentReceipt
+) -> str:
+    value = {
+        "schema": COMMENT_RECEIPT_SCHEMA,
+        "session_id": metadata["session_id"],
+        "armed": receipt.armed,
+        "observed": sorted(receipt.observed),
+        "accepted": sorted(receipt.accepted),
+    }
+    return json.dumps(value, indent=2) + "\n"
+
+
+def _effective_comment_evidence(
+    root: Path,
+    metadata: dict[str, Any],
+    source: str,
+    snapshot: CommentSnapshot,
+) -> CommentEvidence:
+    receipt = _read_comment_receipt(root, metadata)
+    if receipt is None:
+        pre_required, _ = _comment_requirements(metadata)
+        post_count = (
+            len(snapshot.anchored_post_keys | snapshot.legacy_post_keys)
+            if str(metadata["lock"]) not in source
+            and len(snapshot.pre_keys) >= pre_required
+            else 0
+        )
+        return CommentEvidence(
+            len(snapshot.pre_keys), post_count
+        )
+    current, pre_keys, anchored_post, _legacy_post = _comment_key_digests(
+        snapshot, str(metadata["session_id"])
+    )
+    active_post = (set(receipt.accepted) & current) - pre_keys
+    if str(metadata["lock"]) not in source:
+        eligible = current if receipt.armed else anchored_post
+        active_post.update((current - set(receipt.observed)) & eligible)
+        active_post.difference_update(pre_keys)
+    return CommentEvidence(len(snapshot.pre_keys), len(active_post))
+
+
+def _advance_comment_receipt(
+    root: Path,
+    metadata: dict[str, Any],
+    source: str,
+    snapshot: CommentSnapshot,
+) -> CommentEvidence:
+    previous_receipt = _read_comment_receipt(root, metadata)
+    receipt = previous_receipt
+    if receipt is None:
+        receipt = CommentReceipt(False, frozenset(), frozenset())
+    current, pre_keys, anchored_post, legacy_post = _comment_key_digests(
+        snapshot, str(metadata["session_id"])
+    )
+    observed = set(receipt.observed)
+    accepted = set(receipt.accepted)
+    pre_required, _ = _comment_requirements(metadata)
+    locked = str(metadata["lock"]) in source
+    armed = receipt.armed
+    pre_complete = len(snapshot.pre_keys) >= pre_required
+    if locked or not pre_complete:
+        if locked and pre_complete:
+            armed = True
+    else:
+        if armed:
+            accepted.update(current - observed)
+        else:
+            initial_anchors = anchored_post
+            if previous_receipt is None:
+                initial_anchors |= legacy_post
+            accepted.update((current - observed) & initial_anchors)
+        armed = True
+    observed.update(current)
+    if len(observed) > MAX_COMMENT_RECEIPT_KEYS:
+        raise PracticeError(
+            "comment receipt is full; start a fresh rep before adding more comments"
+        )
+    accepted.intersection_update(observed)
+    updated = CommentReceipt(armed, frozenset(observed), frozenset(accepted))
+    source_path = root / str(metadata["source"])
+    if source_path.read_text() != source:
+        raise PracticeError("source changed while reading comments; run /continue again")
+    receipt_path = _comment_receipt_path(root)
+    _replace_file(receipt_path, _comment_receipt_text(metadata, updated))
+    if source_path.read_text() != source:
+        if previous_receipt is None:
+            if receipt_path.is_symlink():
+                raise PracticeError(
+                    "comment receipt became a symlink while reading comments"
+                )
+            receipt_path.unlink(missing_ok=True)
+        else:
+            _replace_file(
+                receipt_path,
+                _comment_receipt_text(metadata, previous_receipt),
+            )
+        raise PracticeError("source changed while reading comments; run /continue again")
+    active_post = (accepted & current) - pre_keys
+    return CommentEvidence(len(snapshot.pre_keys), len(active_post))
+
+
+def _comment_requirements(metadata: dict[str, Any]) -> tuple[int, int]:
+    pre_code = min(MAX_REQUIRED_PRE_CODE_COMMENTS, len(metadata["pre_code_labels"]))
+    return pre_code, REQUIRED_POST_CODE_COMMENTS
 
 
 def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
@@ -1437,86 +1654,559 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
     except SyntaxError as exc:
         raise PracticeError(f"candidate tests have a syntax error: {exc}") from exc
 
-    def explicit_flag(body: list[ast.stmt], subject: str | None = None) -> bool | None:
-        value: bool | None = None
-        for statement in body:
-            if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
-                continue
-            targets = (
-                statement.targets
-                if isinstance(statement, ast.Assign)
-                else [statement.target]
-            )
-            for target_node in targets:
-                matches_module = (
-                    subject is None
-                    and isinstance(target_node, ast.Name)
-                    and target_node.id == "__test__"
-                )
-                matches_subject = (
-                    subject is not None
-                    and isinstance(target_node, ast.Attribute)
-                    and target_node.attr == "__test__"
-                    and isinstance(target_node.value, ast.Name)
-                    and target_node.value.id == subject
+    missing = object()
+    unknown = object()
+    binding_type = tuple[str, ast.AST | None]
+    other_binding: binding_type = ("other", None)
+    object_flags: dict[int, object] = {}
+    abstract_functions: set[int] = set()
+    identity_decorators: set[int] = set()
+    class_bases: dict[int, tuple[binding_type, ...]] = {}
+    class_members: dict[int, dict[str, binding_type]] = {}
+    class_flags: dict[int, object] = {}
+
+    def literal(value: ast.expr) -> object:
+        try:
+            return ast.literal_eval(value)
+        except (ValueError, TypeError, RecursionError):
+            return unknown
+
+    def resolved_literal(value: ast.expr, env: dict[str, binding_type]) -> object:
+        result = literal(value)
+        if result is not unknown or not isinstance(value, ast.Name):
+            return result
+        kind, constant = env.get(value.id, other_binding)
+        if kind == "constant" and isinstance(constant, ast.expr):
+            return literal(constant)
+        return unknown
+
+    def attribute_path(value: ast.expr) -> tuple[str, ...] | None:
+        path: list[str] = []
+        current = value
+        while isinstance(current, ast.Attribute):
+            path.append(current.attr)
+            current = current.value
+        if not isinstance(current, ast.Name):
+            return None
+        path.append(current.id)
+        return tuple(reversed(path))
+
+    def resolve_binding(
+        value: ast.expr, env: dict[str, binding_type]
+    ) -> binding_type:
+        if isinstance(value, ast.Name):
+            return env.get(value.id, other_binding)
+        path = attribute_path(value)
+        if path is not None and len(path) >= 2:
+            owner, owner_node = env.get(path[0], other_binding)
+            if (
+                owner in {"class", "instance"}
+                and isinstance(owner_node, ast.ClassDef)
+                and len(path) == 2
+            ):
+                member_kind, member = class_members.get(id(owner_node), {}).get(
+                    path[1], other_binding
                 )
                 if (
-                    (matches_module or matches_subject)
-                    and isinstance(statement.value, ast.Constant)
-                    and isinstance(statement.value.value, bool)
+                    member_kind == "function"
+                    and member is not None
+                    and id(member) in identity_decorators
                 ):
-                    value = statement.value.value
-        return value
+                    return ("safe_decorator", member)
+            if owner == "pytest_module" and path[1] == "fixture":
+                return ("fixture_decorator", value)
+            if owner == "pytest_module" and path[1] == "mark":
+                return ("safe_decorator", value)
+            if owner == "pytest_mark":
+                return ("safe_decorator", value)
+            if owner == "hypothesis_module" and path[1] in {
+                "example",
+                "given",
+                "reproduce_failure",
+                "seed",
+                "settings",
+            }:
+                return ("safe_decorator", value)
+            if owner == "unittest_module" and path[1] == "TestCase":
+                return ("unittest_base", value)
+            if (
+                owner == "unittest_module"
+                and len(path) >= 3
+                and path[1:3] == ("mock", "patch")
+            ):
+                return ("safe_decorator", value)
+            if owner == "unittest_mock_module" and path[1] == "patch":
+                return ("safe_decorator", value)
+            if owner == "safe_decorator":
+                return ("safe_decorator", value)
+            if owner == "abc_module" and path[1] == "ABC":
+                return ("abc_base", value)
+            if owner == "abc_module" and path[1] == "abstractmethod":
+                return ("abstract_decorator", value)
+        if isinstance(value, ast.Call):
+            resolved = resolve_binding(value.func, env)
+            if resolved[0] in {"fixture_decorator", "safe_decorator"}:
+                return resolved
+            if resolved[0] == "class":
+                return ("instance", resolved[1])
+        constant = literal(value)
+        if constant is not unknown:
+            return ("constant", value)
+        return other_binding
 
-    if explicit_flag(tree.body) is False:
+    def is_identity_decorator(
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> bool:
+        if not isinstance(node, ast.FunctionDef):
+            return False
+        positional = [*node.args.posonlyargs, *node.args.args]
+        return (
+            len(positional) == 1
+            and node.args.vararg is None
+            and not node.args.kwonlyargs
+            and node.args.kwarg is None
+            and len(node.body) == 1
+            and isinstance(node.body[0], ast.Return)
+            and isinstance(node.body[0].value, ast.Name)
+            and node.body[0].value.id == positional[0].arg
+        )
+
+    def decorator_kinds(
+        decorators: list[ast.expr],
+        env: dict[str, binding_type],
+        *,
+        in_class: bool,
+    ) -> set[str]:
+        kinds: set[str] = set()
+        for decorator in decorators:
+            resolved, resolved_node = resolve_binding(decorator, env)
+            base = decorator.func if isinstance(decorator, ast.Call) else decorator
+            if resolved in {
+                "fixture_decorator",
+                "safe_decorator",
+                "abstract_decorator",
+            }:
+                kinds.add(resolved)
+            elif (
+                (
+                    resolved == "function"
+                    and resolved_node is not None
+                    and id(resolved_node) in identity_decorators
+                )
+                or (
+                    isinstance(base, ast.Name)
+                    and (
+                        base.id == "staticmethod"
+                        or (in_class and base.id == "classmethod")
+                    )
+                    and base.id not in env
+                )
+            ):
+                kinds.add("safe_decorator")
+            else:
+                kinds.add("unknown")
+        return kinds
+
+    def bind_target(
+        target: ast.expr,
+        binding: binding_type,
+        env: dict[str, binding_type],
+        local_names: set[str],
+    ) -> None:
+        if isinstance(target, ast.Name):
+            env[target.id] = binding
+            local_names.add(target.id)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for element in target.elts:
+                bind_target(element, other_binding, env, local_names)
+        elif isinstance(target, ast.Starred):
+            bind_target(target.value, other_binding, env, local_names)
+
+    def delete_target(
+        target: ast.expr,
+        env: dict[str, binding_type],
+        local_names: set[str],
+    ) -> None:
+        if isinstance(target, ast.Name):
+            env.pop(target.id, None)
+            local_names.add(target.id)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for element in target.elts:
+                delete_target(element, env, local_names)
+
+    def set_object_flag(
+        target: ast.expr, value: object, env: dict[str, binding_type]
+    ) -> bool:
+        if not (
+            isinstance(target, ast.Attribute)
+            and target.attr == "__test__"
+            and isinstance(target.value, ast.Name)
+        ):
+            return False
+        subject = env.get(target.value.id, other_binding)[1]
+        if subject is not None:
+            object_flags[id(subject)] = value
+        return True
+
+    def delete_object_flag(
+        target: ast.expr, env: dict[str, binding_type]
+    ) -> bool:
+        if not (
+            isinstance(target, ast.Attribute)
+            and target.attr == "__test__"
+            and isinstance(target.value, ast.Name)
+        ):
+            return False
+        subject = env.get(target.value.id, other_binding)[1]
+        if subject is not None:
+            object_flags.pop(id(subject), None)
+        return True
+
+    class _ConditionalBindingVisitor(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.names: set[str] = set()
+
+        def visit_Name(self, node: ast.Name) -> None:
+            if isinstance(node.ctx, (ast.Store, ast.Del)):
+                self.names.add(node.id)
+
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+            self.names.add(node.name)
+
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+            self.names.add(node.name)
+
+        def visit_ClassDef(self, node: ast.ClassDef) -> None:
+            self.names.add(node.name)
+
+        def visit_Lambda(self, _node: ast.Lambda) -> None:
+            return
+
+        def visit_Import(self, node: ast.Import) -> None:
+            self.names.update(
+                alias.asname or alias.name.split(".", 1)[0] for alias in node.names
+            )
+
+        def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+            self.names.update(alias.asname or alias.name for alias in node.names)
+
+        def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+            if node.name is not None:
+                self.names.add(node.name)
+            for statement in node.body:
+                self.visit(statement)
+
+    def analyze_namespace(
+        body: list[ast.stmt],
+        outer_env: dict[str, binding_type],
+        *,
+        in_class: bool,
+    ) -> tuple[dict[str, binding_type], object]:
+        env = dict(outer_env)
+        local_names: set[str] = set()
+        namespace_flag: object = missing
+        simple_statements = (
+            ast.Import,
+            ast.ImportFrom,
+            ast.FunctionDef,
+            ast.AsyncFunctionDef,
+            ast.ClassDef,
+            ast.Assign,
+            ast.AnnAssign,
+            ast.Delete,
+        )
+        for statement in body:
+            if isinstance(statement, ast.Import):
+                for alias in statement.names:
+                    name = alias.asname or alias.name.split(".", 1)[0]
+                    kind = {
+                        "pytest": "pytest_module",
+                        "unittest": "unittest_module",
+                        "abc": "abc_module",
+                        "hypothesis": "hypothesis_module",
+                        "unittest.mock": (
+                            "unittest_mock_module"
+                            if alias.asname is not None
+                            else "unittest_module"
+                        ),
+                    }.get(alias.name, "other")
+                    env[name] = (kind, statement)
+                    local_names.add(name)
+            elif isinstance(statement, ast.ImportFrom):
+                for alias in statement.names:
+                    name = alias.asname or alias.name
+                    kind = {
+                        ("pytest", "fixture"): "fixture_decorator",
+                        ("pytest", "mark"): "pytest_mark",
+                        ("hypothesis", "example"): "safe_decorator",
+                        ("hypothesis", "given"): "safe_decorator",
+                        ("hypothesis", "reproduce_failure"): "safe_decorator",
+                        ("hypothesis", "seed"): "safe_decorator",
+                        ("hypothesis", "settings"): "safe_decorator",
+                        ("unittest", "TestCase"): "unittest_base",
+                        ("unittest", "mock"): "unittest_mock_module",
+                        ("unittest.mock", "patch"): "safe_decorator",
+                        ("abc", "ABC"): "abc_base",
+                        ("abc", "abstractmethod"): "abstract_decorator",
+                    }.get((statement.module, alias.name), "other")
+                    env[name] = (kind, statement)
+                    local_names.add(name)
+            elif isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                kinds = decorator_kinds(
+                    statement.decorator_list, env, in_class=in_class
+                )
+                if "abstract_decorator" in kinds:
+                    abstract_functions.add(id(statement))
+                if is_identity_decorator(statement):
+                    identity_decorators.add(id(statement))
+                kind = (
+                    "fixture_value"
+                    if "fixture_decorator" in kinds
+                    else "other"
+                    if "unknown" in kinds
+                    else "function"
+                )
+                env[statement.name] = (kind, statement)
+                local_names.add(statement.name)
+            elif isinstance(statement, ast.ClassDef):
+                bases: list[binding_type] = []
+                for base in statement.bases:
+                    if isinstance(base, ast.Name) and base.id == "object" and base.id not in env:
+                        bases.append(("object_base", base))
+                    else:
+                        bases.append(resolve_binding(base, env))
+                class_bases[id(statement)] = tuple(bases)
+                members, own_flag = analyze_namespace(
+                    statement.body, env, in_class=True
+                )
+                class_members[id(statement)] = members
+                class_flags[id(statement)] = own_flag
+                kinds = decorator_kinds(
+                    statement.decorator_list, env, in_class=in_class
+                )
+                kind = "other" if "unknown" in kinds else "class"
+                env[statement.name] = (kind, statement)
+                local_names.add(statement.name)
+            elif isinstance(statement, ast.Assign):
+                value = resolved_literal(statement.value, env)
+                binding = resolve_binding(statement.value, env)
+                for target in statement.targets:
+                    if set_object_flag(target, value, env):
+                        continue
+                    if isinstance(target, ast.Name) and target.id == "__test__":
+                        namespace_flag = value
+                    bind_target(target, binding, env, local_names)
+            elif isinstance(statement, ast.AnnAssign):
+                if statement.value is None:
+                    continue
+                value = resolved_literal(statement.value, env)
+                if not set_object_flag(statement.target, value, env):
+                    if (
+                        isinstance(statement.target, ast.Name)
+                        and statement.target.id == "__test__"
+                    ):
+                        namespace_flag = value
+                    bind_target(
+                        statement.target,
+                        resolve_binding(statement.value, env),
+                        env,
+                        local_names,
+                    )
+            elif isinstance(statement, ast.Delete):
+                for target in statement.targets:
+                    if delete_object_flag(target, env):
+                        continue
+                    if isinstance(target, ast.Name) and target.id == "__test__":
+                        namespace_flag = missing
+                    delete_target(target, env, local_names)
+            elif not isinstance(statement, simple_statements):
+                visitor = _ConditionalBindingVisitor()
+                visitor.visit(statement)
+                for name in visitor.names:
+                    env[name] = other_binding
+                    local_names.add(name)
+                    if name == "__test__":
+                        namespace_flag = missing
+        return (
+            {name: env[name] for name in local_names if name in env},
+            namespace_flag,
+        )
+
+    module_bindings, module_flag = analyze_namespace(tree.body, {}, in_class=False)
+    if module_flag is unknown or (
+        module_flag is not missing and not bool(module_flag)
+    ):
         return 0
 
-    functions = sum(
-        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.name.startswith("test_")
-        and explicit_flag(tree.body, node.name) is not False
-        for node in tree.body
-    )
-    methods = sum(
-        isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and member.name.startswith("test_")
-        and explicit_flag(node.body, member.name) is not False
-        for node in tree.body
-        if (
-            isinstance(node, ast.ClassDef)
-            and node.name.startswith("Test")
-            and explicit_flag(tree.body, node.name) is not False
-            and explicit_flag(node.body) is not False
-            and not any(
-                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and item.name in {"__init__", "__new__"}
-                for item in node.body
-            )
+    def node_flag(node: ast.AST) -> object:
+        return object_flags.get(id(node), missing)
+
+    def flag_blocks(value: object) -> bool:
+        return value is unknown or (value is not missing and not bool(value))
+
+    def effective_class_flag(
+        node: ast.ClassDef, seen: frozenset[int] = frozenset()
+    ) -> object:
+        if id(node) in seen:
+            return unknown
+        external = node_flag(node)
+        if external is not missing:
+            return external
+        own = class_flags.get(id(node), missing)
+        if own is not missing:
+            return own
+        next_seen = seen | {id(node)}
+        for base in inherited_nodes(node):
+            inherited = effective_class_flag(base, next_seen)
+            if inherited is not missing:
+                return inherited
+        return missing
+
+    def unittest_case(node: ast.ClassDef, seen: frozenset[int] = frozenset()) -> bool:
+        if id(node) in seen:
+            return False
+        next_seen = seen | {id(node)}
+        for kind, base_node in class_bases.get(id(node), ()):
+            if kind == "unittest_base":
+                return True
+            if (
+                kind == "class"
+                and isinstance(base_node, ast.ClassDef)
+                and unittest_case(base_node, next_seen)
+            ):
+                return True
+        return False
+
+    def inherited_nodes(node: ast.ClassDef) -> tuple[ast.ClassDef, ...]:
+        return tuple(
+            base_node
+            for kind, base_node in class_bases.get(id(node), ())
+            if kind == "class" and isinstance(base_node, ast.ClassDef)
         )
-        for member in node.body
-    )
-    return functions + methods
+
+    def unknown_pytest_base(node: ast.ClassDef) -> bool:
+        return any(
+            kind not in {"class", "object_base", "abc_base"}
+            for kind, _base in class_bases.get(id(node), ())
+        )
+
+    def constructor_blocked(
+        node: ast.ClassDef, seen: frozenset[int] = frozenset()
+    ) -> bool:
+        if id(node) in seen:
+            return True
+        members = class_members.get(id(node), {})
+        if "__init__" in members or "__new__" in members:
+            return True
+        next_seen = seen | {id(node)}
+        return any(constructor_blocked(base, next_seen) for base in inherited_nodes(node))
+
+    def abstract_names(
+        node: ast.ClassDef, seen: frozenset[int] = frozenset()
+    ) -> set[str]:
+        if id(node) in seen:
+            return {"<inheritance-cycle>"}
+        next_seen = seen | {id(node)}
+        names: set[str] = set()
+        for base in inherited_nodes(node):
+            names.update(abstract_names(base, next_seen))
+        for name, (_kind, member) in class_members.get(id(node), {}).items():
+            names.discard(name)
+            if member is not None and id(member) in abstract_functions:
+                names.add(name)
+        return names
+
+    def visible_members(
+        node: ast.ClassDef, seen: frozenset[int] = frozenset()
+    ) -> dict[str, binding_type]:
+        if id(node) in seen:
+            return {}
+        next_seen = seen | {id(node)}
+        members: dict[str, binding_type] = {}
+        # Python's leftmost base wins. Updating right to left preserves that
+        # precedence for the simple local hierarchies this static hint accepts.
+        for base in reversed(inherited_nodes(node)):
+            members.update(visible_members(base, next_seen))
+        members.update(class_members.get(id(node), {}))
+        return members
+
+    def method_names(node: ast.ClassDef, *, is_unittest: bool) -> set[str]:
+        names: set[str] = set()
+        for name, (kind, member) in visible_members(node).items():
+            if kind != "function" or member is None:
+                continue
+            flag = node_flag(member)
+            if flag_blocks(flag):
+                continue
+            if name.startswith("test") or (not is_unittest and flag is True):
+                names.add(name)
+        return names
+
+    def class_test_count(
+        node: ast.ClassDef,
+        collection_name: str,
+        seen: frozenset[int] = frozenset(),
+    ) -> int:
+        if id(node) in seen:
+            return 0
+        effective_flag = effective_class_flag(node)
+        if flag_blocks(effective_flag):
+            return 0
+        is_unittest = unittest_case(node)
+        forced = effective_flag is True
+        if not is_unittest and (
+            not (collection_name.startswith("Test") or forced)
+            or unknown_pytest_base(node)
+            or constructor_blocked(node)
+            or bool(abstract_names(node))
+        ):
+            return 0
+        methods = len(method_names(node, is_unittest=is_unittest))
+        if is_unittest:
+            return methods
+        next_seen = seen | {id(node)}
+        nested = sum(
+            class_test_count(member, name, next_seen)
+            for name, (kind, member) in class_members.get(id(node), {}).items()
+            if kind == "class" and isinstance(member, ast.ClassDef)
+        )
+        return methods + nested
+
+    count = 0
+    for name, (kind, node) in module_bindings.items():
+        if kind == "function" and node is not None:
+            flag = node_flag(node)
+            if (name.startswith("test") or flag is True) and not flag_blocks(flag):
+                count += 1
+        elif kind == "class" and isinstance(node, ast.ClassDef):
+            count += class_test_count(node, name)
+    return count
 
 
-def _candidate_source_syntax(root: Path, metadata: dict[str, Any]) -> str | None:
+def _candidate_source_syntax(source: str) -> str | None:
     try:
-        ast.parse((root / str(metadata["source"])).read_text())
+        ast.parse(source)
     except SyntaxError as exc:
         return str(exc)
     return None
 
 
-def _target_is_implemented(source: str, target: str) -> bool:
+def _target_definition(source: str, target: str) -> ast.AST | None:
     tree = ast.parse(source)
-    selected = next(
-        (
-            node
-            for node in tree.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-            and node.name == target
-        ),
-        None,
-    )
+    selected = _selected_target(tree, target)
+    if selected is None or (
+        isinstance(selected, ast.ClassDef)
+        and not any(
+            isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            for member in selected.body
+        )
+    ):
+        return None
+    return selected
+
+
+def _target_is_implemented(source: str, target: str) -> bool:
+    selected = _target_definition(source, target)
     if selected is None:
         return False
 
@@ -1530,9 +2220,14 @@ def _target_is_implemented(source: str, target: str) -> bool:
 
 
 def show_status(root: Path, metadata: dict[str, Any]) -> int:
-    for label, state in _statuses(root, metadata).items():
-        print(f"{label}: {state}")
     source = (root / str(metadata["source"])).read_text()
+    snapshot = _comment_snapshot(source, metadata)
+    evidence = _effective_comment_evidence(root, metadata, source, snapshot)
+    pre_required, post_required = _comment_requirements(metadata)
+    print(f"pre-code comments: {min(evidence.pre_code, pre_required)}/{pre_required}")
+    print(
+        f"post-code comments: {min(evidence.post_code, post_required)}/{post_required}"
+    )
     print(f"lock: {'locked' if str(metadata['lock']) in source else 'unlocked'}")
     try:
         count = _candidate_test_count(root, metadata)
@@ -1543,27 +2238,40 @@ def show_status(root: Path, metadata: dict[str, Any]) -> int:
     return 0
 
 
-def next_step(root: Path, metadata: dict[str, Any]) -> tuple[str, str]:
-    """Return the current state and one deterministic candidate action."""
-    statuses = _statuses(root, metadata)
-    source = (root / str(metadata["source"])).read_text()
-    pre_code = [str(label) for label in metadata["pre_code_labels"]]
+def _next_step_from_source(
+    root: Path,
+    metadata: dict[str, Any],
+    source: str,
+    evidence: CommentEvidence,
+) -> tuple[str, str]:
+    if _candidate_source_syntax(source) is not None:
+        return "BUILD", "Fix the syntax error in your source file, then run /continue."
+    target = str(metadata["target"])
+    if _target_definition(source, target) is None:
+        return (
+            "BUILD",
+            f"Restore the required `{target}` definition, then run /continue.",
+        )
 
-    for label in pre_code:
-        if statuses.get(label) != "filled":
-            return (
-                "THINK",
-                f"Write your reasoning in the {label} source comment, save, "
-                "then run /continue.",
-            )
+    pre_required, post_required = _comment_requirements(metadata)
+    if evidence.pre_code < pre_required:
+        remaining = pre_required - evidence.pre_code
+        noun = "comment" if remaining == 1 else "comments"
+        location = (
+            "above the gate"
+            if str(metadata["lock"]) in source
+            else "before the implementation"
+        )
+        return (
+            "THINK",
+            f"Add {remaining} more ordinary reasoning {noun} {location}, "
+            "save, then run /continue.",
+        )
     if str(metadata["lock"]) in source:
         return (
             "THINK",
             "Delete the THINKING GATE yourself, then implement below it.",
         )
-
-    if _candidate_source_syntax(root, metadata) is not None:
-        return "BUILD", "Fix the syntax error in your source file, then run /continue."
 
     try:
         candidate_test_count = _candidate_test_count(root, metadata)
@@ -1579,12 +2287,25 @@ def next_step(root: Path, metadata: dict[str, Any]) -> tuple[str, str]:
             "Implement the solution and add at least one focused test in your test file.",
         )
 
-    labels = [seed.split(":", 1)[0].removeprefix("# ") for seed in metadata["seeds"]]
-    post_code = labels[len(pre_code) :]
-    for index, label in enumerate(post_code):
-        if statuses.get(label) != "filled":
-            state = "BUILD" if index == 0 else "REFLECT"
-            return state, f"Fill {label} from your code and trace, then run /continue."
+    post_actions = (
+        (
+            "BUILD",
+            "Write a new ordinary implementation comment beside the code it explains, "
+            "save, then run /continue.",
+        ),
+        (
+            "REFLECT",
+            "Write a new ordinary comment tracing the saved example through the code, "
+            "save, then run /continue.",
+        ),
+        (
+            "REFLECT",
+            "Write a new ordinary comment with final complexity or a remaining edge, "
+            "save, then run /continue.",
+        ),
+    )
+    if evidence.post_code < post_required:
+        return post_actions[min(evidence.post_code, len(post_actions) - 1)]
 
     return (
         "CLOSE",
@@ -1592,11 +2313,28 @@ def next_step(root: Path, metadata: dict[str, Any]) -> tuple[str, str]:
     )
 
 
+def next_step(root: Path, metadata: dict[str, Any]) -> tuple[str, str]:
+    """Return the current state without advancing temporal comment evidence."""
+    source = (root / str(metadata["source"])).read_text()
+    snapshot = _comment_snapshot(source, metadata)
+    evidence = _effective_comment_evidence(root, metadata, source, snapshot)
+    return _next_step_from_source(root, metadata, source, evidence)
+
+
 def show_next(root: Path, metadata: dict[str, Any]) -> int:
-    state, next_action = next_step(root, metadata)
+    with _practice_lock(root):
+        current = _read_metadata(root)
+        if metadata.get("session_id") != current["session_id"]:
+            raise PracticeError("stale rep session; reload `just practice-current`")
+        source = (root / str(current["source"])).read_text()
+        snapshot = _comment_snapshot(source, current)
+        evidence = _advance_comment_receipt(root, current, source, snapshot)
+        state, next_action = _next_step_from_source(
+            root, current, source, evidence
+        )
     print(f"STATE: {state}")
-    print(f"SOURCE: {metadata['source']}")
-    print(f"TEST: {metadata['candidate_test']}")
+    print(f"SOURCE: {current['source']}")
+    print(f"TEST: {current['candidate_test']}")
     print(f"NEXT: {next_action}")
     return 0
 
@@ -1690,7 +2428,7 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
     supplied_id = metadata.get("session_id") if isinstance(metadata, dict) else None
     normalized_note = _normalized_note(note)
     test_run: TestRun | None = None
-    with _practice_lock(root, shared=True):
+    with _practice_lock(root):
         current = _read_metadata(root)
         if supplied_id != current["session_id"]:
             raise PracticeError(
@@ -1712,7 +2450,10 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
                 f"finish note does not form a valid rep log: {exc}"
             ) from exc
 
-        state, _ = next_step(root, current)
+        source = (root / str(current["source"])).read_text()
+        snapshot = _comment_snapshot(source, current)
+        evidence = _advance_comment_receipt(root, current, source, snapshot)
+        state, _ = _next_step_from_source(root, current, source, evidence)
         if state == "CLOSE":
             before = _prepare_test_run(root, current, require_unlocked=True)
         else:
@@ -1878,23 +2619,33 @@ def finish_non_editor(root: Path, topic: str, problem: str, line: str) -> int:
 
 def _require_unlocked(root: Path, metadata: dict[str, Any]) -> None:
     source = (root / str(metadata["source"])).read_text()
+    syntax_error = _candidate_source_syntax(source)
+    if syntax_error is not None:
+        raise PracticeError(f"source has a syntax error: {syntax_error}")
+    target = str(metadata["target"])
+    if _target_definition(source, target) is None:
+        raise PracticeError(f"source no longer defines required target {target!r}")
+    evidence = _comment_evidence(source, metadata)
+    pre_required, _ = _comment_requirements(metadata)
+    remaining = max(0, pre_required - evidence.pre_code)
     if str(metadata["lock"]) in source:
-        labels = ", ".join(str(label) for label in metadata["pre_code_labels"])
+        if remaining:
+            noun = "comment" if remaining == 1 else "comments"
+            raise PracticeError(
+                "thinking gate is still locked; add "
+                f"{remaining} ordinary reasoning {noun} above it, save, then "
+                "delete the gate yourself"
+            )
         raise PracticeError(
-            "thinking gate is still locked; write your reasoning in the "
-            f"{labels} source comments, save, then delete the gate yourself"
+            "thinking gate is still locked; delete the gate yourself before "
+            "running code"
         )
-    statuses = _statuses(root, metadata)
-    incomplete = [
-        str(label)
-        for label in metadata["pre_code_labels"]
-        if statuses.get(str(label)) != "filled"
-    ]
-    if incomplete:
-        labels = ", ".join(incomplete)
+    if remaining:
+        noun = "comment" if remaining == 1 else "comments"
         raise PracticeError(
-            f"thinking gate was removed before {labels} were filled; "
-            "write your reasoning in those source comments and save"
+            "thinking gate was removed before enough pre-code reasoning was "
+            f"present; add {remaining} ordinary {noun} before the implementation "
+            "and save"
         )
 
 
@@ -2035,10 +2786,14 @@ def _sweep_test_process_group(proc: subprocess.Popen[bytes]) -> int:
 def _prepare_test_run(
     root: Path, metadata: dict[str, Any], *, require_unlocked: bool
 ) -> dict[str, str]:
+    _require_committed_reference_test(root, metadata)
+    before = _test_input_digests(root, metadata)
     if require_unlocked:
         _require_unlocked(root, metadata)
-    _require_committed_reference_test(root, metadata)
-    return _test_input_digests(root, metadata)
+    after = _test_input_digests(root, metadata)
+    if before != after:
+        raise PracticeError("practice files changed during test preflight; retry")
+    return after
 
 
 def _execute_test_run(
