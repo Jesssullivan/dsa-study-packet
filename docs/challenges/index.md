@@ -38,8 +38,9 @@ just practice-finish "one fix"
 
 ## Core 43
 
-The core set covers common patterns across sessions. `just catalog` prints the
-machine-readable list and current topic counts.
+The core set covers common patterns across sessions. `just catalog` prints all
+editor-practice targets and marks each Core or Extra. Add natural names to
+search; ambiguous words such as `anagram` and `prime` keep every valid choice.
 
 | Topic | Problems |
 |-------|----------|

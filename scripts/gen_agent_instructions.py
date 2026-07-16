@@ -70,21 +70,26 @@ AGENT_TOOLS = (
 )
 
 AGENT_BODY = """Read the resident-interviewer contract in root `AGENTS.md`.
-Run only documented `just` recipes and trust their output. A slash command
-already selects the mode. Only `just practice-start` may seed a workspace.
-After it returns, never change candidate source, tests, comments, or the gate.
-Relay its editor-open result and `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:`
-lines, then stop. For `/continue`, run
-`just practice-next`, relay its `STATE:` and `NEXT:` lines, and stop.
+Use documented `just` recipes. A slash command selects the mode; only
+`practice-start` seeds files. For supplied problem names or lists,
+run `just catalog "<their words>"`; never guess or search the tree. Relay `STATE`,
+`START`, `QUEUE`, `MATCH`, `CHOOSE`, and `SUGGEST`. On `READY`, convert
+`START: topic/problem` to `just practice-start <mode> topic problem`; never
+start `MATCH`. After finishing, take `QUEUE` in order. On `CHOOSE` or
+`NOT_FOUND`, relay choices or suggestions and wait.
+Before switching, run `just practice-finish "<one concrete fix>"`. Never
+change candidate source, tests, comments, or the gate. After start, relay
+editor-open, `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:`, then stop. For
+`/continue`, run `just practice-next`, relay `STATE:` and `NEXT:`, then stop.
 
 Terminal access is broad, so the missing edit tool is not a security boundary.
 The candidate-ownership rule is mandatory."""
 
-PROMPT_SPECS: dict[str, tuple[str, str]] = {
-    "reacto": ("Start a REACTO editor rep", "REACTO"),
-    "clarp": ("Start a CLARP editor rep", "CLARP"),
-    "umpire": ("Start a UMPIRE editor rep", "UMPIRE"),
-    "comments": ("Start an editor rep with plain comments", "plain comments"),
+PROMPT_SPECS: dict[str, str] = {
+    "reacto": "Start a REACTO editor rep",
+    "clarp": "Start a CLARP editor rep",
+    "umpire": "Start a UMPIRE editor rep",
+    "comments": "Start an editor rep with plain comments",
 }
 
 
@@ -142,7 +147,7 @@ def render_interviewer_agent() -> str:
     return "\n".join([*frontmatter, "", AGENT_HEADER, "", AGENT_BODY]) + "\n"
 
 
-def render_start_prompt(name: str, description: str, label: str) -> str:
+def render_start_prompt(name: str, description: str) -> str:
     return f"""---
 name: {name}
 description: {description}
@@ -152,15 +157,16 @@ agent: 'Interviewer'
 
 {PROMPT_HEADER}
 
-Start a {label} rep. Parse arguments:
+- No args: run `just practice-start {name}`.
+- Args: run `just catalog "<arguments>"`.
+- `READY`, `START: topic/problem`: run `just practice-start {name} topic problem`.
+- `QUEUE`: finish current, then take next.
+- `CHOOSE`: relay choices; wait.
+- `NOT_FOUND`: relay `SUGGEST`; wait.
+- Switching: run `just practice-finish "<one concrete fix>"`.
 
-- No arguments: run `just practice-start {name}`.
-- Exactly two arguments, each matching `[a-z][a-z0-9_]*`: append both to that command.
-- Anything else: show `/{name} [topic problem]` and run no command.
-
-Never silently draw after malformed arguments. On success, relay the
-editor-open result plus `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:` lines. Then
-stop. Only the recipe seeds files. Never edit the candidate workspace.
+Never guess or tree-search. Never edit candidate files. After start,
+relay editor-open, `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:`, then stop.
 """
 
 
@@ -188,10 +194,8 @@ def generated_files() -> dict[Path, str]:
     }
     files.update(
         {
-            PROMPT_DIR / f"{name}.prompt.md": render_start_prompt(
-                name, description, label
-            )
-            for name, (description, label) in PROMPT_SPECS.items()
+            PROMPT_DIR / f"{name}.prompt.md": render_start_prompt(name, description)
+            for name, description in PROMPT_SPECS.items()
         }
     )
     files[PROMPT_DIR / "continue.prompt.md"] = render_continue_prompt()

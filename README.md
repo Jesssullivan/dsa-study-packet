@@ -88,5 +88,6 @@ reference-sheet PDFs; the reading site syncs that content separately.
 - `.challenges/`: private, gitignored practice state
 - `scripts/core42.py`: core drill catalog (historical filename)
 
-Run `just catalog` for the current drill list and `just --list` for all
-recipes. See [WELCOME.md](WELCOME.md) for the shortest first-session guide.
+Run `just catalog` for every exact practice pair, or search natural names with
+`just catalog "anagram, 2 sum and prime"`. Run `just --list` for all recipes.
+See [WELCOME.md](WELCOME.md) for the shortest first-session guide.

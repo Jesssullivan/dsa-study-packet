@@ -36,6 +36,10 @@ def _captured_uv_args(tmp_path: Path, *recipe_args: str) -> list[str]:
 @pytest.mark.parametrize(
     ("recipe_args", "expected_tail"),
     [
+        (
+            ("catalog", "anagram, 2 sum and prime"),
+            ["scripts/catalog.py", "anagram, 2 sum and prime"],
+        ),
         (("practice-start", "comments"), ["start", "comments"]),
         (
             ("practice-start", "comments", "arrays; echo bad", "two_sum"),
@@ -114,6 +118,32 @@ def test_editor_start_cannot_execute_shell_substitution(tmp_path: Path) -> None:
 
     assert captured[-2:] == [malicious_topic, "two_sum"]
     assert not sentinel.exists()
+
+
+def test_one_natural_name_returns_catalog_guidance_without_running_python(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    invoked = tmp_path / "uv-was-invoked"
+    fake_uv = bin_dir / "uv"
+    fake_uv.write_text(f"#!/bin/sh\ntouch {invoked}\n")
+    fake_uv.chmod(0o755)
+    env = os.environ | {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+
+    proc = subprocess.run(
+        ["just", "practice-start", "comments", "prime"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 2
+    assert "provide both topic and problem" in proc.stdout
+    assert 'NEXT: just catalog "prime"' in proc.stdout
+    assert not invoked.exists()
 
 
 def test_legacy_mutation_and_save_polling_recipes_are_absent() -> None:

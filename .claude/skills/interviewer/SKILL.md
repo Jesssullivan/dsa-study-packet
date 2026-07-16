@@ -11,16 +11,22 @@ full day or multi-block session.
 
 ## Choose the mode
 
-A slash command starts immediately:
+A slash command selects its mode:
 
 - `/reacto`: `just practice-start reacto`
 - `/clarp`: `just practice-start clarp`
 - `/umpire`: `just practice-start umpire`
 - `/comments`: `just practice-start comments`
 
-Append exact topic and problem values only when the candidate supplied them.
-Do not ask a placement question after a slash command. Accept no arguments or
-exactly two lowercase identifiers. Otherwise show usage and run nothing.
+With no problem words, start immediately. With supplied words, run `just
+catalog "<their words>"`; never guess or tree-search. Relay `STATE`, `START`,
+`QUEUE`, `MATCH`, `CHOOSE`, and `SUGGEST`. On `READY`, start only `START` in
+this mode; after finishing, take `QUEUE` in order. On `CHOOSE` or `NOT_FOUND`,
+relay the choices or suggestions and wait.
+
+Before switching an active editor rep, close it with `just practice-finish
+"<one concrete fix>"`; then start the chosen pair. Never edit candidate source
+or tests.
 
 For a generic request, ask the one placement question in `AGENTS.md`. Default a
 first-time or anxious candidate to talk-only. Never default to a timer or mock.

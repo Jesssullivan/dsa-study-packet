@@ -177,7 +177,7 @@ def test_every_catalog_algorithm_can_start_with_one_explicit_target(
         for path in (REPO_ROOT / "src/algo").glob("*/*.py")
         if path.name != "__init__.py"
     }
-    assert len(catalog) == 71
+    assert len(catalog) == 72
     assert set(PRACTICE_TARGETS) == catalog
 
     for topic, problem in sorted(catalog):
@@ -391,8 +391,22 @@ def test_present_reads_committed_statement_without_creating_workspace(
 
 
 def test_problem_selection_rejects_half_an_explicit_pair(practice_repo: Path) -> None:
-    with pytest.raises(practice.PracticeError, match="provide both topic and problem"):
+    with pytest.raises(practice.PracticeError, match="NEXT: run `just catalog"):
         practice.select_problem(practice_repo, "arrays", None)
+
+
+def test_unknown_selection_is_rejected_before_file_access_with_matches(
+    practice_repo: Path,
+) -> None:
+    with pytest.raises(practice.PracticeError) as raised:
+        practice.prepare_session(practice_repo, "comments", "strings", "anagram")
+
+    message = str(raised.value)
+    assert "MATCH: strings/valid_anagram" in message
+    assert "MATCH: arrays/group_anagrams" in message
+    assert 'NEXT: run `just catalog "anagram"`' in message
+    assert "missing reference tests" not in message
+    assert not (practice_repo / ".challenges").exists()
 
 
 def test_problem_selection_draws_first_due_and_rejects_empty_queue(
@@ -529,6 +543,25 @@ def test_each_paradigm_accepts_ordinary_comments_without_labels(
     assert practice.next_step(practice_repo, metadata) == (
         "THINK",
         "Delete the THINKING GATE yourself, then implement below it.",
+    )
+
+
+def test_comments_mode_seeds_plain_prompts_instead_of_framework_fields(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+
+    assert len(metadata["pre_code_labels"]) == 3
+    assert all(":" not in str(seed) for seed in metadata["seeds"])
+    assert not any(
+        label in candidate.read_text()
+        for label in ("RESTATE:", "EXAMPLE:", "INVARIANT:", "APPROACH:")
+    )
+    assert practice._comment_evidence(candidate.read_text(), metadata) == (
+        practice.CommentEvidence(0, 0)
     )
 
 
@@ -1504,7 +1537,7 @@ def test_locked_session_can_close_without_claiming_tests_ran(
     assert (practice_repo / ".challenges/progress.md").is_file()
 
 
-def test_mode_and_problem_switch_archive_then_reset_workspace(
+def test_explicit_fresh_switch_archives_then_resets_workspace(
     practice_repo: Path,
 ) -> None:
     first, _, _ = practice.prepare_session(practice_repo, "reacto", "arrays", "first")
@@ -1512,7 +1545,7 @@ def test_mode_and_problem_switch_archive_then_reset_workspace(
     first_candidate.write_text(first_candidate.read_text() + "\n# reacto trail\n")
 
     clarp, action, reacto_archive = practice.prepare_session(
-        practice_repo, "clarp", "arrays", "first"
+        practice_repo, "clarp", "arrays", "first", fresh=True
     )
 
     assert action == "created"
@@ -1526,7 +1559,7 @@ def test_mode_and_problem_switch_archive_then_reset_workspace(
 
     clarp_candidate.write_text(clarp_candidate.read_text() + "\n# first trail\n")
     second, action, first_archive = practice.prepare_session(
-        practice_repo, "clarp", "arrays", "second"
+        practice_repo, "clarp", "arrays", "second", fresh=True
     )
 
     assert action == "created"
@@ -1536,6 +1569,26 @@ def test_mode_and_problem_switch_archive_then_reset_workspace(
     assert second_candidate.name == "second.py"
     assert "first trail" not in second_candidate.read_text()
     assert not (practice_repo / ".challenges/workspace/first.py").exists()
+
+
+def test_unfinished_switch_requires_finish_or_explicit_fresh_archive(
+    practice_repo: Path,
+) -> None:
+    first, _, _ = practice.prepare_session(practice_repo, "reacto", "arrays", "first")
+    candidate = practice_repo / str(first["source"])
+    candidate.write_text(candidate.read_text() + "\n# Candidate work remains here.\n")
+
+    with pytest.raises(practice.PracticeError) as raised:
+        practice.prepare_session(practice_repo, "clarp", "arrays", "second")
+
+    message = str(raised.value)
+    assert "unfinished editor rep: reacto arrays/first" in message
+    assert "just practice-finish" in message
+    assert "just practice-new clarp arrays second" in message
+    current = practice.current_metadata(practice_repo)
+    assert current["session_id"] == first["session_id"]
+    assert "Candidate work remains here" in candidate.read_text()
+    assert not (practice_repo / ".challenges/history").exists()
 
 
 def test_locked_session_refuses_to_run_tests(

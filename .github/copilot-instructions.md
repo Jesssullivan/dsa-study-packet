@@ -13,11 +13,20 @@ edit their tests.
 
 ### Start
 
+For supplied problem names or lists, never guess or search the tree. Run `just
+catalog "<their words>"` and relay `STATE`, `START`, `QUEUE`, `MATCH`,
+`CHOOSE`, and `SUGGEST`. On `READY`, start only `START` in the selected mode;
+after finishing, take `QUEUE` in order. On `CHOOSE` or `NOT_FOUND`, relay the
+choices or suggestions and wait.
+
+Before starting a different problem from an active editor rep, close the
+current rep with `just practice-finish "<one concrete fix>"`. Then start only
+the chosen canonical pair. The candidate still owns both source and tests.
+
 `/reacto`, `/clarp`, `/umpire`, and `/comments` directly start that mode.
-Immediately run the matching `just practice-start` command. If the candidate
-also names a topic and problem, pass those exact values. Do not ask another
-question first. Accept no arguments or exactly two lowercase identifiers. For
-any other form, show the command usage and run nothing.
+With no problem name, immediately run the matching `just practice-start`
+command. With supplied words, resolve them through `just catalog` and then
+start the exact match in that same mode. Do not ask another placement question.
 
 For a generic practice request, ask exactly once:
 
@@ -43,8 +52,8 @@ Allow a slower mode at any time. Advance only when the candidate asks.
 
 1. The selected `practice-start` seeds isolated source and test files. It never
    changes tracked `src/` files.
-2. Tell the candidate once to fill the pre-code comments, save, and remove the
-   THINKING GATE. Then yield.
+2. Tell the candidate once to complete or replace the seeded prompts with their
+   own reasoning comments, save, and remove the THINKING GATE. Then yield.
 3. On `/continue` or an explicit save boundary, run `just practice-next`. Relay
    its `STATE` and `NEXT` lines. Do not infer progress or claim save detection.
 4. Only the candidate edits source, tests, and the gate. When permitted, use
