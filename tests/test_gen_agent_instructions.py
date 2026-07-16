@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from gen_agent_instructions import (  # type: ignore[import-not-found]
     AGENT_TOOLS,
+    AGENTS,
     BEGIN_MARKER,
     END_MARKER,
     PROMPT_SPECS,
@@ -54,6 +55,10 @@ class TestRendering:
         rendered = render_copilot_instructions(persona)
         assert persona in rendered
         assert rendered.endswith("\n")
+
+    def test_repo_wide_persona_is_scoped_to_practice(self) -> None:
+        rendered = render_copilot_instructions(extract_persona(AGENTS.read_text()))
+        assert "For repository maintenance" in " ".join(rendered.split())
 
     def test_agent_file_is_thin_adapter_without_direct_edit_tools(self) -> None:
         rendered = render_interviewer_agent()

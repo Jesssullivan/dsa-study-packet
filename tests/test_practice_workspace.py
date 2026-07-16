@@ -95,7 +95,7 @@ def _kill_lock_holder(path: Path) -> None:
     try:
         pid = int(path.read_text().split()[0])
         os.kill(pid, signal.SIGKILL)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         pass
 
 
@@ -169,7 +169,9 @@ def test_every_core_problem_has_a_real_practice_target() -> None:
     assert core <= set(PRACTICE_TARGETS)
 
 
-def test_every_catalog_algorithm_can_start_with_one_explicit_target() -> None:
+def test_every_catalog_algorithm_can_start_with_one_explicit_target(
+    tmp_path: Path,
+) -> None:
     catalog = {
         (path.parent.name, path.stem)
         for path in (REPO_ROOT / "src/algo").glob("*/*.py")
@@ -187,8 +189,81 @@ def test_every_catalog_algorithm_can_start_with_one_explicit_target() -> None:
         candidate = practice.render_candidate(
             source, practice.PARADIGMS["comments"], target
         )
-        ast.parse(candidate)
+        candidate_tree = ast.parse(candidate)
+        visible_definitions = [
+            node
+            for node in candidate_tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        ]
+        assert visible_definitions[-1].name == target
+        assert {node.name for node in visible_definitions[:-1]} <= {
+            "GraphNode",
+            "ListNode",
+            "TreeNode",
+        }
+        loaded_names = {
+            node.id
+            for node in ast.walk(candidate_tree)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+        }
+        for node in candidate_tree.body:
+            if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                continue
+            if isinstance(node, ast.ImportFrom) and node.module == "__future__":
+                continue
+            for alias in node.names:
+                assert (alias.asname or alias.name.split(".", 1)[0]) in loaded_names
+        assert all(
+            ast.get_docstring(node, clean=False) is None
+            for definition in visible_definitions
+            for node in ast.walk(definition)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        )
+        if isinstance(visible_definitions[-1], ast.ClassDef):
+            assert all(
+                not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                or node.name == "__init__"
+                or not node.name.startswith("_")
+                for node in visible_definitions[-1].body
+            )
+        namespace: dict[str, object] = {}
+        exec(compile(candidate, f"{topic}/{problem}.py", "exec"), namespace)
+        assert target in namespace
         assert candidate.count(practice.PRACTICE_LOCK) == 1
+        output = tmp_path / topic / f"{problem}.py"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(candidate)
+
+    lint = subprocess.run(
+        ["ruff", "check", "--isolated", "--select", "F821", str(tmp_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert lint.returncode == 0, lint.stdout + lint.stderr
+
+
+def test_candidate_renderer_hides_named_alternates_and_strategy_imports() -> None:
+    kth = practice.render_candidate(
+        (REPO_ROOT / "src/algo/heaps/kth_largest.py").read_text(),
+        practice.PARADIGMS["comments"],
+        "find_kth_largest",
+    )
+    topo = practice.render_candidate(
+        (REPO_ROOT / "src/algo/graphs/topological_sort.py").read_text(),
+        practice.PARADIGMS["comments"],
+        "topological_sort_kahn",
+    )
+    csp = practice.render_candidate(
+        (REPO_ROOT / "src/algo/dp/constraint_satisfaction.py").read_text(),
+        practice.PARADIGMS["comments"],
+        "CSP",
+    )
+
+    assert "heapq" not in kth
+    assert "nlargest" not in kth
+    assert "dfs" not in topo.lower()
+    assert "from collections.abc import Callable, Mapping, Sequence" in csp
 
 
 @pytest.fixture
@@ -275,6 +350,8 @@ def test_workspace_is_created_without_mutating_tracked_source(
     assert practice.PRACTICE_LOCK in candidate.read_text()
     assert "secret = sum(values)" not in candidate.read_text()
     assert "return _support(values)" not in candidate.read_text()
+    assert "def alternate" not in candidate.read_text()
+    assert "from dataclasses import dataclass" not in candidate.read_text()
     assert metadata["schema"] == 4
     assert uuid.UUID(metadata["session_id"]).version == 4
     assert metadata["target"] == "solve"
@@ -395,7 +472,7 @@ def test_next_step_reports_one_action_for_resumed_state(practice_repo: Path) -> 
 
     assert practice.next_step(practice_repo, metadata) == (
         "THINK",
-        "Fill REPEAT, save, then run /continue.",
+        "Write your reasoning in the REPEAT source comment, save, then run /continue.",
     )
 
     text = candidate.read_text()
@@ -585,7 +662,10 @@ def test_locked_session_refuses_to_run_tests(
         raise AssertionError("pytest must not launch while the thinking gate is locked")
 
     monkeypatch.setattr(practice, "_execute_test_run", unexpected_run)
-    with pytest.raises(practice.PracticeError, match="thinking gate is still locked"):
+    with pytest.raises(
+        practice.PracticeError,
+        match="write your reasoning in the RESTATE, EXAMPLE, INVARIANT, APPROACH source comments",
+    ):
         practice.run_tests(practice_repo, metadata)
 
 
@@ -633,6 +713,58 @@ def test_unlocked_session_tests_candidate_instead_of_reference(
     )
 
     assert practice.run_tests(practice_repo, metadata) == 0
+
+
+def test_candidate_is_active_during_test_module_import(practice_repo: Path) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    text = candidate.read_text()
+    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
+        text = _fill_seed(text, str(seed))
+    candidate.write_text(
+        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+            "raise NotImplementedError",
+            "if values:\n        return sum(values)\n    return -1",
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "from algo.arrays.first import solve\n\n"
+        "EMPTY_RESULT = solve([])\n\n\n"
+        "def test_empty_input() -> None:\n"
+        "    assert EMPTY_RESULT == 0\n"
+    )
+
+    assert practice.run_tests(practice_repo, metadata) == 1
+
+
+def test_ambient_pytest_options_cannot_turn_failures_into_collection_only(
+    practice_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    text = candidate.read_text()
+    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
+        text = _fill_seed(text, str(seed))
+    candidate.write_text(
+        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+            "raise NotImplementedError", "return 0"
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_smoke() -> None:\n    assert True\n"
+    )
+    monkeypatch.setenv("PYTEST_ADDOPTS", "--collect-only")
+    monkeypatch.setenv("PYTEST_PLUGINS", "untrusted_plugin")
+
+    env = practice._practice_env(practice_repo)
+    assert "PYTEST_ADDOPTS" not in env
+    assert "PYTEST_PLUGINS" not in env
+    assert env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+    assert practice.run_tests(practice_repo, metadata) == 1
 
 
 def test_open_session_targets_reasoning_line_and_candidate_test(
@@ -755,7 +887,61 @@ def test_nested_test_function_does_not_count_as_candidate_test(
     assert practice.next_step(practice_repo, metadata)[0] == "BUILD"
 
 
-def test_preserved_helper_stub_does_not_hide_implemented_target(
+def test_pytest_class_method_counts_as_candidate_test(practice_repo: Path) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    text = candidate.read_text()
+    for seed in metadata["seeds"]:
+        text = _fill_seed(text, str(seed))
+    candidate.write_text(
+        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+            "raise NotImplementedError", "return sum(values)"
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "class TestCandidate:\n"
+        "    def test_example(self) -> None:\n"
+        "        assert True\n"
+    )
+
+    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
+
+
+@pytest.mark.parametrize(
+    "candidate_tests",
+    [
+        "__test__ = False\n\n\ndef test_hidden() -> None:\n    assert True\n",
+        (
+            "class TestHidden:\n"
+            "    __test__ = False\n\n"
+            "    def test_hidden(self) -> None:\n"
+            "        assert True\n"
+        ),
+    ],
+)
+def test_uncollected_tests_do_not_advance_state(
+    practice_repo: Path, candidate_tests: str
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    text = candidate.read_text()
+    for seed in metadata["seeds"]:
+        text = _fill_seed(text, str(seed))
+    candidate.write_text(
+        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+            "raise NotImplementedError", "return sum(values)"
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(candidate_tests)
+
+    assert practice.next_step(practice_repo, metadata)[0] == "BUILD"
+
+
+def test_candidate_helper_stub_does_not_hide_implemented_target(
     practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
@@ -804,7 +990,7 @@ def test_committed_private_support_is_not_injected_into_candidate_tests(
 
 
 @pytest.mark.parametrize(
-    ("topic", "problem", "target", "cold_helper"),
+    ("topic", "problem", "target", "omitted_helper"),
     [
         ("recursion", "flatten_nested_list", "flatten_recursive", "_flatten_helper"),
         ("graphs", "number_of_islands", "num_islands", "_bfs"),
@@ -816,7 +1002,7 @@ def test_real_helper_dependent_target_cannot_use_committed_implementation(
     topic: str,
     problem: str,
     target: str,
-    cold_helper: str,
+    omitted_helper: str,
 ) -> None:
     source_rel = Path("src/algo") / topic / f"{problem}.py"
     test_rel = Path("tests") / topic / f"test_{problem}.py"
@@ -836,19 +1022,15 @@ def test_real_helper_dependent_target_cannot_use_committed_implementation(
     candidate = candidate.replace(practice.PRACTICE_LOCK + "\n", "")
     candidate_path.write_text(candidate)
 
-    helper_node = next(
-        node
+    assert all(
+        not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        or node.name != omitted_helper
         for node in ast.parse(candidate).body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-        and node.name == cold_helper
     )
-    helper_source = ast.get_source_segment(candidate, helper_node)
-    assert helper_source is not None
-    assert "NotImplementedError" in helper_source
     assert practice.run_tests(tmp_path, metadata) == 1
 
 
-def test_repl_exposes_only_target_and_keeps_helpers_cold(
+def test_repl_exposes_only_target_and_omits_committed_helpers(
     practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
@@ -862,16 +1044,13 @@ def test_repl_exposes_only_target_and_keeps_helpers_cold(
         ]
     )
     code = (
-        "import inspect, runpy\n"
+        "import runpy\n"
         f"ns = runpy.run_path({str(practice_repo / str(metadata['repl']))!r})\n"
         "assert 'solve' in ns\n"
         "assert '_support' not in ns\n"
         "assert 'alternate' not in ns\n"
-        "helper = inspect.getsource(ns['candidate']._support)\n"
-        "assert 'NotImplementedError' in helper\n"
-        "cold = inspect.getsource(ns['candidate'].alternate)\n"
-        "assert 'NotImplementedError' in cold\n"
-        "assert 'return _support(values)' not in cold\n"
+        "assert not hasattr(ns['candidate'], '_support')\n"
+        "assert not hasattr(ns['candidate'], 'alternate')\n"
     )
 
     proc = subprocess.run(
@@ -1243,9 +1422,7 @@ def _spawn_test_process_tree(
     child_lock: Path, *, parent_returncode: int | None, child_ignores_term: bool
 ) -> subprocess.Popen[bytes]:
     signal_setup = (
-        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
-        if child_ignores_term
-        else ""
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n" if child_ignores_term else ""
     )
     child_source = (
         "import fcntl\n"

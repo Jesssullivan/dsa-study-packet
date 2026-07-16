@@ -37,8 +37,10 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
   candidate workspace instead of rewriting `src/algo/`. Candidates record
   reasoning in live comments, save explicitly, remove the thinking gate
   themselves, implement, and add focused tests.
-- Helper functions and classes stay as candidate-owned cold stubs during tests
-  and in the REPL; committed helper implementations are never injected.
+- Candidate tabs contain only the selected public interface, required type
+  annotations, and constructible input data types. Alternate strategies and
+  committed algorithm helpers stay out of the candidate module, target
+  globals, and REPL; locked reference tests retain their support bindings.
 - Conversational and board-style practice remain available as slower
   and mock-practice modes, while the normal Codespaces path begins in the
   editor.

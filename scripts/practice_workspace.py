@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import builtins
 import fcntl
 import hashlib
 import json
@@ -245,20 +246,298 @@ def _committed_source(root: Path, relative: Path) -> str:
     return proc.stdout
 
 
+_BUILTIN_NAMES = frozenset(dir(builtins))
+_DEFINITION = ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+
+
+def _has_cold_stub(node: ast.AST) -> bool:
+    return any(
+        isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and member.body
+        and isinstance(member.body[-1], ast.Raise)
+        for member in ast.walk(node)
+    )
+
+
+def _select_candidate_definition(tree: ast.Module, target: str | None) -> _DEFINITION:
+    definitions = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+    ]
+    if target is not None:
+        selected = next((node for node in definitions if node.name == target), None)
+    else:
+        # The target-less API is retained for preview tests. Prefer a top-level
+        # function so an earlier input model such as ListNode is not mistaken
+        # for the exercise target.
+        selected = next(
+            (
+                node
+                for node in definitions
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and _has_cold_stub(node)
+            ),
+            None,
+        )
+        if selected is None:
+            selected = next(
+                (node for node in definitions if _has_cold_stub(node)), None
+            )
+    if selected is None:
+        label = target or "a public definition"
+        raise ValueError(f"candidate target {label!r} is absent")
+    return selected
+
+
+def _drop_definition_docstrings(node: ast.AST) -> None:
+    for definition in ast.walk(node):
+        if not isinstance(
+            definition, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        ):
+            continue
+        if (
+            definition.body
+            and isinstance(definition.body[0], ast.Expr)
+            and isinstance(definition.body[0].value, ast.Constant)
+            and isinstance(definition.body[0].value.value, str)
+        ):
+            definition.body.pop(0)
+
+
+def _prune_candidate_interface(selected: _DEFINITION) -> _DEFINITION:
+    if isinstance(selected, ast.ClassDef):
+        selected.body = [
+            member
+            for member in selected.body
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and (member.name == "__init__" or not member.name.startswith("_"))
+        ]
+        if not selected.body:
+            selected.body = [ast.Pass()]
+    _drop_definition_docstrings(selected)
+    return selected
+
+
+def _type_parameter_names(node: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for member in ast.walk(node):
+        for parameter in getattr(member, "type_params", ()):
+            name = getattr(parameter, "name", None)
+            if isinstance(name, str):
+                names.add(name)
+    return names
+
+
+def _external_names(node: ast.AST, *, own_names: set[str] | None = None) -> set[str]:
+    loaded = {
+        member.id
+        for member in ast.walk(node)
+        if isinstance(member, ast.Name) and isinstance(member.ctx, ast.Load)
+    }
+    bound = {member.arg for member in ast.walk(node) if isinstance(member, ast.arg)}
+    bound.update(
+        member.id
+        for member in ast.walk(node)
+        if isinstance(member, ast.Name) and isinstance(member.ctx, ast.Store)
+    )
+    bound.update(_type_parameter_names(node))
+    bound.update(own_names or ())
+    return loaded - bound - _BUILTIN_NAMES
+
+
+def _candidate_support_class(node: ast.ClassDef) -> ast.ClassDef:
+    """Keep a constructible input model without exposing algorithm helpers."""
+    kept: list[ast.stmt] = []
+    for member in node.body:
+        if (
+            isinstance(member, ast.Expr)
+            and isinstance(member.value, ast.Constant)
+            and isinstance(member.value.value, str)
+        ):
+            continue
+        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if member.name == "__repr__":
+                continue
+            if member.name != "__init__":
+                raise ValueError(
+                    f"candidate support class {node.name!r} is not data-only"
+                )
+            kept.append(member)
+            continue
+        if isinstance(member, ast.Assign):
+            names = {
+                target.id for target in member.targets if isinstance(target, ast.Name)
+            }
+            if names != {"__slots__"}:
+                raise ValueError(
+                    f"candidate support class {node.name!r} is not data-only"
+                )
+            kept.append(member)
+            continue
+        if isinstance(member, (ast.AnnAssign, ast.Pass)):
+            kept.append(member)
+            continue
+        raise ValueError(f"candidate support class {node.name!r} is not data-only")
+    node.body = kept or [ast.Pass()]
+    _drop_definition_docstrings(node)
+    return node
+
+
+def _register_imports(
+    bindings: dict[str, tuple[str, int, ast.AST, ast.alias]],
+    node: ast.Import | ast.ImportFrom,
+    order: int,
+) -> None:
+    for alias in node.names:
+        if alias.name == "*":
+            continue
+        if isinstance(node, ast.Import):
+            name = alias.asname or alias.name.split(".", 1)[0]
+        else:
+            name = alias.asname or alias.name
+        bindings[name] = ("import", order, node, alias)
+
+
+def _dependency_bindings(
+    original: ast.Module,
+) -> dict[str, tuple[str, int, ast.AST, ast.alias | None]]:
+    bindings: dict[str, tuple[str, int, ast.AST, ast.alias | None]] = {}
+    for index, node in enumerate(original.body):
+        order = index * 1000
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            _register_imports(bindings, node, order)
+            continue
+        if (
+            isinstance(node, ast.If)
+            and isinstance(node.test, ast.Name)
+            and node.test.id == "TYPE_CHECKING"
+        ):
+            for nested_index, nested in enumerate(node.body, start=1):
+                if isinstance(nested, (ast.Import, ast.ImportFrom)):
+                    _register_imports(bindings, nested, order + nested_index)
+            continue
+        if isinstance(node, ast.TypeAlias) and isinstance(node.name, ast.Name):
+            bindings[node.name.id] = ("alias", order, node, None)
+            continue
+        if isinstance(node, ast.ClassDef):
+            bindings[node.name] = ("class", order, node, None)
+            continue
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target_node in targets:
+                if isinstance(target_node, ast.Name):
+                    bindings[target_node.id] = ("assignment", order, node, None)
+    return bindings
+
+
+def _candidate_dependencies(
+    original: ast.Module, selected: _DEFINITION
+) -> list[ast.stmt]:
+    bindings = _dependency_bindings(original)
+    pending = sorted(_external_names(selected, own_names={selected.name}), reverse=True)
+    visited: set[str] = set()
+    imports: dict[int, tuple[ast.Import | ast.ImportFrom, list[ast.alias]]] = {}
+    nodes: dict[int, ast.stmt] = {}
+
+    while pending:
+        name = pending.pop()
+        if name in visited:
+            continue
+        visited.add(name)
+        dependency = bindings.get(name)
+        if dependency is None:
+            raise ValueError(f"candidate interface name {name!r} is unresolved")
+        kind, order, node, alias = dependency
+        if kind == "import":
+            assert isinstance(node, (ast.Import, ast.ImportFrom))
+            assert alias is not None
+            template, aliases = imports.setdefault(order, (node, []))
+            if all(
+                (item.name, item.asname) != (alias.name, alias.asname)
+                for item in aliases
+            ):
+                aliases.append(alias)
+            continue
+        if kind == "alias":
+            assert isinstance(node, ast.TypeAlias)
+            nodes[order] = node
+            pending.extend(
+                sorted(_external_names(node, own_names={name}), reverse=True)
+            )
+            continue
+        if kind == "class":
+            assert isinstance(node, ast.ClassDef)
+            support = _candidate_support_class(node)
+            nodes[order] = support
+            pending.extend(
+                sorted(_external_names(support, own_names={name}), reverse=True)
+            )
+            continue
+        assert kind == "assignment"
+        assert isinstance(node, (ast.Assign, ast.AnnAssign))
+        value = node.value
+        if value is None:
+            raise ValueError(f"candidate interface value {name!r} has no default")
+        try:
+            ast.literal_eval(value)
+        except (ValueError, TypeError) as exc:
+            raise ValueError(
+                f"candidate interface value {name!r} is not a literal"
+            ) from exc
+        nodes[order] = node
+        pending.extend(sorted(_external_names(node, own_names={name}), reverse=True))
+
+    rendered: dict[int, ast.stmt] = dict(nodes)
+    for order, (template, aliases) in imports.items():
+        wanted = {(alias.name, alias.asname) for alias in aliases}
+        aliases = [
+            alias for alias in template.names if (alias.name, alias.asname) in wanted
+        ]
+        if isinstance(template, ast.Import):
+            rendered[order] = ast.Import(names=aliases)
+        else:
+            rendered[order] = ast.ImportFrom(
+                module=template.module,
+                names=aliases,
+                level=template.level,
+            )
+    return [rendered[order] for order in sorted(rendered)]
+
+
 def render_candidate(source: str, paradigm: Paradigm, target: str | None = None) -> str:
-    """Return a cold stub carrying exactly one selected-paradigm scaffold."""
-    # Redact every implementation body so alternate solutions never leak into
-    # the candidate tab. The selected target alone receives the scaffold and
-    # remains candidate-owned. Reference tests keep their committed non-target
-    # bindings, while every helper used by the target stays a candidate-owned
-    # cold stub.
-    cold = truncate_module_docstring(strip_solution(source))
+    """Return one cold public interface with its minimum input-model surface."""
+    # Stripping every body is insufficient: alternate names, imports, comments,
+    # and definition docstrings can still disclose the intended approach.
+    original = ast.parse(source)
+    cold_tree = ast.parse(truncate_module_docstring(strip_solution(source)))
+    selected = _prune_candidate_interface(
+        _select_candidate_definition(cold_tree, target)
+    )
+    dependencies = _candidate_dependencies(original, selected)
+
+    statement = ast.get_docstring(cold_tree, clean=False)
+    body: list[ast.stmt] = []
+    if statement is not None:
+        body.append(ast.Expr(value=ast.Constant(value=statement)))
+    body.append(
+        ast.ImportFrom(
+            module="__future__",
+            names=[ast.alias(name="annotations")],
+            level=0,
+        )
+    )
+    body.extend([*dependencies, selected])
+    cold = ast.unparse(
+        ast.fix_missing_locations(ast.Module(body=body, type_ignores=[]))
+    )
+    cold += "\n"
     return inject_scaffold(
         cold,
         seeds=paradigm.seeds,
         lock_sentinel=PRACTICE_LOCK,
         lock_after=paradigm.lock_after,
-        target_name=target,
+        target_name=selected.name,
     )
 
 
@@ -349,6 +628,7 @@ TARGET = {target!r}
 SUPPORT: tuple[str, ...] = ()
 _REFERENCE: types.ModuleType | None = None
 _CANDIDATE_MODULE: types.ModuleType | None = None
+_REFERENCE_TARGET: object | None = None
 
 
 def _committed_reference() -> types.ModuleType:
@@ -392,7 +672,7 @@ def load_candidate() -> types.ModuleType:
 
 
 def pytest_configure() -> None:
-    global _CANDIDATE_MODULE, _REFERENCE
+    global _CANDIDATE_MODULE, _REFERENCE, _REFERENCE_TARGET
     reference = _committed_reference()
     candidate, parent, child_name = _load_candidate()
     for name, value in vars(candidate).items():
@@ -400,22 +680,23 @@ def pytest_configure() -> None:
             setattr(reference, name, value)
     _REFERENCE = reference
     _CANDIDATE_MODULE = candidate
+    _REFERENCE_TARGET = getattr(reference, TARGET)
+    setattr(reference, TARGET, getattr(candidate, TARGET))
     sys.modules[MODULE] = reference
     setattr(parent, child_name, reference)
 
 
 def pytest_collection_modifyitems(items: list[object]) -> None:
-    """Swap only the selected implementation after test modules import."""
-    if _REFERENCE is None or _CANDIDATE_MODULE is None:
+    """Repair direct aliases captured before the candidate facade was installed."""
+    if _REFERENCE is None or _CANDIDATE_MODULE is None or _REFERENCE_TARGET is None:
         raise RuntimeError("practice plugin was not configured")
-    reference_target = getattr(_REFERENCE, TARGET)
     candidate_target = getattr(_CANDIDATE_MODULE, TARGET)
     for item in items:
         test_module = getattr(item, "module", None)
         if test_module is None:
             continue
         for name, value in tuple(vars(test_module).items()):
-            if value is reference_target:
+            if value is _REFERENCE_TARGET:
                 setattr(test_module, name, candidate_target)
     setattr(_REFERENCE, TARGET, candidate_target)
     parent_name, child_name = MODULE.rsplit(".", 1)
@@ -432,7 +713,7 @@ from practice_plugin import TARGET, load_candidate
 
 candidate = load_candidate()
 globals()[TARGET] = getattr(candidate, TARGET)
-print("Loaded {module}.{target}; helpers remain cold in the candidate module.")
+print("Loaded {module}.{target}; signature input types are available on candidate.")
 '''
 
 
@@ -1155,11 +1436,66 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
         tree = ast.parse((root / str(metadata["candidate_test"])).read_text())
     except SyntaxError as exc:
         raise PracticeError(f"candidate tests have a syntax error: {exc}") from exc
-    return sum(
+
+    def explicit_flag(body: list[ast.stmt], subject: str | None = None) -> bool | None:
+        value: bool | None = None
+        for statement in body:
+            if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
+                continue
+            targets = (
+                statement.targets
+                if isinstance(statement, ast.Assign)
+                else [statement.target]
+            )
+            for target_node in targets:
+                matches_module = (
+                    subject is None
+                    and isinstance(target_node, ast.Name)
+                    and target_node.id == "__test__"
+                )
+                matches_subject = (
+                    subject is not None
+                    and isinstance(target_node, ast.Attribute)
+                    and target_node.attr == "__test__"
+                    and isinstance(target_node.value, ast.Name)
+                    and target_node.value.id == subject
+                )
+                if (
+                    (matches_module or matches_subject)
+                    and isinstance(statement.value, ast.Constant)
+                    and isinstance(statement.value.value, bool)
+                ):
+                    value = statement.value.value
+        return value
+
+    if explicit_flag(tree.body) is False:
+        return 0
+
+    functions = sum(
         isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         and node.name.startswith("test_")
+        and explicit_flag(tree.body, node.name) is not False
         for node in tree.body
     )
+    methods = sum(
+        isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and member.name.startswith("test_")
+        and explicit_flag(node.body, member.name) is not False
+        for node in tree.body
+        if (
+            isinstance(node, ast.ClassDef)
+            and node.name.startswith("Test")
+            and explicit_flag(tree.body, node.name) is not False
+            and explicit_flag(node.body) is not False
+            and not any(
+                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and item.name in {"__init__", "__new__"}
+                for item in node.body
+            )
+        )
+        for member in node.body
+    )
+    return functions + methods
 
 
 def _candidate_source_syntax(root: Path, metadata: dict[str, Any]) -> str | None:
@@ -1215,7 +1551,11 @@ def next_step(root: Path, metadata: dict[str, Any]) -> tuple[str, str]:
 
     for label in pre_code:
         if statuses.get(label) != "filled":
-            return "THINK", f"Fill {label}, save, then run /continue."
+            return (
+                "THINK",
+                f"Write your reasoning in the {label} source comment, save, "
+                "then run /continue.",
+            )
     if str(metadata["lock"]) in source:
         return (
             "THINK",
@@ -1541,7 +1881,8 @@ def _require_unlocked(root: Path, metadata: dict[str, Any]) -> None:
     if str(metadata["lock"]) in source:
         labels = ", ".join(str(label) for label in metadata["pre_code_labels"])
         raise PracticeError(
-            f"thinking gate is still locked; fill {labels}, save, then delete it yourself"
+            "thinking gate is still locked; write your reasoning in the "
+            f"{labels} source comments, save, then delete the gate yourself"
         )
     statuses = _statuses(root, metadata)
     incomplete = [
@@ -1553,12 +1894,15 @@ def _require_unlocked(root: Path, metadata: dict[str, Any]) -> None:
         labels = ", ".join(incomplete)
         raise PracticeError(
             f"thinking gate was removed before {labels} were filled; "
-            "complete those comments and save"
+            "write your reasoning in those source comments and save"
         )
 
 
 def _practice_env(root: Path) -> dict[str, str]:
     env = os.environ.copy()
+    env.pop("PYTEST_ADDOPTS", None)
+    env.pop("PYTEST_PLUGINS", None)
+    env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     paths = [str(_workspace(root)), str(root / "src")]
     if env.get("PYTHONPATH"):
         paths.append(env["PYTHONPATH"])
@@ -1656,7 +2000,7 @@ def _signal_test_process_group(
         return False
     try:
         os.killpg(proc.pid, signal_number)
-    except (PermissionError, ProcessLookupError):
+    except PermissionError, ProcessLookupError:
         # macOS reports EPERM for a group containing only an unreaped zombie;
         # Linux generally reports ESRCH. Either means there is nothing this
         # process can signal.

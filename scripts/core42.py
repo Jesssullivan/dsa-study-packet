@@ -42,9 +42,10 @@ CORE_42: dict[str, list[str]] = {
 
 # One implementation target per catalog algorithm. Several modules intentionally
 # contain alternate solutions, helper data structures, or conversion helpers.
-# An editor rep redacts every implementation body. This target alone receives
-# the reasoning scaffold and drives completion. Reference tests keep committed
-# non-target bindings; helpers used by the target remain candidate-owned stubs.
+# An editor rep exposes only this target's public interface, the annotations it
+# needs, and constructible input data types. The target receives the reasoning
+# scaffold and drives completion. Reference tests keep committed non-target
+# bindings; algorithm helpers remain candidate-owned and absent until written.
 PRACTICE_TARGETS: dict[tuple[str, str], str] = {
     ("arrays", "two_sum"): "two_sum",
     ("arrays", "group_anagrams"): "group_anagrams",

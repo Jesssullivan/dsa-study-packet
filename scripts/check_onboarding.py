@@ -10,6 +10,7 @@ credentials.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -149,6 +150,56 @@ def check(root: Path) -> list[str]:
             for needle in FORBIDDEN.get(rel, ())
             if needle in text
         )
+    settings_path = root / ".vscode/settings.json"
+    tasks_path = root / ".vscode/tasks.json"
+    if settings_path.is_file():
+        try:
+            settings = json.loads(settings_path.read_text())
+        except json.JSONDecodeError:
+            settings = None
+            failures.append(".vscode/settings.json: invalid JSON")
+        if (
+            settings is not None
+            and settings.get("python.testing.pytestEnabled") is not False
+        ):
+            failures.append(
+                ".vscode/settings.json: native pytest must stay disabled; "
+                "it cannot load the current practice workspace honestly"
+            )
+    if tasks_path.is_file():
+        try:
+            task_document = json.loads(tasks_path.read_text())
+        except json.JSONDecodeError:
+            task_document = None
+            failures.append(".vscode/tasks.json: invalid JSON")
+        tasks = task_document.get("tasks", []) if task_document is not None else []
+        practice_test = next(
+            (
+                task
+                for task in tasks
+                if task.get("label") == "practice: test current rep"
+            ),
+            None,
+        )
+        if task_document is not None and (
+            practice_test is None
+            or practice_test.get("group")
+            != {
+                "kind": "test",
+                "isDefault": True,
+            }
+        ):
+            failures.append(
+                ".vscode/tasks.json: current-rep test must be the default test task"
+            )
+        for task in tasks:
+            if task.get("label") != "practice: test current rep" and task.get(
+                "group"
+            ) in ("test", {"kind": "test", "isDefault": True}):
+                failures.append(
+                    f".vscode/tasks.json: {task.get('label', 'unnamed task')} "
+                    "must not compete with the current-rep test task"
+                )
     return failures
 
 

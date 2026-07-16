@@ -66,3 +66,31 @@ def test_missing_surface_file_is_caught(tmp_path: Path) -> None:
     (tmp_path / ".github/prompts/comments.prompt.md").unlink()
 
     assert ".github/prompts/comments.prompt.md: missing file" in check(tmp_path)
+
+
+def test_native_pytest_false_green_is_caught(tmp_path: Path) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / ".vscode/settings.json"
+    victim.write_text(
+        victim.read_text().replace(
+            '"python.testing.pytestEnabled": false',
+            '"python.testing.pytestEnabled": true',
+        )
+    )
+
+    assert any(
+        "native pytest must stay disabled" in failure for failure in check(tmp_path)
+    )
+
+
+def test_packet_suite_cannot_replace_default_rep_test(tmp_path: Path) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / ".vscode/tasks.json"
+    text = victim.read_text()
+    text = text.replace(
+        '"label": "maintainer: test packet",\n      "type": "shell",',
+        '"label": "maintainer: test packet",\n      "group": "test",\n      "type": "shell",',
+    )
+    victim.write_text(text)
+
+    assert any("must not compete" in failure for failure in check(tmp_path))

@@ -21,6 +21,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from strip_solution import LOCK_SENTINEL, SCAFFOLD_SEEDS
 
+PLACEHOLDERS = frozenset({"answer", "fill here", "placeholder", "tbd", "todo"})
+
+
+def _meaningful_comment(text: str) -> bool:
+    normalized = text.removeprefix("#").strip().lower()
+    return (
+        any(character.isalnum() for character in normalized)
+        and normalized not in PLACEHOLDERS
+    )
+
 
 def section_status(
     text: str,
@@ -48,7 +58,11 @@ def section_status(
                 break
             if line:
                 block.append(line)
-        filled = block[0] != seed or len(block) > 1
+        seed_text = seed.removeprefix(marker).strip()
+        prompt_text = block[0].removeprefix(marker).strip()
+        inline_answer = prompt_text != seed_text and _meaningful_comment(prompt_text)
+        continuation_answer = any(_meaningful_comment(line) for line in block[1:])
+        filled = inline_answer or continuation_answer
         status[label] = "filled" if filled else "empty"
     return status
 

@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from scaffold_status import section_status  # type: ignore[import-not-found]
 from strip_solution import (  # type: ignore[import-not-found]
@@ -125,6 +127,15 @@ class TestScaffoldStatus:
         seed = SCAFFOLD_SEEDS[1]
         text = text.replace(f"    {seed}", f"    {seed}\n    # [1, 2, 3] -> 6; [] -> 0")
         assert section_status(text)["EXAMPLE"] == "filled"
+
+    @pytest.mark.parametrize("answer", ["", "...", "TODO", "placeholder"])
+    def test_label_or_placeholder_alone_does_not_count(self, answer: str) -> None:
+        text = inject_scaffold(strip_solution(MODULE))
+        seed = SCAFFOLD_SEEDS[0]
+        marker = seed.split(":", 1)[0] + ":"
+        text = text.replace(seed, f"{marker} {answer}".rstrip())
+
+        assert section_status(text)["RESTATE"] == "empty"
 
     def test_deleted_label_is_missing(self) -> None:
         text = inject_scaffold(strip_solution(MODULE))

@@ -28,6 +28,10 @@
       "label": "practice: test current rep",
       "type": "shell",
       "command": "just practice-test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
       "presentation": {
         "group": "practice",
         "panel": "shared",
@@ -83,17 +87,15 @@
       "problemMatcher": []
     },
     {
-      "label": "DSA: test",
+      "label": "maintainer: test packet",
       "type": "shell",
       "command": "just test",
-      "group": "test",
       "problemMatcher": []
     },
     {
       "label": "DSA: lint",
       "type": "shell",
       "command": "just lint",
-      "group": "test",
       "problemMatcher": []
     },
     {
