@@ -37,7 +37,7 @@ jobs:
           version: "0.11.27" # matches UV_VERSION in .devcontainer/setup.sh
 
       - name: Install just
-        uses: taiki-e/install-action@v2.82.11
+        uses: taiki-e/install-action@v2.83.2
         with:
           tool: just@1.40.0
 
