@@ -19,21 +19,30 @@ Complexity:
     Space: O(n)
 """
 
+"""Two Sum - find two incidences whose value sums to the target, if possible
+
+Intended usage:
+>>> two_sum([<1,2,3,4,...>], target) 
+
+my plan:
+
+I'll create simple, single pass hash map iterating through the input Seq
+
+This relationship is called a compliment
+
+"""
+
 from collections.abc import Sequence
 
 
-def two_sum(nums: Sequence[int], target: int) -> tuple[int, int]:
-    """Return indices of two elements that sum to *target*.
+def two_sum(input: Sequence[int], target: int) -> tuple[int, int]:
+    hash_map: dict[int, int] = {}
 
-    >>> two_sum([2, 7, 11, 15], 9)
-    (0, 1)
-    """
-    seen: dict[int, int] = {}
-    for i, n in enumerate(nums):
-        complement = target - n
-        if complement in seen:
-            return (seen[complement], i)
-        seen[n] = i
+    for i, n in enumerate(input):
+        compliment = target - n
+        if compliment in hash_map:
+            return hash_map[compliment], i
 
-    msg = "no two elements sum to target"
+    # if we don't find the compliment:
+    msg = "no compliment found"
     raise ValueError(msg)

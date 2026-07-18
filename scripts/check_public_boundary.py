@@ -4,7 +4,7 @@ This public guard enforces *structural* rules only: secret-shaped content and
 secret-file paths that are never public-safe, regardless of whose they are.
 Name-specific tripwires (employers, panels, private repo names) are enforced
 from the private downstream repo, which scans this tree with its own marker
-list — so the public guard cannot itself disclose what it guards against.
+list, so the public guard cannot itself disclose what it guards against.
 """
 
 from __future__ import annotations
@@ -50,10 +50,16 @@ def tracked_files() -> list[str]:
 def read_text(path: Path) -> str | None:
     # A tracked symlink's git blob is its target string, not the target's
     # contents (which may be a directory, e.g. .agents/skills/* skill
-    # symlinks) — read the link itself so this stays a structural check.
+    # symlinks). Read the link itself so this stays a structural check.
     if path.is_symlink():
         return os.readlink(path)
-    data = path.read_bytes()
+    try:
+        data = path.read_bytes()
+    except FileNotFoundError:
+        # ``git ls-files`` still reports an index entry while that tracked
+        # file is being deleted in the working tree. The committed result has
+        # no blob to scan, so treat the pending deletion the same way.
+        return None
     if b"\0" in data:
         return None
     try:

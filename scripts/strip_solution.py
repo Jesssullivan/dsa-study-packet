@@ -26,13 +26,13 @@ import sys
 from pathlib import Path
 
 SCAFFOLD_SEEDS = (
-    "# RESTATE: the problem in your own words — inputs, outputs, constraints",
+    "# RESTATE: the problem in your own words: inputs, outputs, constraints",
     "# EXAMPLE: one concrete input/output pair, plus one edge case",
     "# INVARIANT: what stays true at each step (loop/recursion invariant)",
     "# APPROACH: pattern family + brute-force big-O, decided before any code",
     "# COMPLEXITY: target time / space once the approach is chosen",
 )
-LOCK_SENTINEL = "# ==== LOCKED — delete this line to unlock coding ===="
+LOCK_SENTINEL = "# ==== LOCKED: delete this line to unlock coding ===="
 
 
 def strip_solution(source: str) -> str:
@@ -59,12 +59,12 @@ def strip_solution(source: str) -> str:
             and isinstance(first.value, ast.Constant)
             and isinstance(first.value.value, str)
         ):
-            # Has a docstring — keep it, strip the rest
+            # Has a docstring. Keep it and strip the rest.
             if len(body) <= 1:
                 continue  # Only a docstring, nothing to strip
             body_start = body[1].lineno
         else:
-            # No docstring — strip everything
+            # No docstring. Strip everything.
             body_start = first.lineno
 
         body_end = body[-1].end_lineno or body[-1].lineno
@@ -88,7 +88,12 @@ def strip_solution(source: str) -> str:
     return "".join(lines)
 
 
-def inject_scaffold(source: str) -> str:
+def inject_scaffold(
+    source: str,
+    seeds: tuple[str, ...] = SCAFFOLD_SEEDS,
+    lock_sentinel: str = LOCK_SENTINEL,
+    lock_after: int | None = None,
+) -> str:
     """Seed the rung-2 comment scaffold above the first stripped function body.
 
     Targets the earliest function anywhere in the module (top-level or
@@ -98,11 +103,13 @@ def inject_scaffold(source: str) -> str:
     the LOCK sentinel is returned unchanged, so re-running a rep never stacks
     scaffolds. Returns the source unchanged if no stripped function exists.
     """
-    if LOCK_SENTINEL in source:
+    if lock_sentinel in source:
         return source
     tree = ast.parse(source)
     funcs = [
-        n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
     targets = sorted(
         (f for f in funcs if f.body and isinstance(f.body[-1], ast.Raise)),
@@ -112,7 +119,12 @@ def inject_scaffold(source: str) -> str:
         return source
     raise_stmt = targets[0].body[-1]
     pad = " " * raise_stmt.col_offset
-    block = [pad + seed + "\n" for seed in (*SCAFFOLD_SEEDS, LOCK_SENTINEL)]
+    lock_at = len(seeds) if lock_after is None else lock_after
+    if not 0 <= lock_at <= len(seeds):
+        msg = f"lock_after must be between 0 and {len(seeds)}"
+        raise ValueError(msg)
+    ordered = (*seeds[:lock_at], lock_sentinel, *seeds[lock_at:])
+    block = [pad + line + "\n" for line in ordered]
     lines = source.splitlines(keepends=True)
     at = raise_stmt.lineno - 1
     lines[at:at] = block
@@ -130,7 +142,11 @@ def truncate_module_docstring(source: str) -> str:
     ):
         return source
     doc = first.value.value
-    cuts = [i for m in ("Approach:", "When to use:", "Complexity:") if (i := doc.find(m)) != -1]
+    cuts = [
+        i
+        for m in ("Approach:", "When to use:", "Complexity:")
+        if (i := doc.find(m)) != -1
+    ]
     if not cuts:
         return source
     lines = source.splitlines(keepends=True)
@@ -146,7 +162,7 @@ def module_docstring_block(source: str) -> str:
     has no docstring. Unlike a triple-quote line count, this uses the AST node
     span, so a single-line ``\"\"\"Statement.\"\"\"`` and a module whose body
     contains later triple-quoted strings (e.g. function docstrings) both yield
-    the statement alone — never the solution below it.
+    the statement alone, never the solution below it.
     """
     tree = ast.parse(source)
     first = tree.body[0] if tree.body else None
@@ -172,7 +188,9 @@ def main() -> None:
         print("Error: --print-statement excludes --cold/--scaffold")
         sys.exit(1)
     if len(args) != 1:
-        print(f"Usage: {sys.argv[0]} [--cold] [--scaffold] [--print-statement] <source_file>")
+        print(
+            f"Usage: {sys.argv[0]} [--cold] [--scaffold] [--print-statement] <source_file>"
+        )
         sys.exit(1)
 
     path = Path(args[0])
@@ -197,7 +215,9 @@ def main() -> None:
     if scaffold:
         stripped = inject_scaffold(stripped)
     path.write_text(stripped)
-    print(f"Stripped{' (cold)' if cold else ''}{' +scaffold' if scaffold else ''}: {path}")
+    print(
+        f"Stripped{' (cold)' if cold else ''}{' +scaffold' if scaffold else ''}: {path}"
+    )
 
 
 if __name__ == "__main__":

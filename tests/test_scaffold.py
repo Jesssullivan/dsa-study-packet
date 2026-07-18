@@ -87,7 +87,7 @@ class TestScaffoldStatus:
     def test_edited_seed_line_counts_as_filled(self) -> None:
         text = inject_scaffold(strip_solution(MODULE))
         text = text.replace(
-            "# RESTATE: the problem in your own words — inputs, outputs, constraints",
+            "# RESTATE: the problem in your own words: inputs, outputs, constraints",
             "# RESTATE: sum the list; ints in, one int out; empty list allowed",
         )
         assert section_status(text)["RESTATE"] == "filled"
@@ -96,15 +96,19 @@ class TestScaffoldStatus:
     def test_content_below_seed_counts_as_filled(self) -> None:
         text = inject_scaffold(strip_solution(MODULE))
         seed = SCAFFOLD_SEEDS[1]
-        text = text.replace(
-            f"    {seed}", f"    {seed}\n    # [1, 2, 3] -> 6; [] -> 0"
-        )
+        text = text.replace(f"    {seed}", f"    {seed}\n    # [1, 2, 3] -> 6; [] -> 0")
         assert section_status(text)["EXAMPLE"] == "filled"
 
     def test_deleted_label_is_missing(self) -> None:
         text = inject_scaffold(strip_solution(MODULE))
         text = text.replace(f"    {SCAFFOLD_SEEDS[2]}\n", "")
         assert section_status(text)["INVARIANT"] == "missing"
+
+    def test_executable_line_after_unlock_does_not_fill_final_section(self) -> None:
+        text = inject_scaffold(strip_solution(MODULE))
+        text = text.replace(f"    {LOCK_SENTINEL}\n", "")
+
+        assert section_status(text)["COMPLEXITY"] == "empty"
 
 
 class TestWaitForSave:
@@ -113,7 +117,15 @@ class TestWaitForSave:
         target.write_text("x = 1\n")
         script = Path(__file__).resolve().parents[1] / "scripts" / "wait_for_save.py"
         proc = subprocess.run(
-            [sys.executable, str(script), str(target), "--timeout", "1", "--interval", "0.2"],
+            [
+                sys.executable,
+                str(script),
+                str(target),
+                "--timeout",
+                "1",
+                "--interval",
+                "0.2",
+            ],
             capture_output=True,
         )
         assert proc.returncode == 2
@@ -123,7 +135,15 @@ class TestWaitForSave:
         target.write_text("x = 1\n")
         script = Path(__file__).resolve().parents[1] / "scripts" / "wait_for_save.py"
         with subprocess.Popen(
-            [sys.executable, str(script), str(target), "--timeout", "15", "--interval", "0.2"],
+            [
+                sys.executable,
+                str(script),
+                str(target),
+                "--timeout",
+                "15",
+                "--interval",
+                "0.2",
+            ],
             stdout=subprocess.DEVNULL,
         ) as proc:
             import time

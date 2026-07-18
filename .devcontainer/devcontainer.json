@@ -1,23 +1,18 @@
 {
-	"name": "dsa-study-packet — interview woodshedding",
+	"name": "dsa-study-packet: interview woodshedding",
 	"image": "mcr.microsoft.com/devcontainers/base:bookworm",
-	"features": {
-		"ghcr.io/devcontainers/features/node:1": { "version": "lts" },
-		"ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
-	},
-	"onCreateCommand": "bash .devcontainer/setup.sh",
+	"onCreateCommand": "bash .devcontainer/setup.sh --tools",
 	"updateContentCommand": "bash .devcontainer/setup.sh --sync",
 	"postCreateCommand": "bash .devcontainer/setup.sh --seed",
+	"waitFor": "updateContentCommand",
 	"containerEnv": {
-		"UV_PYTHON_PREFERENCE": "only-managed",
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+		"UV_PYTHON_PREFERENCE": "only-managed"
 	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"GitHub.copilot",
 				"GitHub.copilot-chat",
-				"anthropic.claude-code",
 				"ms-python.python",
 				"charliermarsh.ruff",
 				"nefrob.vscode-just-syntax"
@@ -29,17 +24,6 @@
 		},
 		"codespaces": {
 			"openFiles": ["WELCOME.md"]
-		}
-	},
-	"secrets": {
-		"ANTHROPIC_API_KEY": {
-			"description": "Optional: lets Claude Code act as your interviewer (metered API billing). Leave blank to use GitHub Copilot (no key needed) or practice solo."
-		},
-		"CLAUDE_CODE_OAUTH_TOKEN": {
-			"description": "Optional: Claude Pro/Max subscription token from 'claude setup-token' (no per-token billing). Do not set together with ANTHROPIC_API_KEY — the API key wins."
-		},
-		"OPENAI_API_KEY": {
-			"description": "Optional: lets OpenAI Codex act as your interviewer. Leave blank to use GitHub Copilot (no key needed) or practice solo."
 		}
 	},
 	"remoteUser": "vscode"

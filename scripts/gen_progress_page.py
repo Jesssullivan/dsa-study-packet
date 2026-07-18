@@ -27,7 +27,10 @@ def _parse_progress() -> dict[str, str]:
     if not PROGRESS_FILE.exists():
         return completed
     for line in PROGRESS_FILE.read_text().splitlines():
-        m = re.match(r"- \[x\] (\S+/\S+)\s*—?\s*(.*)", line)
+        m = re.match(
+            r"- \[x\] ([a-z0-9_]+/[a-z0-9_]+)\s*(?:\u2014|:)?\s*(.*)",
+            line,
+        )
         if m:
             completed[m.group(1)] = m.group(2).strip()
     return completed
@@ -49,10 +52,10 @@ def main() -> None:
 
     lines = [
         "---",
-        "title: Challenge Progress",
+        "title: Practice Progress",
         "---",
         "",
-        "# Challenge Progress",
+        "# Practice Progress",
         "",
         f"**{done} / {total}** core problems completed.",
         "",
@@ -62,7 +65,7 @@ def main() -> None:
         pct = int(done / total * 100)
         bar_filled = pct // 5
         bar_empty = 20 - bar_filled
-        lines.append(f'`{"█" * bar_filled}{"░" * bar_empty}` {pct}%')
+        lines.append(f"`{'█' * bar_filled}{'░' * bar_empty}` {pct}%")
         lines.append("")
 
     # Per-topic summary table
@@ -90,13 +93,13 @@ def main() -> None:
             key = f"{topic}/{problem}"
             if key in completed:
                 date = completed[key]
-                date_str = f" — {date}" if date else ""
+                date_str = f" ({date})" if date else ""
                 lines.append(f"- [x] {_title(problem)}{date_str}")
             else:
                 lines.append(f"- [ ] {_title(problem)}")
         lines.append("")
 
-    # Suggested next — first few problems not yet completed
+    # Suggest the first few problems not yet completed.
     remaining = [
         f"{topic}/{problem}"
         for topic, problems in CORE_42.items()
@@ -108,16 +111,14 @@ def main() -> None:
         lines.append("")
         for key in remaining[:5]:
             topic, problem = key.split("/")
-            lines.append(f"- `just challenge {topic} {problem}` — {_title(problem)}")
+            lines.append(
+                f"- `just practice-start comments {topic} {problem}`: {_title(problem)}"
+            )
         lines.append("")
 
     lines.append("---")
     lines.append("")
-    lines.append("```bash")
-    lines.append("just challenge-progress  # CLI view")
-    lines.append("just study-spaced        # next problems due (spaced repetition)")
-    lines.append("just challenge-reset     # clear all progress")
-    lines.append("```")
+    lines.append("Run `just study-spaced` to see the next problems due for review.")
     lines.append("")
 
     with mkdocs_gen_files.open("challenges/progress.md", "w") as f:
