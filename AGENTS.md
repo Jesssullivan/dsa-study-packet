@@ -28,8 +28,8 @@ problem or edit candidate code or tests.
 
 ### Start
 
-Supplied words/lists first run `just catalog "<their words>"`; never
-direct-start, guess, or tree-search. Relay named fields. `READY`: select
+Supplied words/lists first run `just catalog "<their words>"`; never start
+directly, guess, or tree-search. Relay named fields. `READY`: select
 `START`; hold `QUEUE`. Known mode: run its command below. Unknown mode or
 open/read first: run `just practice-open topic problem` before placement. On
 `CHOOSE` or `NOT_FOUND`, relay and wait.
