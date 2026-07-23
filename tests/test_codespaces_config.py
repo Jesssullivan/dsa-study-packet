@@ -73,6 +73,20 @@ exit "${FAKE_CHECKSUM_EXIT:-0}"
 """,
     )
     _write_executable(
+        path / "sudo",
+        """#!/bin/sh
+exec "$@"
+""",
+    )
+    _write_executable(
+        path / "apt-get",
+        """#!/bin/sh
+touch "$HOME/apt-get-called"
+printf '%s\n' "$*" >> "$HOME/apt-get-args"
+exit "${FAKE_APT_GET_EXIT:-0}"
+""",
+    )
+    _write_executable(
         path / "tar",
         """#!/bin/sh
 archive=
@@ -333,6 +347,80 @@ def test_setup_keeps_watchexec_optional_when_install_fails(tmp_path: Path) -> No
     assert "watch mode unavailable" in proc.stderr
 
 
+def test_setup_installs_sandbox_packages_when_missing(tmp_path: Path) -> None:
+    env, home = _setup_env(tmp_path)
+
+    proc = subprocess.run(
+        ["bash", ".devcontainer/setup.sh", "--tools"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert (home / "apt-get-called").is_file()
+    args = (home / "apt-get-args").read_text()
+    assert "install" in args
+    assert "bubblewrap" in args
+    assert "socat" in args
+
+
+def test_setup_skips_sandbox_packages_when_already_present(tmp_path: Path) -> None:
+    env, home = _setup_env(tmp_path)
+    system_bin = Path(env["PATH"].split(os.pathsep, 1)[0])
+    _fake_tool(system_bin / "bwrap", "bwrap", "0.0.0")
+    _fake_tool(system_bin / "socat", "socat", "0.0.0")
+
+    proc = subprocess.run(
+        ["bash", ".devcontainer/setup.sh", "--tools"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert not (home / "apt-get-called").exists()
+
+
+def test_setup_sandbox_packages_failure_is_non_fatal(tmp_path: Path) -> None:
+    env, home = _setup_env(tmp_path)
+    env["FAKE_APT_GET_EXIT"] = "1"
+
+    proc = subprocess.run(
+        ["bash", ".devcontainer/setup.sh", "--tools"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert (home / "apt-get-called").is_file()
+    assert "agent sandbox stays off" in proc.stderr
+
+
+def test_setup_skips_sandbox_packages_on_non_linux(tmp_path: Path) -> None:
+    env, home = _setup_env(tmp_path)
+    env["FAKE_UNAME_S"] = "Darwin"
+
+    proc = subprocess.run(
+        ["bash", ".devcontainer/setup.sh", "--tools"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert not (home / "apt-get-called").exists()
+
+
 def test_devcontainer_workflow_uses_pinned_actions_and_login_free_path() -> None:
     workflow = (ROOT / ".github/workflows/devcontainer.yml").read_text()
     assert "export PATH=" not in workflow
@@ -366,6 +454,32 @@ def test_workspace_recommends_prompts_but_disables_inline_completion() -> None:
     assert settings["github.copilot.enable"] == {"*": False}
     assert settings["github.copilot.nextEditSuggestions.enabled"] is False
     assert "chat.disableAIFeatures" not in settings
+
+
+def test_workspace_autoapprove_allowlist_is_narrow() -> None:
+    settings = _json(".vscode/settings.json")
+    assert isinstance(settings, dict)
+    auto_approve = settings["chat.tools.terminal.autoApprove"]
+    assert auto_approve == {
+        r"/^just practice-start\b.*$/": True,
+        r"/^just practice-next$/": True,
+        r"/^just practice-test$/": True,
+        r"/^just practice-watch$/": True,
+        r"/^just practice-repl$/": True,
+        r"/^just practice-open\b.*$/": True,
+        r"/^just practice-finish\b.*$/": True,
+        r"/^just practice-reference\b.*$/": True,
+        r"/^just interview\b.*$/": True,
+        r"/^just catalog\b.*$/": True,
+        r"/^uv run pytest\b.*$/": True,
+    }
+    assert all(value is True for value in auto_approve.values())
+    assert "*" not in auto_approve
+    # Sandbox settings (chat.agent.sandbox.*) stay out of a committed
+    # workspace file until a doc source confirms that family is settable at
+    # workspace scope; see .github/hooks/README.md and the sandbox research
+    # notes carried in the change that added this test.
+    assert not any(key.startswith("chat.agent.sandbox") for key in settings)
 
 
 def test_workspace_tasks_are_explicit_and_never_run_on_folder_open() -> None:
@@ -484,3 +598,23 @@ def test_interviewer_agent_has_no_direct_edit_tool() -> None:
     assert tools == AGENT_TOOLS
     assert "AGENTS.md" in path.read_text()
     assert "not a security boundary" in path.read_text()
+
+
+def test_copilot_hooks_reference_an_existing_guard_script() -> None:
+    hooks_dir = ROOT / ".github/hooks"
+    hook_paths = sorted(hooks_dir.glob("*.json"))
+    assert hook_paths
+    for hook_path in hook_paths:
+        config = json.loads(hook_path.read_text())
+        assert config["version"] == 1
+        pre_tool_use = config["hooks"]["preToolUse"]
+        assert pre_tool_use
+        for entry in pre_tool_use:
+            assert entry["type"] == "command"
+            command = entry["bash"]
+            assert command.startswith("python3 ")
+            script_relative = command.removeprefix("python3 ").split()[0]
+            script_path = ROOT / script_relative
+            assert script_path.is_file(), f"{hook_path}: missing {script_relative}"
+            assert "powershell" not in entry
+    assert (ROOT / ".github/hooks/README.md").is_file()
