@@ -12,7 +12,8 @@ No args: `just practice-start umpire`. Args: `just catalog "<arguments>"`.
 Hold `QUEUE`. Relay `CHOOSE`, `NOT_FOUND`, and `SUGGEST`; wait. Switching:
 `just practice-finish "<one concrete fix>"`.
 
-Never edit candidate files; no tree-search. Relay only start output: `OPENED` or
-`OPEN_FAILED`, `SOURCE:`, `TEST:`, optional `STATE:` or `NEXT:`; stop. Resume
+Never edit candidate files; no tree-search. Relay only start output:
+`OPENED` or `OPEN_FAILED`, `SOURCE:`, `TEST:`, optional `STATE:` or `NEXT:`;
+stop. Resume
 has no `STATE:`. Never run `practice-next` until explicit save or `/continue`.
 Comments/docstrings have no required schema.
