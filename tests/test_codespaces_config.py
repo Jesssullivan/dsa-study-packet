@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -546,29 +545,23 @@ def test_copilot_hooks_reference_an_existing_guard_script() -> None:
             assert entry["type"] == "command"
             assert entry["cwd"] == "."
             command = entry["bash"]
-            assert command.startswith("uv run python ")
-            script_relative = command.removeprefix("uv run python ").split()[0]
+            assert command.startswith(".venv/bin/python ")
+            script_relative = command.removeprefix(".venv/bin/python ").split()[0]
             script_path = ROOT / script_relative
             assert script_path.is_file(), f"{hook_path}: missing {script_relative}"
             assert "powershell" not in entry
     assert (ROOT / ".github/hooks/README.md").is_file()
 
 
-def test_copilot_hook_launcher_needs_no_system_python(tmp_path: Path) -> None:
+def test_copilot_hook_launcher_uses_synced_python_with_empty_path(
+    tmp_path: Path,
+) -> None:
     hook_path = ROOT / ".github/hooks/candidate-workspace-guard.json"
     config = json.loads(hook_path.read_text())
     command = config["hooks"]["preToolUse"][0]["bash"]
 
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    _write_executable(
-        fake_bin / "uv",
-        """#!/bin/sh
-[ "$1" = run ] && [ "$2" = python ] || exit 64
-shift 2
-exec "$HOOK_PYTHON" "$@"
-""",
-    )
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
     payload = {
         "hook_event_name": "PreToolUse",
         "tool_name": "runTerminalCommand",
@@ -579,7 +572,7 @@ exec "$HOOK_PYTHON" "$@"
         shell=True,
         executable="/bin/sh",
         cwd=ROOT,
-        env=os.environ | {"PATH": str(fake_bin), "HOOK_PYTHON": sys.executable},
+        env=os.environ | {"PATH": str(empty_bin)},
         input=json.dumps(payload),
         text=True,
         capture_output=True,

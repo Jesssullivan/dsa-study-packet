@@ -19,7 +19,9 @@ on:
       - "scripts/practice_workspace.py"
       - "scripts/rep_schema.py"
       - ".github/agents/**"
+      - ".github/hooks/**"
       - ".github/prompts/**"
+      - "scripts/hooks/**"
       - ".vscode/**"
       - ".github/workflows/devcontainer.yml"
   pull_request:
@@ -34,7 +36,9 @@ on:
       - "scripts/practice_workspace.py"
       - "scripts/rep_schema.py"
       - ".github/agents/**"
+      - ".github/hooks/**"
       - ".github/prompts/**"
+      - "scripts/hooks/**"
       - ".vscode/**"
       - ".github/workflows/devcontainer.yml"
   workflow_dispatch:
@@ -55,6 +59,9 @@ jobs:
             uv --version
             just --version
             bash .devcontainer/welcome.sh
+            printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"runTerminalCommand","tool_input":{"command":"just catalog"}}' |
+              .venv/bin/python scripts/hooks/guard_pretooluse.py |
+              grep -Fqx '{"continue": true}'
             uv run pytest tests/arrays -q
             PRACTICE_NO_OPEN=1 just practice-start comments arrays two_sum
             fake_code_bin="$(mktemp -d)"
