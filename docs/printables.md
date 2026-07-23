@@ -1,6 +1,6 @@
 ---
 title: Printables
-description: Download the complete interview-practice booklet or individual reference sheets for focused offline review.
+description: Read the current interview-practice booklet on the web, download the PDF for offline use, or print individual reference sheets.
 ---
 
 # Printables
