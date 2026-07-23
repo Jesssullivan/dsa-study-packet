@@ -38,18 +38,21 @@ Choose one lane:
 
 ## Start a rep
 
-With Copilot Chat installed and signed in, enter `/reacto`, `/clarp`,
-`/umpire`, or `/comments`. Add a topic and problem to choose one:
+With Copilot Chat installed and signed in, enter `/comments`. It uses ordinary
+reasoning comments with no required labels or prefixes. Add a topic and problem
+to choose one:
 
 ```text
-/reacto arrays two_sum
+/comments arrays two_sum
 ```
 
-Copilot is optional. Use the same conductor directly:
+If named vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start
+the same loop with optional labels. Copilot is optional; use the conductor
+directly:
 
 ```bash
-just practice-start reacto
-just practice-start clarp arrays two_sum
+just practice-start comments
+just practice-start comments arrays two_sum
 ```
 
 Your source and test file open under `.challenges/workspace/`. Fill the

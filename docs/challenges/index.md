@@ -11,21 +11,21 @@ larger solve count.
 
 ## Start in the editor
 
-Choose a comment format in Copilot Chat:
+Start with ordinary comments in Copilot Chat:
 
 ```text
-/reacto
-/clarp
-/umpire
 /comments
 ```
 
-No arguments are needed. To select a drill, add its topic and name, such as
-`/clarp graphs dijkstra`. The direct terminal equivalent is:
+No labels or prefixes are required. To select a drill, add its topic and name,
+such as `/comments graphs dijkstra`. The direct terminal equivalent is:
 
 ```bash
-just practice-start clarp graphs dijkstra
+just practice-start comments graphs dijkstra
 ```
+
+If named vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start
+the same loop with optional labels.
 
 Fill the comments in your source file, save, and remove the `THINKING GATE`
 yourself. Then implement and add cases in your test file. Use `/continue` or
