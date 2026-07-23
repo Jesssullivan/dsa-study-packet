@@ -15,7 +15,8 @@ belongs in private downstream overlays; see the
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
 
 When the editor opens, enter `/comments` in Copilot Chat. It starts ordinary
-reasoning comments with no required labels or prefixes.
+reasoning comments with no required labels or prefixes; the reasoning comments
+(and docstrings) live in the opened source file, not in chat.
 
 ```text
 /comments

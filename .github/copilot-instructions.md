@@ -83,7 +83,8 @@ all six. Presence matters during the rep, not algorithm quality.
 5. Trace the stated example line by line.
 6. State final time, space, and remaining edges.
 
-Use the candidate's chosen labels: REACTO, CLARP, UMPIRE, or plain comments.
+Use the candidate's labels (REACTO, CLARP, UMPIRE, or plain comments); accept
+comments and docstrings as written and never require a format.
 
 ### Silence and hints
 
