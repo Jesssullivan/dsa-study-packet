@@ -27,9 +27,10 @@ just practice-start comments graphs dijkstra
 If named vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start
 the same loop with optional labels.
 
-Fill the comments in your source file, save, and remove the `THINKING GATE`
-yourself. Then implement and add cases in your test file. Use `/continue` or
-`just practice-next` for one next instruction.
+Write your reasoning as comments or docstring lines in your source file,
+save, and remove the
+`THINKING GATE` yourself. Then implement and add cases in your test file. Use
+`/continue` or `just practice-next` for one next instruction.
 
 ```bash
 just practice-test

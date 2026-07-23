@@ -45,11 +45,12 @@ comments, implement a solution, write focused tests, and keep one correction.
 
 ## Your first rep
 
-Open Copilot Chat in Codespaces and enter `/comments`. It uses ordinary
-reasoning comments with no required labels or prefixes. With no arguments, the
-command draws the next due problem. Add a topic and problem to choose one, such
-as `/comments arrays two_sum`. If named vocabulary helps you think, `/reacto`,
-`/clarp`, and `/umpire` start the same loop with optional labels.
+Open Copilot Chat in Codespaces and enter `/comments`. It uses reasoning
+written in the source file as ordinary `#` comments or a docstring, with no
+required labels or prefixes. With no arguments, the command draws the next
+due problem. Add a topic and problem to choose one, such as `/comments arrays
+two_sum`. If named vocabulary helps you think, `/reacto`, `/clarp`, and
+`/umpire` start the same loop with optional labels.
 
 Your source and test file open under `.challenges/workspace/`. Fill the
 reasoning comments, save, then delete the `THINKING GATE` yourself. Implement,

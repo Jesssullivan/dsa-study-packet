@@ -872,6 +872,108 @@ def test_natural_comments_drive_think_build_reflect_close(
     )
 
 
+def _replace_scaffold_with_docstring(
+    text: str, metadata: dict[str, Any], docstring_lines: list[str]
+) -> str:
+    """Swap every scaffold seed for a function docstring answering THINK."""
+    seeds = {str(seed) for seed in metadata["seeds"]}
+    rendered: list[str] = []
+    inserted = False
+    for line in text.splitlines():
+        if line.strip() not in seeds:
+            rendered.append(line)
+            continue
+        if not inserted:
+            indent = line[: len(line) - len(line.lstrip())]
+            rendered.append(f'{indent}"""{docstring_lines[0]}')
+            rendered.append("")
+            rendered.extend(f"{indent}{line_text}" for line_text in docstring_lines[1:])
+            rendered.append(f'{indent}"""')
+            inserted = True
+    return "\n".join(rendered) + "\n"
+
+
+def test_function_docstring_satisfies_think_then_comments_drive_build_reflect_close(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        _replace_scaffold_with_docstring(
+            candidate.read_text(),
+            metadata,
+            [
+                "Return the sum of the input values.",
+                "For [1, 2], return 3; for [], return 0.",
+                "Use a running total and visit each value once.",
+            ],
+        )
+    )
+
+    assert practice.next_step(practice_repo, metadata) == (
+        "THINK",
+        "Delete the THINKING GATE yourself, then implement below it.",
+    )
+
+    candidate.write_text(
+        candidate.read_text()
+        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
+        .replace("raise NotImplementedError", "return sum(values)")
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_example() -> None:\n    assert True\n"
+    )
+
+    assert practice.next_step(practice_repo, metadata) == (
+        "BUILD",
+        "Write a new ordinary implementation comment beside the code it explains, "
+        "save, then run /continue.",
+    )
+
+    candidate.write_text(
+        candidate.read_text().replace(
+            "    return sum(values)",
+            "    total = sum(values)\n"
+            "    # Accumulate the values once, then return the total.\n"
+            "    return total",
+        )
+    )
+
+    assert practice.next_step(practice_repo, metadata) == (
+        "REFLECT",
+        "Write a new ordinary comment tracing the saved example through the code, "
+        "save, then run /continue.",
+    )
+
+    candidate.write_text(
+        candidate.read_text().replace(
+            "    return total",
+            "    # The saved [1, 2] example reaches a total of 3.\n    return total",
+        )
+    )
+
+    assert practice.next_step(practice_repo, metadata) == (
+        "REFLECT",
+        "Write a new ordinary comment with final complexity or a remaining edge, "
+        "save, then run /continue.",
+    )
+
+    candidate.write_text(
+        candidate.read_text().replace(
+            "    return total",
+            "    # Summing takes O(n) time; an empty input returns zero.\n"
+            "    return total",
+        )
+    )
+
+    assert practice.next_step(practice_repo, metadata) == (
+        "CLOSE",
+        "Run just practice-test, reconcile comments with code, then use just practice-finish.",
+    )
+
+
 def test_temporal_receipt_advances_stacked_comments_on_one_line_solution(
     practice_repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

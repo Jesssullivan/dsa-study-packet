@@ -72,8 +72,9 @@ In the source file:
 6. Add focused tests, trace one example, and update comments that no longer
    match the code.
 
-The interviewer checks that saved reasoning comments are present, not that you
-used a particular prefix or label. It never writes your code, tests, or gate.
+The interviewer checks that saved reasoning is present in the source file as
+`#` comments or a docstring, not that you used a particular prefix or label.
+It never writes your code, tests, or gate.
 Save detection is explicit, so enter `/continue` after a save or run `just
 practice-next`.
 

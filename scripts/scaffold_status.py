@@ -1,9 +1,9 @@
 """Report reasoning-comment presence for an editor-practice scaffold.
 
 ``section_status`` preserves the labeled scaffold contract for older sessions.
-``candidate_comment_evidence`` also recognizes ordinary Python comments before
-and after coding begins. Neither function judges whether the reasoning is
-correct.
+``candidate_comment_evidence`` also recognizes ordinary Python comments and
+definition docstrings before and after coding begins. Neither function judges
+whether the reasoning is correct.
 
 Usage:
     python scripts/scaffold_status.py src/algo/arrays/two_sum.py
@@ -73,6 +73,7 @@ class _Comment:
     row: int
     column: int
     text: str
+    source: str = "comment"
 
 
 @dataclass(frozen=True)
@@ -220,6 +221,73 @@ def _token_comments(text: str) -> list[_Comment]:
                 )
     except IndentationError, tokenize.TokenError:
         return []
+    return comments
+
+
+_DOCSTRING_OPEN = re.compile(r"^[rRuU]?(\"\"\"|'''|\"|')")
+
+
+def _docstring_comments(text: str) -> list[_Comment]:
+    """Collect def/class docstring lines as candidate-authored comments.
+
+    The module docstring is seed text printed as the problem statement and is
+    never collected here.
+    """
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+
+    lines = text.splitlines()
+    comments: list[_Comment] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        body = node.body
+        if not (
+            body
+            and isinstance(body[0], ast.Expr)
+            and isinstance(body[0].value, ast.Constant)
+            and isinstance(body[0].value.value, str)
+        ):
+            continue
+        expr = body[0]
+        constant = expr.value
+        start = constant.lineno
+        end = constant.end_lineno or start
+        quote_length = 3
+        for row in range(start, end + 1):
+            if row < 1 or row > len(lines):
+                continue
+            line = lines[row - 1]
+            if row == start:
+                line = line.lstrip()
+                match = _DOCSTRING_OPEN.match(line)
+                if match:
+                    quote_length = len(match.group(1))
+                    line = line[match.end() :]
+            if row == end:
+                trimmed = line.rstrip()
+                closing = trimmed[-quote_length:] if quote_length else ""
+                if (
+                    closing
+                    and len(closing) == quote_length
+                    and len(set(closing)) == 1
+                    and closing[0] in "\"'"
+                ):
+                    trimmed = trimmed[:-quote_length]
+                line = trimmed
+            stripped = line.strip()
+            if not stripped:
+                continue
+            comments.append(
+                _Comment(
+                    row=row,
+                    column=expr.col_offset,
+                    text=stripped,
+                    source="docstring",
+                )
+            )
     return comments
 
 
@@ -646,6 +714,12 @@ def candidate_comment_snapshot(
         if scope.start <= comment.row <= scope.end
         and comment.column >= scope.body_column
     ]
+    docstring_entries = [
+        comment
+        for comment in _docstring_comments(text)
+        if scope.start <= comment.row <= scope.end
+        and comment.column >= scope.body_column
+    ]
     legacy_pre, legacy_post, claimed_rows = _legacy_evidence(
         text,
         comments,
@@ -671,7 +745,7 @@ def candidate_comment_snapshot(
         pre_code_count if natural_pre_code_count is None else natural_pre_code_count
     )
     adjacent_post_used = False
-    for comment in comments:
+    for comment in comments + docstring_entries:
         if comment.row in claimed_rows:
             continue
         candidate = _natural_comment(comment.text, seeds, lock_sentinel)
@@ -688,11 +762,19 @@ def candidate_comment_snapshot(
             before_code = False
         elif len(legacy_pre) + len(natural_pre) < natural_pre_limit:
             before_code = True
-        elif comment.row == scope.first_code - 1 and not adjacent_post_used:
+        elif (
+            comment.source == "comment"
+            and comment.row == scope.first_code - 1
+            and not adjacent_post_used
+        ):
             before_code = False
             adjacent_post_used = True
         else:
             # Extra planning comments cannot satisfy trace or complexity gates.
+            # Docstring text abutting the first code line never gets the
+            # seed-adjacency promotion comments get: it would let a def
+            # docstring's closing line double as post-code trace/complexity
+            # evidence.
             continue
         seen.add(candidate)
         destination = natural_pre if before_code else natural_post

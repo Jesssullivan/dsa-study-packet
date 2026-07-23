@@ -26,7 +26,6 @@ Problem:
 
 
 def solve(nums: list[int]) -> int:
-    """Return the answer."""
     total = 0
     for n in nums:
         total += n
@@ -853,3 +852,151 @@ class TestCandidateCommentEvidence:
         )
 
         assert self.evidence(text) == CommentEvidence(pre_code=3, post_code=1)
+
+
+class TestDocstringCommentEvidence:
+    def evidence(self, text: str) -> CommentEvidence:
+        return candidate_comment_evidence(
+            text,
+            pre_code_count=4,
+            natural_pre_code_count=3,
+            target="solve",
+        )
+
+    def test_def_docstring_lines_count_as_pre_code_evidence(self) -> None:
+        text = (
+            "def solve(nums: list[int]) -> int:\n"
+            '    """Return the sum of all input values.\n'
+            "\n"
+            "    An empty list returns zero.\n"
+            "    Visit each value once.\n"
+            '    """\n'
+            "    raise NotImplementedError\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=3, post_code=0)
+
+    def test_module_docstring_never_counts_with_named_target(self) -> None:
+        text = (
+            '"""Module problem statement.\n'
+            "\n"
+            "This restates the problem, gives an example, and names a pattern.\n"
+            '"""\n'
+            "\n"
+            "\n"
+            "def solve(nums: list[int]) -> int:\n"
+            "    raise NotImplementedError\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=0, post_code=0)
+
+    def test_module_docstring_never_counts_with_no_target(self) -> None:
+        text = (
+            '"""Module problem statement.\n'
+            "\n"
+            "This restates the problem, gives an example, and names a pattern.\n"
+            '"""\n'
+            "\n"
+            "\n"
+            "def solve(nums: list[int]) -> int:\n"
+            "    raise NotImplementedError\n"
+        )
+
+        evidence = candidate_comment_evidence(
+            text, pre_code_count=4, natural_pre_code_count=3, target=None
+        )
+
+        assert evidence == CommentEvidence(pre_code=0, post_code=0)
+
+    def test_docstring_abutting_first_code_does_not_get_adjacency_promotion(
+        self,
+    ) -> None:
+        text = (
+            "def solve(nums: list[int]) -> int:\n"
+            "    # Return the sum of every value.\n"
+            "    # An empty list returns zero.\n"
+            "    # Use a running total.\n"
+            '    """Initialize the accumulator before scanning."""\n'
+            "    total = 0\n"
+            "    for value in nums:\n"
+            "        total += value\n"
+            "    return total\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=3, post_code=0)
+
+    def test_ordinary_comment_at_same_row_still_gets_adjacency_promotion(
+        self,
+    ) -> None:
+        """Confirms the contrast case: real comments keep the promotion."""
+        text = (
+            "def solve(nums: list[int]) -> int:\n"
+            "    # Return the sum of every value.\n"
+            "    # An empty list returns zero.\n"
+            "    # Use a running total.\n"
+            "    # Initialize the accumulator before scanning.\n"
+            "    total = 0\n"
+            "    for value in nums:\n"
+            "        total += value\n"
+            "    return total\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=3, post_code=1)
+
+    def test_nested_helper_docstring_after_first_code_counts_as_post(self) -> None:
+        text = (
+            "def solve(nums: list[int]) -> int:\n"
+            "    # Return the sum of every value.\n"
+            "    # An empty list returns zero.\n"
+            "    # Use a running total.\n"
+            "    total = 0\n"
+            "    def helper(value: int) -> int:\n"
+            '        """Add one value to the running total safely."""\n'
+            "        return value\n"
+            "    for value in nums:\n"
+            "        total += helper(value)\n"
+            "    return total\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=3, post_code=1)
+
+    @pytest.mark.parametrize(
+        "docstring_body",
+        ["TODO", "fill here", "x", "placeholder"],
+    )
+    def test_placeholder_docstring_lines_are_rejected(
+        self, docstring_body: str
+    ) -> None:
+        text = (
+            "def solve(nums: list[int]) -> int:\n"
+            f'    """{docstring_body}"""\n'
+            "    raise NotImplementedError\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=0, post_code=0)
+
+    def test_identical_comment_and_docstring_text_counts_once(self) -> None:
+        text = (
+            "def solve(nums: list[int]) -> int:\n"
+            '    """Return the sum of every value."""\n'
+            "    # Return the sum of every value.\n"
+            "    # An empty list returns zero.\n"
+            "    # Use a running total.\n"
+            "    raise NotImplementedError\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=3, post_code=0)
+
+    def test_docstring_lines_before_the_thinking_gate_count_pre(self) -> None:
+        text = (
+            "def solve(nums: list[int]) -> int:\n"
+            '    """Return the sum of every value.\n'
+            "\n"
+            "    An empty list returns zero.\n"
+            "    Use a running total.\n"
+            '    """\n'
+            f"    {LOCK_SENTINEL}\n"
+            "    raise NotImplementedError\n"
+        )
+
+        assert self.evidence(text) == CommentEvidence(pre_code=3, post_code=0)

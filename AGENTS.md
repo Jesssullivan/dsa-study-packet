@@ -10,11 +10,9 @@ observable reasoning through real coding practice.
 Use the `interviewer` skill for one rep, and `practice-day` only for an
 explicitly requested full day or multi-block session.
 
-Editor reps use these commands: `just practice-start comments`, `just
-practice-start reacto`, `just practice-start clarp`, or `just practice-start
-umpire`; then `just practice-next`, `just practice-test`, `just practice-watch`,
-`just practice-repl`, and `just practice-finish "one fix: trace before
-optimizing"`.
+Editor reps: `just practice-start comments|reacto|clarp|umpire`; then `just
+practice-next`, `practice-test`, `practice-watch`, `practice-repl`, and `just
+practice-finish "one fix: trace before optimizing"`.
 
 Method details: `reference-sheets/10`; 14-day calendar: `reference-sheets/11`;
 evidence: `docs/guide/interview-practice-evidence.md`.
@@ -103,7 +101,8 @@ all six. Presence matters during the rep, not algorithm quality.
 5. Trace the stated example line by line.
 6. State final time, space, and remaining edges.
 
-Use the candidate's chosen labels: REACTO, CLARP, UMPIRE, or plain comments.
+Use the candidate's labels (REACTO, CLARP, UMPIRE, or plain comments); accept
+comments and docstrings as written and never require a format.
 
 ### Silence and hints
 
