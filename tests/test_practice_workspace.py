@@ -313,6 +313,14 @@ def practice_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
+def _workspace_snapshot(workspace: Path) -> dict[Path, bytes]:
+    return {
+        path.relative_to(workspace): path.read_bytes()
+        for path in workspace.rglob("*")
+        if path.is_file()
+    }
+
+
 @pytest.mark.parametrize("paradigm_name", tuple(practice.PARADIGMS))
 def test_each_paradigm_has_one_ordered_thinking_gate(paradigm_name: str) -> None:
     paradigm = practice.PARADIGMS[paradigm_name]
@@ -388,6 +396,230 @@ def test_present_reads_committed_statement_without_creating_workspace(
     assert "Approach:" not in statement
     assert "Working-tree notes" not in statement
     assert not (practice_repo / ".challenges/workspace").exists()
+
+
+def test_open_target_creates_plain_comments_candidate_surface(
+    practice_repo: Path,
+) -> None:
+    tracked = practice_repo / "src/algo/arrays/first.py"
+    before = tracked.read_text()
+
+    metadata = practice.prepare_open_target(practice_repo, "arrays", "first")
+
+    candidate = practice_repo / str(metadata["source"])
+    assert metadata["prepared_only"] is True
+    assert metadata["paradigm"] == "comments"
+    assert metadata["candidate_test"] == (
+        ".challenges/workspace/test_first_candidate.py"
+    )
+    assert practice.PRACTICE_LOCK in candidate.read_text()
+    assert "secret = _support(values)" not in candidate.read_text()
+    assert "def alternate" not in candidate.read_text()
+    assert tracked.read_text() == before
+
+
+def test_prepared_tabs_promote_to_comments_without_modification(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    candidate = practice_repo / str(prepared["source"])
+    candidate.write_text(candidate.read_text() + "\n# Keep this reading note.\n")
+    before = _workspace_snapshot(practice_repo / practice.WORKSPACE_REL)
+
+    active, action, archived = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+
+    assert action == "resumed"
+    assert archived is None
+    assert "prepared_only" not in active
+    after = _workspace_snapshot(practice_repo / practice.WORKSPACE_REL)
+    assert after[Path("first.py")] == before[Path("first.py")]
+    assert not (practice_repo / practice.HISTORY_REL).exists()
+
+
+def test_pristine_prepared_tabs_can_start_another_paradigm_without_history(
+    practice_repo: Path,
+) -> None:
+    practice.prepare_open_target(practice_repo, "arrays", "first")
+
+    active, action, archived = practice.prepare_session(
+        practice_repo, "reacto", "arrays", "first"
+    )
+
+    assert action == "created"
+    assert archived is not None
+    assert "prepared_only" not in active
+    assert active["paradigm"] == "reacto"
+    candidate = practice_repo / str(active["source"])
+    assert "# REPEAT:" in candidate.read_text()
+    assert archived.is_dir()
+
+
+def test_dirty_prepared_tabs_refuse_a_different_paradigm_without_mutation(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    candidate = practice_repo / str(prepared["source"])
+    candidate.write_text(candidate.read_text() + "\n# Keep this reading note.\n")
+    workspace = practice_repo / practice.WORKSPACE_REL
+    before = _workspace_snapshot(workspace)
+
+    with pytest.raises(
+        practice.PracticeError, match="prepared candidate tabs contain unclosed work"
+    ):
+        practice.prepare_session(practice_repo, "reacto", "arrays", "first")
+
+    assert practice.current_metadata(practice_repo) == prepared
+    assert _workspace_snapshot(workspace) == before
+    assert not (practice_repo / practice.HISTORY_REL).exists()
+
+
+def test_extra_prepared_scratch_file_is_never_discarded_as_pristine(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    workspace = practice_repo / practice.WORKSPACE_REL
+    scratch = workspace / "scratch.txt"
+    scratch.write_text("candidate notes\n")
+
+    with pytest.raises(
+        practice.PracticeError, match="prepared candidate tabs contain unclosed work"
+    ):
+        practice.prepare_session(practice_repo, "reacto", "arrays", "first")
+
+    assert practice.current_metadata(practice_repo) == prepared
+    assert scratch.read_text() == "candidate notes\n"
+    assert not (practice_repo / practice.HISTORY_REL).exists()
+
+
+def test_presented_prepared_tabs_allow_the_next_target_and_archive_edits(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    candidate = practice_repo / str(prepared["source"])
+    candidate.write_text(candidate.read_text() + "\n# Preserve this talk note.\n")
+
+    assert (
+        practice.finish_non_editor(
+            practice_repo,
+            "arrays",
+            "first",
+            "talk arrays/first C1 L1 A1 R1 P1 h0 trace the edge",
+        )
+        == 0
+    )
+    assert "presented_at" in practice.current_metadata(practice_repo)
+
+    next_prepared = practice.prepare_open_target(practice_repo, "arrays", "second")
+
+    assert next_prepared["problem"] == "second"
+    assert next_prepared["prepared_only"] is True
+    archives = list((practice_repo / practice.HISTORY_REL).iterdir())
+    assert len(archives) == 1
+    assert "Preserve this talk note" in (archives[0] / "first.py").read_text()
+
+
+def test_presented_tabs_promote_to_comments_for_same_target(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    candidate = practice_repo / str(prepared["source"])
+    candidate.write_text(candidate.read_text() + "\n# Keep this talk note.\n")
+    practice.finish_non_editor(
+        practice_repo,
+        "arrays",
+        "first",
+        "talk arrays/first C1 L1 A1 R1 P1 h0 trace the edge",
+    )
+
+    active, action, archived = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+
+    assert action == "resumed"
+    assert archived is None
+    assert "prepared_only" not in active
+    assert "presented_at" not in active
+    assert "Keep this talk note" in candidate.read_text()
+
+
+def test_open_target_reopens_matching_rep_without_modification(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "reacto", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(candidate.read_text() + "\n# Keep this reasoning.\n")
+    workspace = practice_repo / practice.WORKSPACE_REL
+    before = _workspace_snapshot(workspace)
+
+    reopened = practice.prepare_open_target(practice_repo, "arrays", "first")
+
+    after = _workspace_snapshot(workspace)
+    assert reopened == metadata
+    assert reopened["paradigm"] == "reacto"
+    assert after == before
+
+
+def test_open_target_refuses_a_different_unfinished_rep_without_mutation(
+    practice_repo: Path,
+) -> None:
+    practice.prepare_session(practice_repo, "umpire", "arrays", "first")
+    workspace = practice_repo / practice.WORKSPACE_REL
+    before = _workspace_snapshot(workspace)
+
+    with pytest.raises(practice.PracticeError, match="unfinished editor rep"):
+        practice.prepare_open_target(practice_repo, "arrays", "second")
+
+    after = _workspace_snapshot(workspace)
+    assert after == before
+    assert practice.current_metadata(practice_repo)["problem"] == "first"
+
+
+@pytest.mark.parametrize(
+    ("topic", "problem"),
+    [("arrays", None), (None, "first")],
+)
+def test_open_target_rejects_a_partial_pair_before_creating_state(
+    practice_repo: Path,
+    topic: str | None,
+    problem: str | None,
+) -> None:
+    with pytest.raises(practice.PracticeError, match="NEXT: run `just catalog"):
+        practice.prepare_open_target(practice_repo, topic, problem)
+
+    assert not (practice_repo / ".challenges").exists()
+
+
+@pytest.mark.parametrize(
+    ("topic", "problem"),
+    [("../arrays", "first"), ("arrays", "../first")],
+)
+def test_open_target_rejects_unconfined_names_before_creating_state(
+    practice_repo: Path,
+    topic: str,
+    problem: str,
+) -> None:
+    with pytest.raises(practice.PracticeError, match="lowercase Python identifiers"):
+        practice.prepare_open_target(practice_repo, topic, problem)
+
+    assert not (practice_repo / ".challenges").exists()
+
+
+def test_same_target_different_paradigm_still_requires_finish(
+    practice_repo: Path,
+) -> None:
+    active, _, _ = practice.prepare_session(practice_repo, "reacto", "arrays", "first")
+    workspace = practice_repo / practice.WORKSPACE_REL
+    before = _workspace_snapshot(workspace)
+
+    with pytest.raises(practice.PracticeError, match="unfinished editor rep"):
+        practice.prepare_session(practice_repo, "clarp", "arrays", "first")
+
+    assert practice.current_metadata(practice_repo) == active
+    assert _workspace_snapshot(workspace) == before
 
 
 def test_problem_selection_rejects_half_an_explicit_pair(practice_repo: Path) -> None:
@@ -1774,10 +2006,12 @@ def test_open_session_targets_reasoning_line_and_candidate_test(
     metadata, _, _ = practice.prepare_session(
         practice_repo, "umpire", "arrays", "first"
     )
-    calls: list[tuple[list[str], Path, bool]] = []
+    calls: list[tuple[list[str], Path, bool, int]] = []
 
-    def fake_run(args: list[str], *, cwd: Path, check: bool) -> SimpleNamespace:
-        calls.append((args, cwd, check))
+    def fake_run(
+        args: list[str], *, cwd: Path, check: bool, timeout: int
+    ) -> SimpleNamespace:
+        calls.append((args, cwd, check, timeout))
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(practice.shutil, "which", lambda _name: "/mock/code")
@@ -1803,8 +2037,49 @@ def test_open_session_targets_reasoning_line_and_candidate_test(
             ],
             practice_repo,
             False,
+            practice.EDITOR_OPEN_TIMEOUT_SECONDS,
         )
     ]
+    opened_args = calls[0][0]
+    assert str(metadata["reference_test"]) not in opened_args
+    assert not any(argument.startswith("src/algo/") for argument in opened_args)
+
+
+def test_open_session_without_code_prints_only_safe_candidate_paths(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    metadata = practice.prepare_open_target(practice_repo, "arrays", "first")
+    monkeypatch.setattr(practice.shutil, "which", lambda _name: None)
+
+    assert not practice.open_session(practice_repo, metadata)
+
+    output = capsys.readouterr().out
+    assert str(metadata["source"]) in output
+    assert str(metadata["candidate_test"]) in output
+    assert str(metadata["reference_test"]) not in output
+    assert "src/algo/" not in output
+
+
+def test_open_session_timeout_prints_safe_candidate_paths(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    metadata = practice.prepare_open_target(practice_repo, "arrays", "first")
+    monkeypatch.setattr(practice.shutil, "which", lambda _name: "/mock/code")
+
+    def time_out(*_args: object, **_kwargs: object) -> None:
+        raise subprocess.TimeoutExpired("code", practice.EDITOR_OPEN_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(practice.subprocess, "run", time_out)
+
+    assert not practice.open_session(practice_repo, metadata)
+    output = capsys.readouterr().out
+    assert str(metadata["source"]) in output
+    assert str(metadata["candidate_test"]) in output
+    assert str(metadata["reference_test"]) not in output
 
 
 def test_watch_runs_guarded_recipe_for_workspace_and_reference_test(
@@ -2363,6 +2638,45 @@ def test_closeout_journal_recovers_each_sequential_replace_exactly_once(
     )
 
 
+@pytest.mark.parametrize("crash_name", ["reps.md", "progress.md", "session.json"])
+def test_non_editor_closeout_recovers_prepared_lifecycle_exactly_once(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    crash_name: str,
+) -> None:
+    practice.prepare_open_target(practice_repo, "arrays", "first")
+    line = "talk arrays/first C1 L1 A1 R1 P1 h0 trace the edge"
+    original_replace = practice._replace_file
+
+    class InjectedCrash(BaseException):
+        pass
+
+    crashed = False
+
+    def crash_after_replace(path: Path, text: str) -> None:
+        nonlocal crashed
+        original_replace(path, text)
+        if path.name == crash_name and not crashed:
+            crashed = True
+            raise InjectedCrash
+
+    monkeypatch.setattr(practice, "_replace_file", crash_after_replace)
+    with pytest.raises(InjectedCrash):
+        practice.finish_non_editor(practice_repo, "arrays", "first", line)
+    assert (practice_repo / practice.JOURNAL_REL).is_file()
+
+    monkeypatch.setattr(practice, "_replace_file", original_replace)
+    recovered = practice.current_metadata(practice_repo)
+    assert recovered["prepared_only"] is True
+    assert recovered["presented_at"]
+    assert not (practice_repo / practice.JOURNAL_REL).exists()
+    assert practice.finish_non_editor(practice_repo, "arrays", "first", line) == 0
+    assert len((practice_repo / ".challenges/reps.md").read_text().splitlines()) == 1
+    assert (
+        len((practice_repo / ".challenges/progress.md").read_text().splitlines()) == 1
+    )
+
+
 @pytest.mark.parametrize("changed_key", ["reference_test", "plugin"])
 def test_test_result_is_stale_when_any_non_candidate_input_changes(
     practice_repo: Path,
@@ -2734,6 +3048,82 @@ def test_reference_cli_without_args_uses_current_session(
 
     assert practice.main() == 0
     assert "secret = _support(values)" in capsys.readouterr().out
+
+
+def test_open_cli_forwards_an_exact_pair_to_the_safe_workspace(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened: list[dict[str, Any]] = []
+
+    def record_open(_root: Path, metadata: dict[str, Any]) -> bool:
+        opened.append(metadata)
+        return True
+
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", record_open)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["practice_workspace.py", "open", "arrays", "first"],
+    )
+
+    assert practice.main() == 0
+    assert len(opened) == 1
+    assert opened[0]["paradigm"] == "comments"
+    assert opened[0]["source"] == ".challenges/workspace/first.py"
+    assert opened[0]["candidate_test"] == (
+        ".challenges/workspace/test_first_candidate.py"
+    )
+
+
+def test_open_cli_reports_editor_launch_failure(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", lambda _root, _metadata: False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["practice_workspace.py", "open", "arrays", "first"],
+    )
+
+    assert practice.main() == 1
+
+
+def test_prepared_tabs_refuse_editor_commands_until_a_mode_starts(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    practice.prepare_open_target(practice_repo, "arrays", "first")
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(sys, "argv", ["practice_workspace.py", "next"])
+
+    assert practice.main() == 2
+    error = capsys.readouterr().err
+    assert "no editor rep is active" in error
+    assert "just practice-start <paradigm> arrays first" in error
+
+
+def test_open_cli_without_args_preserves_current_reopen_behavior(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current, _, _ = practice.prepare_session(practice_repo, "clarp", "arrays", "first")
+    opened: list[dict[str, Any]] = []
+
+    def record_open(_root: Path, metadata: dict[str, Any]) -> bool:
+        opened.append(metadata)
+        return True
+
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", record_open)
+    monkeypatch.setattr(sys, "argv", ["practice_workspace.py", "open"])
+
+    assert practice.main() == 0
+    assert opened == [current]
 
 
 def test_history_limits_refuse_without_destroying_current_workspace(

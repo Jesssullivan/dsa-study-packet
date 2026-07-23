@@ -11,7 +11,8 @@ Usage:
     practice_workspace.py start reacto [topic problem] [--fresh] [--no-open]
     practice_workspace.py present [topic problem]
     practice_workspace.py reference [topic problem]
-    practice_workspace.py next | status | test | watch | repl | open | current
+    practice_workspace.py open [topic problem]
+    practice_workspace.py next | status | test | watch | repl | current
     practice_workspace.py finish "trace before optimizing"
 """
 
@@ -77,6 +78,7 @@ REQUIRED_POST_CODE_COMMENTS = 3
 MAX_COMMENT_RECEIPT_KEYS = 256
 DEFAULT_TEST_TIMEOUT_SECONDS = 120
 MAX_TEST_TIMEOUT_SECONDS = 900
+EDITOR_OPEN_TIMEOUT_SECONDS = 10
 TEST_PROCESS_POLL_SECONDS = 0.02
 TEST_PROCESS_TERM_GRACE_SECONDS = 0.25
 TEST_PROCESS_KILL_WAIT_SECONDS = 2
@@ -853,14 +855,30 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
         "test_inputs_before",
         "test_inputs_after",
     }
+    prepared_fields = {"prepared_only", "presented_at"}
     keys = set(value)
-    if not required <= keys or keys - required - finished_fields:
+    if not required <= keys or keys - required - finished_fields - prepared_fields:
         missing = sorted(required - keys)
-        extra = sorted(keys - required - finished_fields)
+        extra = sorted(keys - required - finished_fields - prepared_fields)
         raise PracticeError(
             f"invalid current-rep metadata fields (missing={missing}, extra={extra})"
         )
     has_finished = bool(keys & finished_fields)
+    is_prepared = value.get("prepared_only") is True
+    if "prepared_only" in value and not is_prepared:
+        raise PracticeError(
+            "invalid current-rep metadata: prepared_only must be true when present"
+        )
+    if is_prepared and has_finished:
+        raise PracticeError(
+            "invalid current-rep metadata: prepared tabs cannot be finished"
+        )
+    if "presented_at" in value:
+        if not is_prepared:
+            raise PracticeError(
+                "invalid current-rep metadata: only prepared tabs can be presented"
+            )
+        _parse_timestamp(value["presented_at"], "presented_at")
     if has_finished and not finished_fields <= keys:
         missing = sorted(finished_fields - keys)
         raise PracticeError(
@@ -1127,11 +1145,15 @@ def _recover_closeout(
         Path(".challenges/reps.md").as_posix(),
         Path(".challenges/progress.md").as_posix(),
     }
+    session_rel = (WORKSPACE_REL / METADATA_NAME).as_posix()
     if journal["kind"] == "editor":
-        required = paired | {(WORKSPACE_REL / METADATA_NAME).as_posix()}
+        valid_file_sets = {frozenset(paired | {session_rel})}
     else:
-        required = paired
-    if set(files) != required or set(files) - allowed:
+        valid_file_sets = {
+            frozenset(paired),
+            frozenset(paired | {session_rel}),
+        }
+    if frozenset(files) not in valid_file_sets or set(files) - allowed:
         raise PracticeError("invalid closeout journal file set")
     replay_files = dict(files)
     if journal["kind"] == "non_editor" and (
@@ -1333,6 +1355,71 @@ def _same_session(
     )
 
 
+def _unfinished_session_error(
+    metadata: dict[str, Any], paradigm: str, topic: str, problem: str
+) -> PracticeError:
+    current = f"{metadata['paradigm']} {metadata['topic']}/{metadata['problem']}"
+    return PracticeError(
+        f"unfinished editor rep: {current}\n"
+        'NEXT: run `just practice-finish "<one concrete fix>"`, '
+        "then retry; or explicitly archive it with "
+        f"`just practice-new {paradigm} {topic} {problem}`."
+    )
+
+
+def _is_prepared(metadata: dict[str, Any]) -> bool:
+    return metadata.get("prepared_only") is True
+
+
+def _is_presented(metadata: dict[str, Any]) -> bool:
+    return _is_prepared(metadata) and "presented_at" in metadata
+
+
+def _prepared_workspace_is_pristine(root: Path, metadata: dict[str, Any]) -> bool:
+    """Return whether prepared candidate-owned files still match their seed."""
+    if not _is_prepared(metadata):
+        return False
+    topic = str(metadata["topic"])
+    problem = str(metadata["problem"])
+    target = str(metadata["target"])
+    source_rel = Path("src/algo") / topic / f"{problem}.py"
+    committed = _committed_source(root, source_rel)
+    expected = {
+        str(metadata["source"]): render_candidate(
+            committed, PARADIGMS[str(metadata["paradigm"])], target
+        ),
+        str(metadata["candidate_test"]): _candidate_test(topic, problem, target),
+        str(metadata["plugin"]): _pytest_plugin(
+            str(metadata["module"]), f"{problem}.py", source_rel, target
+        ),
+        str(metadata["repl"]): _repl_bootstrap(str(metadata["module"]), target),
+    }
+    workspace = _workspace(root)
+    expected_entries = {
+        (root / relative).relative_to(workspace) for relative in expected
+    } | {Path(METADATA_NAME)}
+    entries = list(workspace.iterdir())
+    if any(path.is_symlink() or not path.is_file() for path in entries):
+        return False
+    if {path.relative_to(workspace) for path in entries} != expected_entries:
+        return False
+    return all(
+        (root / relative).read_text() == text for relative, text in expected.items()
+    )
+
+
+def _prepared_session_error(
+    metadata: dict[str, Any], paradigm: str, topic: str, problem: str
+) -> PracticeError:
+    current = f"{metadata['topic']}/{metadata['problem']}"
+    return PracticeError(
+        f"prepared candidate tabs contain unclosed work for {current}\n"
+        f"NEXT: keep it with `just practice-start comments {current.replace('/', ' ')}`; "
+        "close the matching talk or board rep; or explicitly archive it with "
+        f"`just practice-new {paradigm} {topic} {problem}`."
+    )
+
+
 def prepare_session(
     root: Path,
     paradigm_name: str,
@@ -1340,6 +1427,8 @@ def prepare_session(
     problem: str | None = None,
     *,
     fresh: bool = False,
+    match_any_paradigm: bool = False,
+    prepared_only: bool = False,
 ) -> tuple[dict[str, Any], str, Path | None]:
     """Create or resume one current workspace.
 
@@ -1368,17 +1457,40 @@ def prepare_session(
             except PracticeError:
                 metadata = None
             if metadata is not None and "finished_at" not in metadata:
-                if _same_session(metadata, paradigm_name, topic, problem):
+                same_target = (metadata["topic"], metadata["problem"]) == (
+                    topic,
+                    problem,
+                )
+                if _is_prepared(metadata):
+                    if prepared_only and same_target:
+                        return metadata, "resumed", None
+                    if (
+                        not prepared_only
+                        and same_target
+                        and metadata["paradigm"] == paradigm_name
+                    ):
+                        activated = dict(metadata)
+                        activated.pop("prepared_only")
+                        activated.pop("presented_at", None)
+                        _replace_file(
+                            _metadata_path(root), json.dumps(activated, indent=2) + "\n"
+                        )
+                        return _read_metadata(root), "resumed", None
+                    prepared_is_pristine = _prepared_workspace_is_pristine(
+                        root, metadata
+                    )
+                    if not prepared_is_pristine and not _is_presented(metadata):
+                        raise _prepared_session_error(
+                            metadata, paradigm_name, topic, problem
+                        )
+                elif _same_session(metadata, paradigm_name, topic, problem) or (
+                    match_any_paradigm and same_target
+                ):
                     return metadata, "resumed", None
-                current = (
-                    f"{metadata['paradigm']} {metadata['topic']}/{metadata['problem']}"
-                )
-                raise PracticeError(
-                    f"unfinished editor rep: {current}\n"
-                    'NEXT: run `just practice-finish "<one concrete fix>"`, '
-                    "then retry; or explicitly archive it with "
-                    f"`just practice-new {paradigm_name} {topic} {problem}`."
-                )
+                else:
+                    raise _unfinished_session_error(
+                        metadata, paradigm_name, topic, problem
+                    )
 
         source_rel = Path("src/algo") / topic / f"{problem}.py"
         reference_test_rel = Path("tests") / topic / f"test_{problem}.py"
@@ -1414,6 +1526,8 @@ def prepare_session(
             "lock": PRACTICE_LOCK,
             "created_at": datetime.now(UTC).isoformat(),
         }
+        if prepared_only:
+            metadata["prepared_only"] = True
         archived: Path | None = None
         try:
             (temporary / candidate_name).write_text(candidate)
@@ -1438,6 +1552,29 @@ def prepare_session(
         return _read_metadata(root), "created", archived
 
 
+def prepare_open_target(
+    root: Path, topic: str | None, problem: str | None
+) -> dict[str, Any]:
+    """Return safe candidate tabs for one exact selection.
+
+    A matching unfinished workspace is reopened without changing its paradigm
+    or contents. With no current workspace, the ordinary-comments renderer
+    creates the same stripped candidate surface used by an editor rep. A
+    different unfinished workspace keeps the normal switch boundary.
+    """
+    metadata, _, archived = prepare_session(
+        root,
+        "comments",
+        topic,
+        problem,
+        match_any_paradigm=True,
+        prepared_only=True,
+    )
+    if archived is not None:
+        print(f"Previous workspace archived: {archived.relative_to(root)}")
+    return metadata
+
+
 def _cursor_line(root: Path, metadata: dict[str, Any]) -> int:
     path = root / str(metadata["source"])
     first = str(metadata["seeds"][0]).split(":", 1)[0]
@@ -1456,11 +1593,16 @@ def open_session(root: Path, metadata: dict[str, Any]) -> bool:
     if code is None:
         print(f"Open {source}:{line} and {candidate_test}")
         return False
-    proc = subprocess.run(
-        [code, "--reuse-window", candidate_test, "--goto", f"{source}:{line}"],
-        cwd=root,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [code, "--reuse-window", candidate_test, "--goto", f"{source}:{line}"],
+            cwd=root,
+            check=False,
+            timeout=EDITOR_OPEN_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"Open {source}:{line} and {candidate_test}")
+        return False
     if proc.returncode != 0:
         print(f"Open {source}:{line} and {candidate_test}")
         return False
@@ -2612,30 +2754,62 @@ def finish_non_editor(root: Path, topic: str, problem: str, line: str) -> int:
         f"{topic}\0{problem}\0{normalized}".encode()
     ).hexdigest()
     with _practice_lock(root):
+        current: dict[str, Any] | None = None
+        metadata_path = _metadata_path(root)
+        if metadata_path.exists() or metadata_path.is_symlink():
+            candidate = _read_metadata(root)
+            if _is_prepared(candidate) and (
+                candidate["topic"],
+                candidate["problem"],
+            ) == (topic, problem):
+                current = candidate
+        presented_text: str | None = None
+        if current is not None and not _is_presented(current):
+            presented = dict(current)
+            presented["presented_at"] = datetime.now(UTC).isoformat()
+            presented_text = json.dumps(presented, indent=2) + "\n"
         if _has_active_non_editor_receipt(root, fingerprint, today):
+            if presented_text is not None:
+                reps = _state_file(root, "reps.md")
+                progress = _state_file(root, "progress.md")
+                _commit_closeout(
+                    root,
+                    kind="non_editor",
+                    fingerprint=fingerprint,
+                    files={
+                        reps.relative_to(root).as_posix(): reps.read_text(),
+                        progress.relative_to(root).as_posix(): progress.read_text(),
+                        metadata_path.relative_to(root).as_posix(): presented_text,
+                    },
+                )
             _print_closed(parsed.mode or "legacy", f"{topic}/{problem}")
             return 0
         reps = _state_file(root, "reps.md")
         progress = _state_file(root, "progress.md")
         dated = f"- {today} {normalized}"
         expected_progress = f"- [x] {topic}/{problem} {today}"
-        if (
-            reps.exists()
-            and dated in reps.read_text().splitlines()
-            and progress.exists()
-            and expected_progress in progress.read_text().splitlines()
-        ):
+        reps_text = reps.read_text() if reps.exists() else ""
+        progress_text = progress.read_text() if progress.exists() else ""
+        already_logged = (
+            dated in reps_text.splitlines()
+            and expected_progress in progress_text.splitlines()
+        )
+        if already_logged and presented_text is None:
             # With no caller-provided idempotency key, an identical same-day
             # close is indistinguishable from a retry. A new day permits a new
             # rep unless a recent crash-recovery receipt says otherwise.
             _print_closed(parsed.mode or "legacy", f"{topic}/{problem}")
             return 0
         files = {
-            reps.relative_to(root).as_posix(): _append_rep_text(reps, dated),
+            reps.relative_to(root).as_posix(): (
+                reps_text if already_logged else _append_rep_text(reps, dated)
+            ),
             progress.relative_to(root).as_posix(): _progress_text(
                 progress, topic, problem, today
             ),
         }
+        if presented_text is not None:
+            files[metadata_path.relative_to(root).as_posix()] = presented_text
         _commit_closeout(
             root,
             kind="non_editor",
@@ -2977,8 +3151,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     reference.add_argument("topic", nargs="?")
     reference.add_argument("problem", nargs="?")
-    for name in ("next", "status", "test", "watch", "repl", "open", "current"):
+    for name in ("next", "status", "test", "watch", "repl", "current"):
         commands.add_parser(name)
+    open_parser = commands.add_parser(
+        "open", help="open current or exact safe candidate tabs"
+    )
+    open_parser.add_argument("topic", nargs="?")
+    open_parser.add_argument("problem", nargs="?")
     finish = commands.add_parser(
         "finish", help="log the current rep and schedule its next review"
     )
@@ -3034,8 +3213,21 @@ def main() -> int:
             return complete_problem(ROOT, args.topic, args.problem)
         if args.command == "finish-non-editor":
             return finish_non_editor(ROOT, args.topic, args.problem, args.line)
+        if args.command == "open":
+            with _practice_lock(ROOT):
+                if args.topic is not None or args.problem is not None:
+                    metadata = prepare_open_target(ROOT, args.topic, args.problem)
+                else:
+                    metadata = _read_metadata(ROOT)
+                return 0 if open_session(ROOT, metadata) else 1
 
         metadata = current_metadata(ROOT)
+        if _is_prepared(metadata) and args.command not in {"open", "current"}:
+            raise PracticeError(
+                "candidate tabs are prepared, but no editor rep is active\n"
+                "NEXT: run `just practice-start <paradigm> "
+                f"{metadata['topic']} {metadata['problem']}` or keep talking."
+            )
         if args.command == "next":
             return show_next(ROOT, metadata)
         if args.command == "status":
@@ -3046,8 +3238,6 @@ def main() -> int:
             return run_watch(ROOT, metadata)
         if args.command == "repl":
             return run_repl(ROOT, metadata)
-        if args.command == "open":
-            return 0 if open_session(ROOT, metadata) else 1
         if args.command == "current":
             print(json.dumps(metadata, indent=2))
             return 0
