@@ -52,10 +52,15 @@ that input the guard returns the VS Code shape:
 }
 ```
 
-Allow decisions use the same runtime-specific envelope without a reason.
-Invalid JSON exits 2 instead of guessing. In VS Code, exit 2 blocks the tool
-and stops hook processing; in Copilot CLI/cloud, a failed `preToolUse`
-command denies the tool. Hook timeouts are fail-open.
+Allowed calls return `{}` and fall through to the runtime's normal permission
+policy. The guard only narrows authority; it never bypasses VS Code's narrow
+terminal auto-approval list. Invalid JSON exits 2 instead of guessing. In VS
+Code, exit 2 blocks the tool and stops hook processing; in Copilot CLI/cloud,
+a failed `preToolUse` command denies the tool. Hook timeouts are fail-open.
+
+The hook entry sets `cwd` to the repository root. VS Code otherwise launches
+hook commands from the remote user's home directory, where the relative
+`scripts/hooks/guard_pretooluse.py` path does not exist.
 
 Doc source: `docs.github.com/en/copilot/reference/hooks-reference` and
 `code.visualstudio.com/docs/agent-customization/hooks` (verified 2026-07-23).

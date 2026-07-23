@@ -30,11 +30,10 @@ _CANDIDATE_WORKSPACE = re.compile(r"(?<![\w-])\.challenges(?:[/\\]|$)")
 # across the runtimes that read this hook: Copilot CLI/cloud agent, and
 # Claude Code's compatible "PreToolUse" plugin format.
 EDIT_TOOL_NAME_HINTS = (
+    "create",
     "delete",
     "edit",
     "write",
-    "create_file",
-    "createfile",
     "move",
     "remove",
     "rename",
@@ -253,6 +252,12 @@ def main() -> int:
         print(f"guard_pretooluse: invalid JSON payload: {exc}", file=sys.stderr)
         return 2
     decision = decide(payload)
+    # This guard narrows authority; it never grants it. An explicit "allow"
+    # would bypass VS Code's deliberately small terminal auto-approval list.
+    # Empty output falls through to each runtime's normal permission policy.
+    if decision["permissionDecision"] == "allow":
+        print("{}")
+        return 0
     if payload.get("hook_event_name") == "PreToolUse":
         hook_output = {
             "hookEventName": "PreToolUse",

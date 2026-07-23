@@ -46,6 +46,18 @@ def test_denies_write_targeting_candidate_workspace_via_nested_args() -> None:
     assert decision["permissionDecision"] == "deny"
 
 
+def test_denies_copilot_create_targeting_candidate_workspace() -> None:
+    decision = decide(
+        {
+            "toolName": "create",
+            "toolArgs": json.dumps(
+                {"path": ".challenges/workspace/test_two_sum_candidate.py"}
+            ),
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
 def test_denies_edit_targeting_candidate_workspace_with_backslashes() -> None:
     decision = decide(
         {
@@ -359,6 +371,34 @@ def test_main_vscode_payload_prints_nested_hook_specific_output() -> None:
     assert decision["hookEventName"] == "PreToolUse"
     assert decision["permissionDecision"] == "deny"
     assert "candidate" in decision["permissionDecisionReason"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "toolName": "bash",
+            "toolArgs": {"command": "printf '%s\\n' safe"},
+        },
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "runTerminalCommand",
+            "tool_input": {"command": "printf '%s\\n' safe"},
+        },
+    ],
+)
+def test_main_allowed_payload_falls_through_to_runtime_permissions(
+    payload: dict[str, object],
+) -> None:
+    proc = subprocess.run(
+        [sys.executable, str(GUARD_SCRIPT)],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert proc.returncode == 0
+    assert json.loads(proc.stdout) == {}
 
 
 def test_main_denies_via_nonzero_exit_on_unparseable_payload() -> None:
