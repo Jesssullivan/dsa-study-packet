@@ -39,10 +39,11 @@ unchanged.
 The interviewer never writes your code, tests, or gate. Copilot is optional;
 the same flow starts from a terminal with `just practice-start reacto`.
 
-The four comment formats are vocabulary choices, not different grading
-systems. Pick the labels that help you show the work. `/continue` checks which
-sections are filled and returns one next action; it does not judge an approach
-while you are still forming it. Tests remain the correctness signal.
+The four starter formats are vocabulary choices, not different grading
+systems. Keep their labels, replace them, or write ordinary Python comments.
+`/continue` checks that saved reasoning comments are present before and during
+the code, then returns one next action. It does not grade their wording; tests
+remain the correctness signal.
 
 ## Current-rep commands
 
@@ -87,5 +88,6 @@ reference-sheet PDFs; the reading site syncs that content separately.
 - `.challenges/`: private, gitignored practice state
 - `scripts/core42.py`: core drill catalog (historical filename)
 
-Run `just catalog` for the current drill list and `just --list` for all
-recipes. See [WELCOME.md](WELCOME.md) for the shortest first-session guide.
+Run `just catalog` for every exact practice pair, or search natural names with
+`just catalog "anagram, 2 sum and prime"`. Run `just --list` for all recipes.
+See [WELCOME.md](WELCOME.md) for the shortest first-session guide.

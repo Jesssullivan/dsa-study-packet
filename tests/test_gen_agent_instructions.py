@@ -66,6 +66,14 @@ class TestRendering:
         assert "target: vscode\n" in rendered
         assert "`AGENTS.md`" in rendered
         assert "practice-start" in rendered
+        assert "practice-finish" in rendered
+        assert "just catalog" in rendered
+        assert "START" in rendered
+        assert "QUEUE" in rendered
+        assert "MATCH" in rendered
+        assert "CHOOSE" in rendered
+        assert "NOT_FOUND" in rendered
+        assert "SUGGEST" in rendered
         assert "edit/editFiles" not in rendered
         assert "not a security boundary" in rendered
         assert rendered.endswith("\n")
@@ -73,17 +81,22 @@ class TestRendering:
             assert f"  - {tool}\n" in rendered
 
     def test_start_prompt_is_one_command_and_candidate_preserving(self) -> None:
-        rendered = render_start_prompt("reacto", "Start a REACTO editor rep", "REACTO")
+        rendered = render_start_prompt("reacto", "Start a REACTO editor rep")
         assert "just practice-start reacto" in rendered
-        assert "Exactly two arguments" in rendered
-        assert "[a-z][a-z0-9_]*" in rendered
-        assert "/reacto [topic problem]" in rendered
-        assert "run no command" in rendered
-        assert "silently draw" in rendered
-        assert "editor-open result" in rendered
+        assert "just catalog" in rendered
+        assert "`READY`" in rendered
+        assert "`START: topic/problem`" in rendered
+        assert "just practice-start reacto topic problem" in rendered
+        assert "`QUEUE`" in rendered
+        assert "`CHOOSE`" in rendered
+        assert "`NOT_FOUND`" in rendered
+        assert "`SUGGEST`" in rendered
+        assert "practice-finish" in rendered
+        assert "tree-search" in rendered
+        assert "editor-open" in rendered
         assert "`SOURCE:`" in rendered
         assert "`TEST:`" in rendered
-        assert "Never edit the candidate workspace" in rendered
+        assert "Never edit candidate files" in rendered
 
     def test_continue_prompt_delegates_state_to_one_command(self) -> None:
         rendered = render_continue_prompt()
@@ -92,8 +105,8 @@ class TestRendering:
         assert "practice-current" not in rendered
 
     def test_start_prompts_fit_the_low_power_budget(self) -> None:
-        for name, (description, label) in PROMPT_SPECS.items():
-            rendered = render_start_prompt(name, description, label)
+        for name, description in PROMPT_SPECS.items():
+            rendered = render_start_prompt(name, description)
             assert len(rendered.split()) <= 90
 
 

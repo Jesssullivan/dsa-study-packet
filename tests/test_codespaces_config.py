@@ -7,6 +7,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 PARADIGMS = ("reacto", "clarp", "umpire", "comments")
 PROMPTS = (*PARADIGMS, "continue")
@@ -335,6 +337,14 @@ def test_devcontainer_workflow_uses_pinned_actions_and_login_free_path() -> None
     workflow = (ROOT / ".github/workflows/devcontainer.yml").read_text()
     assert "export PATH=" not in workflow
     assert "bash --noprofile --norc" in workflow
+    assert "# RESTATE:" not in workflow
+    for prompt in (
+        "Write what this function should return",
+        "Work one ordinary example and one edge case",
+        "Note the simplest correct plan",
+    ):
+        assert prompt in workflow
+    assert "NEXT: Add 1 more ordinary reasoning comment above the gate" in workflow
     action_refs = [
         line.strip().removeprefix("- uses: ").split(" #", 1)[0]
         for line in workflow.splitlines()
@@ -381,6 +391,58 @@ def test_workspace_tasks_are_explicit_and_never_run_on_folder_open() -> None:
     assert finish["type"] == "process"
     assert finish["command"] == "just"
     assert finish["args"] == ["practice-finish", "${input:practiceFinishNote}"]
+
+
+@pytest.mark.parametrize(
+    ("topic", "problem"),
+    [("lru_cache", ""), ("", "lru_cache")],
+)
+def test_practice_open_recipe_forwards_exact_pairs_and_guides_partial_names(
+    topic: str,
+    problem: str,
+) -> None:
+    exact = subprocess.run(
+        ["just", "--dry-run", "practice-open", "linked_lists", "lru_cache"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert exact.returncode == 0, exact.stderr
+    exact_output = exact.stdout + exact.stderr
+    assert "topic='linked_lists'" in exact_output
+    assert "problem='lru_cache'" in exact_output
+    assert 'practice_workspace.py open "$topic" "$problem"' in exact_output
+
+    partial = subprocess.run(
+        ["just", "practice-open", topic, problem],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert partial.returncode == 2
+    assert 'NEXT: just catalog "lru_cache"' in partial.stdout
+
+
+def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
+    for relative in (
+        "AGENTS.md",
+        ".claude/skills/interviewer/SKILL.md",
+        ".github/agents/interviewer.agent.md",
+        ".github/copilot-instructions.md",
+    ):
+        text = " ".join((ROOT / relative).read_text().split())
+        assert "just practice-open topic problem" in text
+        assert "reference tests" in text
+        assert "before placement" in text
+        assert "`START` immediately" in text
+        assert "Discuss without the editor" not in text
+        assert "otherwise run `just practice-open topic problem`" in text
+        assert "never `QUEUE`" in text
+        assert "takes priority" in text
+        assert "`PRACTICE:" in text
+        assert "before relaying the prompt" in text
 
 
 def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:

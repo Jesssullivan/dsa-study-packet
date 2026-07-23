@@ -284,9 +284,15 @@ challenge-progress:
 study-spaced n="5":
     @uv run python scripts/study_schedule.py {{ quote(n) }}
 
-# Print the current generated study-packet catalog.
-catalog:
-    @uv run python scripts/catalog.py
+# List exact practice pairs, optionally matching natural problem names.
+catalog query="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    query={{ quote(query) }}
+    if [ -z "$query" ]; then
+        exec uv run python scripts/catalog.py
+    fi
+    exec uv run python scripts/catalog.py "$query"
 
 # Print one sheet-11 practice day as a timed block.
 practice-day day="12":
@@ -308,6 +314,13 @@ practice-start paradigm topic="" problem="":
     paradigm={{ quote(paradigm) }}
     topic={{ quote(topic) }}
     problem={{ quote(problem) }}
+    if { [ -n "$topic" ] && [ -z "$problem" ]; } || { [ -z "$topic" ] && [ -n "$problem" ]; }; then
+        supplied=${topic:-$problem}
+        printf 'practice: provide both topic and problem, or omit both for a draw\n'
+        printf 'MATCH: one natural name, %s, is not an exact pair\n' "$supplied"
+        printf 'NEXT: just catalog "%s"\n' "$supplied"
+        exit 2
+    fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
         exec uv run python scripts/practice_workspace.py start "$paradigm"
     fi
@@ -320,6 +333,13 @@ practice-new paradigm topic="" problem="":
     paradigm={{ quote(paradigm) }}
     topic={{ quote(topic) }}
     problem={{ quote(problem) }}
+    if { [ -n "$topic" ] && [ -z "$problem" ]; } || { [ -z "$topic" ] && [ -n "$problem" ]; }; then
+        supplied=${topic:-$problem}
+        printf 'practice: provide both topic and problem, or omit both for a draw\n'
+        printf 'MATCH: one natural name, %s, is not an exact pair\n' "$supplied"
+        printf 'NEXT: just catalog "%s"\n' "$supplied"
+        exit 2
+    fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
         exec uv run python scripts/practice_workspace.py start "$paradigm" --fresh
     fi
@@ -345,9 +365,23 @@ practice-watch:
 practice-repl:
     @uv run python scripts/practice_workspace.py repl
 
-# Reopen the current candidate source and test tabs.
-practice-open:
-    @uv run python scripts/practice_workspace.py open
+# Open current candidate tabs, or prepare and open one exact safe pair.
+practice-open topic="" problem="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    topic={{ quote(topic) }}
+    problem={{ quote(problem) }}
+    if { [ -n "$topic" ] && [ -z "$problem" ]; } || { [ -z "$topic" ] && [ -n "$problem" ]; }; then
+        supplied=${topic:-$problem}
+        printf 'practice: provide both topic and problem, or omit both for the current rep\n'
+        printf 'MATCH: one natural name, %s, is not an exact pair\n' "$supplied"
+        printf 'NEXT: just catalog "%s"\n' "$supplied"
+        exit 2
+    fi
+    if [ -z "$topic" ] && [ -z "$problem" ]; then
+        exec uv run python scripts/practice_workspace.py open
+    fi
+    exec uv run python scripts/practice_workspace.py open "$topic" "$problem"
 
 # Print the current rep metadata (agent/tooling interface).
 practice-current:
@@ -363,6 +397,13 @@ practice-present topic="" problem="":
     set -euo pipefail
     topic={{ quote(topic) }}
     problem={{ quote(problem) }}
+    if { [ -n "$topic" ] && [ -z "$problem" ]; } || { [ -z "$topic" ] && [ -n "$problem" ]; }; then
+        supplied=${topic:-$problem}
+        printf 'practice: provide both topic and problem, or omit both for a draw\n'
+        printf 'MATCH: one natural name, %s, is not an exact pair\n' "$supplied"
+        printf 'NEXT: just catalog "%s"\n' "$supplied"
+        exit 2
+    fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
         exec uv run python scripts/practice_workspace.py present
     fi
@@ -374,6 +415,13 @@ practice-reference topic="" problem="":
     set -euo pipefail
     topic={{ quote(topic) }}
     problem={{ quote(problem) }}
+    if { [ -n "$topic" ] && [ -z "$problem" ]; } || { [ -z "$topic" ] && [ -n "$problem" ]; }; then
+        supplied=${topic:-$problem}
+        printf 'practice: provide both topic and problem, or omit both for a draw\n'
+        printf 'MATCH: one natural name, %s, is not an exact pair\n' "$supplied"
+        printf 'NEXT: just catalog "%s"\n' "$supplied"
+        exit 2
+    fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
         exec uv run python scripts/practice_workspace.py reference
     fi

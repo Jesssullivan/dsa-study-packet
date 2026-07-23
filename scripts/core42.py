@@ -116,6 +116,7 @@ PRACTICE_TARGETS: dict[tuple[str, str], str] = {
     ("bit_manipulation", "single_number"): "single_number",
     ("sorting", "merge_sort_inversions"): "count_inversions",
     ("sorting", "quickselect"): "quickselect",
+    ("math", "is_prime"): "is_prime",
     ("math", "sieve_of_eratosthenes"): "sieve_of_eratosthenes",
     ("patterns", "sliding_window"): "max_sum_subarray",
 }
