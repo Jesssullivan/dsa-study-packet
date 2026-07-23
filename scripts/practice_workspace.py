@@ -1844,7 +1844,13 @@ def _print_start(
     action: str,
     archived: Path | None,
 ) -> None:
-    print(module_docstring_block((root / str(metadata["source"])).read_text()).rstrip())
+    print(
+        present_problem(
+            root,
+            str(metadata["topic"]),
+            str(metadata["problem"]),
+        ).rstrip()
+    )
     print()
     print(
         f"{metadata['paradigm_title']} rep {action}: "
@@ -1852,6 +1858,14 @@ def _print_start(
     )
     if archived is not None:
         print(f"Previous workspace archived: {archived.relative_to(root)}")
+    if action == "resumed":
+        print(f"SOURCE: {metadata['source']}")
+        print(f"TEST: {metadata['candidate_test']}")
+        print(
+            "NEXT: Continue in the open candidate files. After an explicit save, "
+            "run /continue."
+        )
+        return
     show_next(root, metadata)
 
 

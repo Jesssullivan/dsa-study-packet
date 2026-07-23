@@ -3451,6 +3451,58 @@ def test_start_cli_reports_editor_launch_failure_before_presenting_state(
     assert practice.current_metadata(practice_repo)["topic"] == "arrays"
 
 
+def test_resumed_start_does_not_present_candidate_docstring_or_derive_state(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    sentinel = "PRIVATE_CANDIDATE_DOCSTRING_SENTINEL_7E6B25C9"
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        candidate.read_text().replace(
+            "Problem:\n",
+            f"Problem:\n    {sentinel}\n",
+            1,
+        )
+    )
+    assert sentinel in candidate.read_text()
+    workspace = practice_repo / practice.WORKSPACE_REL
+    before = _workspace_snapshot(workspace)
+
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", lambda _root, _metadata: True)
+    monkeypatch.setattr(
+        practice,
+        "show_next",
+        lambda _root, _metadata: pytest.fail(
+            "resume must wait for an explicit /continue boundary"
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "practice_workspace.py",
+            "start",
+            "comments",
+            "arrays",
+            "first",
+        ],
+    )
+
+    assert practice.main() == 0
+
+    output = capsys.readouterr().out
+    assert "arrays / first" in output
+    assert sentinel not in output
+    assert "STATE:" not in output
+    assert "After an explicit save, run /continue." in output
+    assert _workspace_snapshot(workspace) == before
+
+
 def test_prepared_tabs_refuse_editor_commands_until_a_mode_starts(
     practice_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
