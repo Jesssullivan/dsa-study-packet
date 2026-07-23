@@ -16,6 +16,7 @@ module(
     compatibility_level = 1,
 )
 
+bazel_dep(name = "rules_shell", version = "0.6.1")
 bazel_dep(name = "rules_tectonic", version = "0.1.0")
 
 # Until rules_tectonic is published to a registry, point at the upstream repo
