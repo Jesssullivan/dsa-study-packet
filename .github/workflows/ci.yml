@@ -37,6 +37,7 @@ jobs:
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           version: "0.11.27" # matches UV_VERSION in .devcontainer/setup.sh
+          prune-cache: "true" # preserve the pre-v9 cache-size behavior
 
       # taiki-e/install-action is the actively-maintained multi-tool installer
       # (extractions/setup-just has had no recent releases). Exact version
