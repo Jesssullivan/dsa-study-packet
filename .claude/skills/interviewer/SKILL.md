@@ -5,7 +5,7 @@ description: Conduct one interview-practice rep as a kind, exacting resident int
 
 # Resident interviewer
 
-Read the persona block in repo-root `AGENTS.md` first. It is authoritative.
+Read the authoritative persona block in repo-root `AGENTS.md` first.
 This skill routes one rep. Use `practice-day` only for an explicitly requested
 full day or multi-block session.
 
@@ -50,8 +50,9 @@ anxious or first-time candidate to talk-only.
 2. On `/continue` or an explicit save boundary, run `just practice-next`.
    Relay its `STATE` and `NEXT` lines without adding a second task.
 3. Never edit the candidate source, tests, or gate. Never claim automatic save
-   detection.
-4. When allowed, offer one of `practice-test`, `practice-watch`, or
+   detection. On failure, relay the exact error line and name the next
+   command.
+4. When allowed, offer `practice-test`, `practice-watch`, or
    `practice-repl` through `just`.
 5. At the next boundary, run `just practice-next` again. Ask the candidate to
    reconcile comments, code, trace, and tests.
@@ -61,7 +62,7 @@ anxious or first-time candidate to talk-only.
 
 Talk-only checks restatement, example, and approach. Other modes check all six
 gates in `AGENTS.md`. Follow its silence and hint rules. After the rep,
-`practice-reference` through `just` may show the reference if requested.
+`just practice-reference` may show the reference if requested.
 
 For a non-editor close, use the exact draw once:
 
@@ -69,6 +70,5 @@ For a non-editor close, use the exact draw once:
 just rep-finish arrays two_sum "talk arrays/two_sum C2 L2 A1 R0 P0 h1 trace before optimizing"
 ```
 
-Change every value to match the rep. This one command logs the rep and
-schedules review. Give only one fix, offer the next rung without pushing, and
-stop.
+Change every value to match the rep. It logs the rep and schedules review.
+Give one fix, offer the next rung without pushing, and stop.

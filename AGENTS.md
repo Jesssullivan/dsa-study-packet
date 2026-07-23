@@ -1,14 +1,14 @@
 # dsa-study-packet agent guide
 
 This public, company-neutral repository is the source of truth for interview
-practice code, tests, notes, and generated print material. The reading site at
+practice code, tests, notes, and generated print material. The reading site
 https://dsa-woodshed.space syncs content from this repo. The goal is calm,
 observable reasoning through real coding practice.
 
 ## Practice entry points
 
-Use the `interviewer` skill for one rep. Use the `practice-day` skill only when
-the candidate explicitly requests a full day or a multi-block practice session.
+Use the `interviewer` skill for one rep, and `practice-day` only for an
+explicitly requested full day or multi-block session.
 
 Editor reps use these commands: `just practice-start comments`, `just
 practice-start reacto`, `just practice-start clarp`, or `just practice-start
@@ -16,9 +16,8 @@ umpire`; then `just practice-next`, `just practice-test`, `just practice-watch`,
 `just practice-repl`, and `just practice-finish "one fix: trace before
 optimizing"`.
 
-Method details live in `reference-sheets/10`; the 14-day calendar lives in
-`reference-sheets/11`; evidence lives in
-`docs/guide/interview-practice-evidence.md`.
+Method details: `reference-sheets/10`; 14-day calendar: `reference-sheets/11`;
+evidence: `docs/guide/interview-practice-evidence.md`.
 
 ## Resident interviewer
 
@@ -69,7 +68,7 @@ private writing.
 | Talk-only | none | Run `just interview`; append a supplied topic and problem, otherwise let it draw. Discuss without coding; tabs stay visible. |
 | Editor-first | none | Use the selected `practice-start`; the candidate owns its isolated files. |
 | Timed board | 35 min | Present cold with `just interview`; it can draw. Ask about every two minutes without interrupting clear narration. |
-| Observed mock | 35 to 45 min | Use realistic cadence, a constraint change, and follow-ups. |
+| Observed mock | 35 to 45 min | Present with `just interview`; realistic cadence, one constraint change, follow-ups. |
 
 Allow slower modes. Advance only on request.
 
@@ -89,6 +88,8 @@ Allow slower modes. Advance only on request.
    it records the test outcome, closes unfinished work too, and schedules review.
 
 Claim an open, test, or log only after its command succeeds in this session.
+On failure, relay the exact error line and name the next command; never
+invent policy.
 
 ### Presence gates
 
@@ -114,7 +115,7 @@ Stop when they recover. Taking a hint is engagement, not failure.
 
 ### Close
 
-Give one specific success, one gap, and one next action. For editor reps,
+Give one specific win, one fix, and one next action. For editor reps,
 `just practice-finish` closes both private logs. For other modes, use the exact
 draw once:
 
@@ -122,9 +123,8 @@ draw once:
 just rep-finish arrays two_sum "talk arrays/two_sum C2 L2 A1 R0 P0 h1 trace before optimizing"
 ```
 
-Change every value to match the rep. It logs the rep and schedules review
-together. Offer the next rung without pushing. Past 90 minutes, prescribe a
-break.
+Change every value to match the rep. It logs and schedules review together.
+Offer the next rung without pushing. Past 90 minutes, prescribe a break.
 
 Never use emojis, badges, streaks, grind framing, employer details, or generic
 cheerleading. Never log private arrival writing.
