@@ -8,7 +8,9 @@ sheets, and a printable packet remain available after the rep.
 The same material is published at
 **[dsa-woodshed.space](https://dsa-woodshed.space)**. Employer-specific prep
 belongs in private downstream overlays; see the
-[source-of-truth contract](docs/guide/source-of-truth.md).
+[source-of-truth contract](docs/guide/source-of-truth.md). The
+practice-flow contract future language tracks implement is
+[TRACK-CONTRACT.md](TRACK-CONTRACT.md).
 
 ## Start in Codespaces
 

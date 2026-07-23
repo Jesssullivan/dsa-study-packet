@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 SURFACE_BUDGETS: dict[str, int] = {
     "AGENTS.md": 1000,
+    "TRACK-CONTRACT.md": 800,
     "CLAUDE.md": 80,
     ".claude/skills/interviewer/SKILL.md": 500,
     ".claude/skills/practice-day/SKILL.md": 500,
