@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 import sys
+from pathlib import Path
 
 CORE = (
     ("uv", "installs python + deps; https://astral.sh/uv"),
@@ -22,8 +24,8 @@ LOOP = (
     ("code", "opens candidate source + test tabs; paths print if absent"),
 )
 INTERVIEWERS = (
-    ("claude", "optional manual CLI; built-in Copilot is the Codespaces default"),
-    ("codex", "optional manual CLI; built-in Copilot is the Codespaces default"),
+    ("claude", "optional manual CLI; install and authenticate separately"),
+    ("codex", "optional manual CLI; install and authenticate separately"),
     (
         "gemini",
         "npm i -g @google/gemini-cli; reads AGENTS.md via .gemini/settings.json",
@@ -34,6 +36,29 @@ PUBLISHING = (
     ("tectonic", "'just packet' booklet PDF (optional)"),
     ("bazelisk", "'just remote-*' cache-first builds (optional)"),
 )
+
+
+def pytest_interpreter() -> Path | None:
+    """Return a project interpreter only when it can import pytest."""
+    candidates = (Path(".venv/bin/python"), Path(".venv/Scripts/python.exe"))
+    for interpreter in candidates:
+        if not interpreter.is_file():
+            continue
+        try:
+            result = subprocess.run(
+                [str(interpreter), "-c", "import pytest"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except OSError:
+            continue
+        except subprocess.SubprocessError:
+            continue
+        if result.returncode == 0:
+            return interpreter
+    return None
 
 
 def report(title: str, tools: tuple[tuple[str, str], ...]) -> list[str]:
@@ -55,25 +80,32 @@ def main() -> int:
     report("Practice loop", LOOP)
     print("Interviewers")
     if os.environ.get("CODESPACES"):
-        print("  copilot    ok   built into Codespaces (Chat in the sidebar)")
+        print("  codespace  ok   Codespaces environment detected")
+        print(
+            "  copilot    --   confirm Chat sign-in and entitlement in the VS Code UI"
+        )
     else:
         print(
-            "  copilot    --   install GitHub Copilot Chat in VS Code, or use a CLI below"
+            "  copilot    --   install Chat, sign in, and confirm entitlement in VS Code"
         )
     for name, hint in INTERVIEWERS:
         mark = "ok" if shutil.which(name) else "--"
         print(f"  {name:<10} {mark:<4} {hint}")
     report("Publishing (optional)", PUBLISHING)
     print()
-    if os.path.isdir(".venv"):
-        print("venv: .venv present; 'uv run pytest -q' should work")
+    interpreter = pytest_interpreter()
+    if interpreter:
+        print(f"pytest: ok; import succeeds with {interpreter}")
+    elif not Path(".venv").is_dir():
+        print("venv: missing; run 'uv sync --extra dev' first (pytest unavailable)")
     else:
-        print("venv: missing; run 'uv sync --extra dev' first")
+        print("pytest: unavailable in .venv; run 'uv sync --extra dev'")
     if core_missing:
         print(f"MISSING core tools: {', '.join(core_missing)}", file=sys.stderr)
         return 1
     print(
-        "Core toolchain ok. Start with /reacto in Chat or 'just practice-start reacto'."
+        "Core toolchain ok. Start with /comments in Chat or "
+        "'just practice-start comments'."
     )
     return 0
 

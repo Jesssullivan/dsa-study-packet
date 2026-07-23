@@ -32,9 +32,10 @@ setup is automatic; see `README.md` for the one-click flow.
 ## Agent surfaces are generated — never hand-edit them
 
 The resident-interviewer persona lives once, in the `AGENTS.md` persona
-region. GitHub Copilot's instruction files
-(`.github/copilot-instructions.md`, `.github/agents/interviewer.agent.md`)
-are *generated* from that region. If you change the persona:
+region. The portable Codex skill lives at
+`.agents/skills/interviewer/SKILL.md`. GitHub Copilot's instruction files are
+generated from the persona, and Claude's interviewer skill is generated from
+the portable skill. If you change either source:
 
 ```bash
 just gen-agents
@@ -44,6 +45,22 @@ and commit the regenerated files alongside your `AGENTS.md` edit.
 `scripts/check_agent_instructions.py` fails CI if the generated files drift
 from what `AGENTS.md` would produce. Never edit the generated files directly —
 your changes will be silently overwritten and the drift guard will still fail.
+
+## Codespaces acceptance
+
+Acceptance evidence must come from a newly created workspace at the current
+`main`, not a resumed Codespace. Open
+`https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main`, create the
+Codespace, and record:
+
+```bash
+git rev-parse HEAD
+git rev-parse origin/main
+```
+
+The SHAs must match. Then verify Copilot Chat separately in the VS Code UI:
+the extension is present, the account is signed in, and the account has
+Copilot access. Codespaces detection alone proves none of those.
 
 ## The public-boundary rule (hard rule)
 

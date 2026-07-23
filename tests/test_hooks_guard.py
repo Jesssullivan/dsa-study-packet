@@ -1,8 +1,9 @@
 """Unit tests for the Copilot preToolUse guard (scripts/hooks/guard_pretooluse.py).
 
 Exercises the persona invariant directly: the agent never edits
-candidate-owned files under .challenges/, and never runs an unbounded rm -rf
-or a forced git push. Maintenance edits to src/ and tests/ must stay allowed.
+candidate-owned files under .challenges/, never directly accesses them through
+a shell tool, and never runs an unbounded rm -rf or a forced git push.
+Maintenance edits to src/ and tests/ must stay allowed.
 """
 
 from __future__ import annotations
@@ -11,6 +12,8 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 _HOOKS_SCRIPTS = ROOT / "scripts" / "hooks"
@@ -38,6 +41,42 @@ def test_denies_write_targeting_candidate_workspace_via_nested_args() -> None:
         {
             "toolName": "create_file",
             "toolArgs": {"params": {"path": "./.challenges/workspace/notes.md"}},
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_denies_edit_targeting_candidate_workspace_with_backslashes() -> None:
+    decision = decide(
+        {
+            "toolName": "create_file",
+            "toolArgs": {"path": r".challenges\workspace\notes.md"},
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
+@pytest.mark.parametrize(
+    "tool_name",
+    [
+        "deleteFile",
+        "remove_file",
+        "moveFile",
+        "rename_path",
+        "unlink",
+    ],
+)
+def test_denies_other_mutation_tools_targeting_candidate_workspace(
+    tool_name: str,
+) -> None:
+    decision = decide(
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": tool_name,
+            "tool_input": {
+                "path": ".challenges/workspace/two_sum.py",
+                "targetPath": ".challenges/history/two_sum.py",
+            },
         }
     )
     assert decision["permissionDecision"] == "deny"
@@ -96,6 +135,101 @@ def test_toolargs_as_json_encoded_string_is_parsed() -> None:
     assert decision["permissionDecision"] == "deny"
 
 
+def test_vscode_snake_case_edit_payload_is_denied() -> None:
+    decision = decide(
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Edit",
+            "tool_input": {"file_path": ".challenges/workspace/x.py"},
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_vscode_snake_case_shell_payload_is_denied() -> None:
+    decision = decide(
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "git push --force origin main"},
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_denies_shell_redirection_into_candidate_workspace() -> None:
+    decision = decide(
+        {
+            "toolName": "execute",
+            "toolArgs": {
+                "command": "printf '%s\\n' answer > .challenges/arrays/two_sum.py"
+            },
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+    assert ".challenges/" in decision["permissionDecisionReason"]
+
+
+def test_denies_shell_read_from_candidate_workspace() -> None:
+    decision = decide(
+        {
+            "toolName": "terminal",
+            "toolArgs": {"command": r"type .challenges\arrays\two_sum.py"},
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_denies_python_shell_write_to_candidate_workspace() -> None:
+    decision = decide(
+        {
+            "toolName": "run_command",
+            "toolArgs": {
+                "command": (
+                    'python -c "from pathlib import Path; '
+                    "Path('.challenges/x.py').write_text('answer')\""
+                )
+            },
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_denies_shell_variable_assigned_candidate_workspace() -> None:
+    decision = decide(
+        {
+            "toolName": "bash",
+            "toolArgs": {
+                "command": 'target=.challenges/x.py; printf answer > "$target"'
+            },
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_allows_repo_practice_front_door_without_private_path() -> None:
+    decision = decide(
+        {
+            "toolName": "execute",
+            "toolArgs": {"command": "just practice-test"},
+        }
+    )
+    assert decision["permissionDecision"] == "allow"
+
+
+def test_shell_explanation_can_mention_candidate_workspace() -> None:
+    decision = decide(
+        {
+            "toolName": "execute",
+            "toolArgs": {
+                "command": "just practice-test",
+                "description": "Test the candidate files under .challenges/.",
+            },
+        }
+    )
+    assert decision["permissionDecision"] == "allow"
+
+
 def test_denies_rm_rf_outside_workspace_absolute_path() -> None:
     decision = decide(
         {
@@ -131,11 +265,11 @@ def test_denies_rm_long_flags_targeting_parent_traversal() -> None:
     assert decision["permissionDecision"] == "deny"
 
 
-def test_allows_rm_rf_inside_workspace() -> None:
+def test_denies_rm_rf_inside_candidate_workspace() -> None:
     decision = decide(
         {"toolName": "bash", "toolArgs": {"command": "rm -rf .challenges/tmp"}}
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision["permissionDecision"] == "deny"
 
 
 def test_allows_plain_rm_without_force_recursive_flags() -> None:
@@ -178,9 +312,7 @@ def test_allows_plain_git_push() -> None:
 
 
 def test_allows_unrelated_shell_command() -> None:
-    decision = decide(
-        {"toolName": "bash", "toolArgs": {"command": "uv run pytest -q"}}
-    )
+    decision = decide({"toolName": "bash", "toolArgs": {"command": "uv run pytest -q"}})
     assert decision["permissionDecision"] == "allow"
 
 
@@ -188,7 +320,7 @@ def test_missing_tool_name_and_args_default_to_allow() -> None:
     assert decide({})["permissionDecision"] == "allow"
 
 
-def test_main_reads_stdin_and_prints_a_decision() -> None:
+def test_main_copilot_payload_prints_top_level_decision() -> None:
     payload = json.dumps(
         {"toolName": "Edit", "toolArgs": {"file_path": ".challenges/x.py"}}
     )
@@ -202,6 +334,31 @@ def test_main_reads_stdin_and_prints_a_decision() -> None:
     assert proc.returncode == 0
     decision = json.loads(proc.stdout)
     assert decision["permissionDecision"] == "deny"
+    assert "hookSpecificOutput" not in decision
+
+
+def test_main_vscode_payload_prints_nested_hook_specific_output() -> None:
+    payload = json.dumps(
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Edit",
+            "tool_input": {"file_path": ".challenges/x.py"},
+        }
+    )
+    proc = subprocess.run(
+        [sys.executable, str(GUARD_SCRIPT)],
+        input=payload,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert proc.returncode == 0
+    output = json.loads(proc.stdout)
+    assert set(output) == {"hookSpecificOutput"}
+    decision = output["hookSpecificOutput"]
+    assert decision["hookEventName"] == "PreToolUse"
+    assert decision["permissionDecision"] == "deny"
+    assert "candidate" in decision["permissionDecisionReason"]
 
 
 def test_main_denies_via_nonzero_exit_on_unparseable_payload() -> None:

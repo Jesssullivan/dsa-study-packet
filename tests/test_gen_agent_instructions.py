@@ -10,9 +10,12 @@ from gen_agent_instructions import (  # type: ignore[import-not-found]
     AGENT_TOOLS,
     AGENTS,
     BEGIN_MARKER,
+    CLAUDE_INTERVIEWER_SKILL,
     END_MARKER,
+    PORTABLE_INTERVIEWER_SKILL,
     PROMPT_SPECS,
     PersonaMarkerError,
+    all_generated_files,
     extract_persona,
     generated_files,
     render_continue_prompt,
@@ -58,7 +61,7 @@ class TestRendering:
 
     def test_repo_wide_persona_is_scoped_to_practice(self) -> None:
         rendered = render_copilot_instructions(extract_persona(AGENTS.read_text()))
-        assert "For repository maintenance" in " ".join(rendered.split())
+        assert "For maintenance" in " ".join(rendered.split())
 
     def test_agent_file_is_thin_adapter_without_direct_edit_tools(self) -> None:
         rendered = render_interviewer_agent()
@@ -74,9 +77,12 @@ class TestRendering:
         assert "CHOOSE" in rendered
         assert "NOT_FOUND" in rendered
         assert "SUGGEST" in rendered
+        assert "unknown mode or open/read first" in rendered.casefold()
+        assert "prepares/reopens `START` without" in rendered
         assert "edit/editFiles" not in rendered
         assert "not a security boundary" in rendered
         assert rendered.endswith("\n")
+        assert len(rendered.split()) <= 180
         for tool in AGENT_TOOLS:
             assert f"  - {tool}\n" in rendered
 
@@ -93,7 +99,8 @@ class TestRendering:
         assert "`SUGGEST`" in rendered
         assert "practice-finish" in rendered
         assert "tree-search" in rendered
-        assert "editor-open" in rendered
+        assert "`OPENED` or `OPEN_FAILED`" in rendered
+        assert "editor-open" not in rendered
         assert "`SOURCE:`" in rendered
         assert "`TEST:`" in rendered
         assert "Never edit candidate files" in rendered
@@ -129,3 +136,13 @@ class TestGeneratedFiles:
         # AGENTS.md changed without `just gen-agents` being re-run.
         for path, expected in generated_files().items():
             assert path.read_text() == expected, f"{path.name}: run just gen-agents"
+
+    def test_portable_skill_is_real_and_claude_is_generated_mirror(self) -> None:
+        assert PORTABLE_INTERVIEWER_SKILL.is_file()
+        assert not PORTABLE_INTERVIEWER_SKILL.is_symlink()
+        assert all_generated_files()[CLAUDE_INTERVIEWER_SKILL] == (
+            PORTABLE_INTERVIEWER_SKILL.read_text()
+        )
+        assert CLAUDE_INTERVIEWER_SKILL.read_text() == (
+            PORTABLE_INTERVIEWER_SKILL.read_text()
+        )

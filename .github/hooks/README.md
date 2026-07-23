@@ -9,26 +9,56 @@ The guard denies:
 - any file-edit/write tool call whose path-shaped arguments reference
   `.challenges/**` (the candidate's own workspace), with a reason telling the
   agent to relay the error and ask the candidate to make the edit themselves
+- any shell/terminal tool command that directly references `.challenges/**`,
+  whether to read or write it; repo front doors such as `just practice-test`
+  remain allowed because they do not expose private paths
 - `rm -rf` (or `-fr`, `--recursive --force`) targeting a path outside this
   workspace (absolute, `~`, `$HOME`, `${HOME}`, or a `..` traversal)
 - `git push --force`, `--force-with-lease`, or `-f`
 
-It never blocks maintenance edits under `src/`, `tests/`, or docs — only a
-`.challenges/` marker in a path-shaped argument field trips the file-edit
-rule, never file content that merely mentions the workspace.
+It never blocks maintenance edits under `src/`, `tests/`, or docs. For
+file-edit tools, only a `.challenges/` marker in a path-shaped argument field
+trips the rule, never file content that merely mentions the workspace. Shell
+commands are checked in full because redirection and embedded scripts can
+otherwise bypass path-shaped arguments.
 
 ## Contract
 
 JSON hook files carry no comments, so the schema and behavior live here
 instead. `version` and `hooks.<eventName>` mirror the documented repo-hooks
-format; each `preToolUse` entry is a `command` hook that pipes the event
-payload (`toolName`, `toolArgs`, ...) to the script over stdin and reads back
-`{"permissionDecision": "allow" | "deny", "permissionDecisionReason": "..."}`
-on stdout with exit 0. A non-zero exit denies regardless of stdout.
+format.
+
+Copilot CLI/cloud send `toolName` and `toolArgs`. For those inputs the guard
+returns the CLI/cloud shape:
+
+```json
+{
+  "permissionDecision": "deny",
+  "permissionDecisionReason": "..."
+}
+```
+
+VS Code's Preview hook adapter converts the lower-camel event to
+`PreToolUse` and sends `hook_event_name`, `tool_name`, and `tool_input`. For
+that input the guard returns the VS Code shape:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "..."
+  }
+}
+```
+
+Allow decisions use the same runtime-specific envelope without a reason.
+Invalid JSON exits 2 instead of guessing. In VS Code, exit 2 blocks the tool
+and stops hook processing; in Copilot CLI/cloud, a failed `preToolUse`
+command denies the tool. Hook timeouts are fail-open.
 
 Doc source: `docs.github.com/en/copilot/reference/hooks-reference` and
-`docs.github.com/en/copilot/concepts/agents/hooks` (fetched 2026-07-15).
-Only the Copilot cloud agent and Copilot CLI are documented as reading
-`.github/hooks/*.json`; no IDE/VS Code chat surface is documented as honoring
-it. The `bash` field is used (not `powershell`) because this repo's
-Codespaces surface is Linux-only.
+`code.visualstudio.com/docs/agent-customization/hooks` (verified 2026-07-23).
+VS Code support is Preview, so this is defense in depth rather than the
+candidate-ownership correctness boundary. The `bash` field is used because
+this repo's Codespaces surface is Linux-only.

@@ -15,17 +15,15 @@
     "continue": true
   },
   "chat.tools.terminal.autoApprove": {
-    "/^just practice-start\\b.*$/": true,
+    "/^just practice-start (reacto|clarp|umpire|comments)( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": true,
     "/^just practice-next$/": true,
     "/^just practice-test$/": true,
     "/^just practice-watch$/": true,
     "/^just practice-repl$/": true,
-    "/^just practice-open\\b.*$/": true,
-    "/^just practice-finish\\b.*$/": true,
-    "/^just practice-reference\\b.*$/": true,
-    "/^just interview\\b.*$/": true,
-    "/^just catalog\\b.*$/": true,
-    "/^uv run pytest\\b.*$/": true
+    "/^just practice-open( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": true,
+    "/^just practice-finish \"[A-Za-z0-9 .,;:!?()'_-]{1,500}\"$/": true,
+    "/^just interview( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": true,
+    "/^just catalog \"[A-Za-z0-9 _-]{1,120}\"$/": true
   },
   "github.copilot.enable": {
     "*": false

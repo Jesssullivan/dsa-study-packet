@@ -1,6 +1,6 @@
 ---
 name: comments
-description: Start an editor rep with plain comments
+description: Start a plain-comment editor rep
 argument-hint: "[topic problem]"
 agent: 'Interviewer'
 ---
@@ -15,5 +15,6 @@ agent: 'Interviewer'
 - `NOT_FOUND`: relay `SUGGEST`; wait.
 - Switching: run `just practice-finish "<one concrete fix>"`.
 
-Never guess or tree-search. Never edit candidate files. After start,
-relay editor-open, `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:`, then stop.
+Never edit candidate files; no tree-search. Relay `OPENED` or `OPEN_FAILED`,
+then `STATE:`, `SOURCE:`, `TEST:`, and `NEXT:`; stop.
+Comments/docstrings have no required schema.

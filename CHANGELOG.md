@@ -10,9 +10,9 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 ### Added
 
 - Editor-first practice workspaces under gitignored
-  `.challenges/workspace/`: paradigm-specific reasoning comments, a
-  candidate-owned test tab, a candidate-owned `THINKING GATE`, and focused
-  reference-plus-candidate test, watch, REPL, status, and reopen recipes.
+  `.challenges/workspace/`: optional reasoning-comment coaching, a
+  candidate-owned test tab, and focused reference-plus-candidate test, watch,
+  REPL, status, and reopen recipes.
 - Native Copilot workspace prompts: `/reacto`, `/clarp`, `/umpire`, and
   `/comments`. The slash invocation is the mode choice and draws from
   spaced repetition when no problem is supplied.
@@ -23,10 +23,16 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 
 ### Changed
 
-- Editor practice now accepts ordinary Python comments without framework
-  prefixes. The practice loop records which comments were written after the
-  thinking phase, so natural comments around compact implementations can drive
-  BUILD, REFLECT, and CLOSE without special placement tricks.
+- Editor practice treats ordinary Python comments and docstrings as prose for
+  the interviewer to read, never as machine-scored state. Code, candidate
+  tests, and a fresh digest-bound test result drive THINK, BUILD, REFLECT, and
+  CLOSE without prefixes, quotas, or gate deletion.
+- The legacy lexical scaffold parser and locked-preview flag are removed. Old
+  schema-4 sessions still resume, while new session metadata contains no
+  comment labels, counts, or gate text.
+- Focused test receipts ignore ambient pytest options and local conftest
+  plugins, require every locked and candidate test to run and pass, and accept
+  results only after the maintained pytest plugin writes its completion marker.
 - Codespaces now defaults to its built-in Copilot Chat and the portable
   `just practice-*` loop. It no longer requires interviewer secrets or
   auto-starts an external CLI in a split terminal; external agents remain
@@ -39,8 +45,8 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
   duplicating the persona in Codespaces prompts.
 - Starting a rep renders from the committed reference source into an isolated
   candidate workspace instead of rewriting `src/algo/`. Candidates record
-  reasoning in live comments, save explicitly, remove the thinking gate
-  themselves, implement, and add focused tests.
+  reasoning in ordinary source comments or docstrings, save explicitly,
+  implement, and add focused tests.
 - Candidate tabs contain only the selected public interface, required type
   annotations, and constructible input data types. Alternate strategies and
   committed algorithm helpers stay out of the candidate module, target
@@ -56,6 +62,8 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 - Destructive legacy recipes that rewrote tracked algorithm sources were
   removed. The unused save-polling hook is gone too; `/continue` is the explicit
   turn boundary. Editor practice stays in the isolated `.challenges/workspace/`.
+- Cache-compatible `just remote-*` front doors now generate `booklet.tex`
+  before Bazel, so compile and test targets work from a clean checkout.
 
 ## [v2026.7.0] - 2026-07-09
 

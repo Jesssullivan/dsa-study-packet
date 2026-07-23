@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Start an editor-first interview rep with natural comments, candidate-owned code, focused tests, and one concrete correction.
+description: Start an editor-first interview rep with source comments or docstrings, candidate-owned code, focused tests, and one concrete correction.
 ---
 
 # Getting Started
@@ -11,12 +11,13 @@ material. Practice first; read when a rep exposes a gap. Nothing in the
 practice workspace is committed.
 
 !!! tip "The loop"
-    Start with ordinary comments or choose a named framework. Fill the comments,
-    delete your gate, implement and test, then keep one correction.
+    Start with ordinary source comments or docstrings, or choose a named
+    framework. Save and continue explicitly, implement and test, then keep one
+    correction.
 
 ## 1. Start a rep
 
-[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1){ .md-button .md-button--primary }
+[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main){ .md-button .md-button--primary }
 
 Open Copilot Chat and enter one command:
 
@@ -44,9 +45,10 @@ language; the named frameworks add optional headings.
 | `/clarp` | Clarify, Lay out, Attack, Run, Polish |
 | `/umpire` | Understand, Match, Plan, Implement, Review, Evaluate |
 
-Copilot needs no repository API key. It conducts the rep, while portable
-`just` commands create the workspace and run tests. Without Copilot, start
-from a terminal:
+Copilot needs no repository API key, but you must confirm that Chat is signed
+in and available in the VS Code UI. It conducts the rep, while portable `just`
+commands create the workspace and run tests. Without Copilot, start from a
+terminal:
 
 ```bash
 just practice-start comments
@@ -67,16 +69,16 @@ In the source file:
 1. Restate the problem and note any questions.
 2. Write one example and one edge case.
 3. Name an approach and its expected time and space cost.
-4. Save, then delete the `THINKING GATE` yourself.
-5. Implement the solution.
+4. Save, then enter `/continue` or run `just practice-next`.
+5. Implement the solution, using comments alongside code where they help.
 6. Add focused tests, trace one example, and update comments that no longer
    match the code.
 
-The interviewer checks that saved reasoning is present in the source file as
-`#` comments or a docstring, not that you used a particular prefix or label.
-It never writes your code, tests, or gate.
-Save detection is explicit, so enter `/continue` after a save or run `just
-practice-next`.
+Use ordinary source comments or candidate-authored docstrings in your own
+words. Write them in the file, not the Chat composer. There is no required
+prefix, comment count, or gate deletion. The interviewer reads only saved
+work, so enter `/continue` after a save or run `just practice-next`. It never
+writes your code or tests.
 
 The workspace is gitignored. Starting a different rep archives the previous
 workspace under `.challenges/history/`. Starting the same unfinished rep
@@ -93,9 +95,9 @@ just practice-repl       # load your implementation interactively
 just practice-open       # reopen both files
 ```
 
-Test, watch, and REPL wait until the required comments are filled and the gate
-is gone. This keeps reasoning before implementation without giving the agent
-control of your work.
+Test, watch, and REPL follow the saved practice state. The explicit
+save-and-continue boundary keeps you in control of when the interviewer reads
+your work.
 
 ## 4. Stop cleanly
 

@@ -57,12 +57,12 @@ def solve(nums: list[int]) -> int:
     return secret_body
 '''
 
-NO_DOCSTRING = '''from __future__ import annotations
+NO_DOCSTRING = """from __future__ import annotations
 
 
 def solve(nums: list[int]) -> int:
     return nums[0]
-'''
+"""
 
 NESTED_CLOSURE_THEN_DEF = '''"""Module doc."""
 
@@ -148,22 +148,6 @@ def test_cli_prints_stripped_preview_without_modifying_source(tmp_path: Path) ->
     assert source_file.read_text() == MULTI_LINE
     assert "raise NotImplementedError" in proc.stdout
     assert "secret_body" not in proc.stdout
-
-
-def test_cli_scaffold_preview_is_also_read_only(tmp_path: Path) -> None:
-    source_file = tmp_path / "problem.py"
-    source_file.write_text(MULTI_LINE)
-
-    proc = subprocess.run(
-        [sys.executable, str(SCRIPT), "--cold", "--scaffold", str(source_file)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert proc.returncode == 0, proc.stderr
-    assert source_file.read_text() == MULTI_LINE
-    assert strip_solution.LOCK_SENTINEL in proc.stdout
 
 
 def test_cli_help_states_that_source_is_not_modified() -> None:

@@ -15,7 +15,7 @@ comments, implement a solution, write focused tests, and keep one correction.
 
     Open Codespaces and begin an editor rep.
 
-    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
+    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main)
 
 -   :material-code-braces:{ .lg .middle } **Practice Drills**
 
@@ -45,17 +45,19 @@ comments, implement a solution, write focused tests, and keep one correction.
 
 ## Your first rep
 
-Open Copilot Chat in Codespaces and enter `/comments`. It uses reasoning
-written in the source file as ordinary `#` comments or a docstring, with no
-required labels or prefixes. With no arguments, the command draws the next
-due problem. Add a topic and problem to choose one, such as `/comments arrays
-two_sum`. If named vocabulary helps you think, `/reacto`, `/clarp`, and
-`/umpire` start the same loop with optional labels.
+Confirm Copilot Chat is signed in and available in Codespaces, then enter
+`/comments`. The command starts a rep; put the reasoning itself in ordinary
+source comments or docstrings, with no required labels or prefixes. With no
+arguments, the command draws the next due problem. Add a topic and problem to
+choose one, such as `/comments arrays two_sum`. If named vocabulary helps you
+think, `/reacto`, `/clarp`, and `/umpire` start the same loop with optional
+labels.
 
-Your source and test file open under `.challenges/workspace/`. Fill the
-reasoning comments, save, then delete the `THINKING GATE` yourself. Implement,
-add focused tests, and enter `/continue` for the next instruction. Copilot is
-optional; `just practice-start comments` starts the same loop.
+Your source and test file open under `.challenges/workspace/`. Write ordinary
+comments or docstrings in the source file, not Chat. Save, then enter
+`/continue` for the next instruction. There is no prefix, minimum count, or
+gate to delete. Implement and add focused tests. Copilot is optional; `just
+practice-start comments` starts the same loop.
 
 ```bash
 just practice-next

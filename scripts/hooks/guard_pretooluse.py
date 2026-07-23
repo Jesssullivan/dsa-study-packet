@@ -2,12 +2,12 @@
 files" (see AGENTS.md).
 
 Denies file-edit/write tool calls that target ``.challenges/**`` (the
-candidate's own workspace) and clearly destructive shell patterns (``rm -rf``
-outside this workspace, ``git push --force``). Every deny carries a reason
-telling the calling agent what to do instead. Only path-shaped argument
-fields are inspected for the ``.challenges/`` marker, so maintenance edits
-that merely mention the workspace in file content stay allowed. Schema and
-doc source: .github/hooks/README.md.
+candidate's own workspace), shell commands that directly reference that
+workspace, and clearly destructive shell patterns (``rm -rf`` outside this
+workspace, ``git push --force``). Every deny carries a reason telling the
+calling agent what to do instead. File-edit tools inspect only path-shaped
+argument fields, so maintenance edits that merely mention the workspace in
+file content stay allowed. Schema and doc source: .github/hooks/README.md.
 
 Run as a hook (stdin -> stdout, exit 0 unless the payload itself is
 unreadable, in which case exit 2 so the caller's own fail-closed default
@@ -24,16 +24,21 @@ import sys
 from collections.abc import Iterator
 from typing import Any
 
-CANDIDATE_WORKSPACE_MARKER = ".challenges/"
+_CANDIDATE_WORKSPACE = re.compile(r"(?<![\w-])\.challenges(?:[/\\]|$)")
 
 # Tool-name substrings (case-insensitive) that mark a file-mutating tool
 # across the runtimes that read this hook: Copilot CLI/cloud agent, and
 # Claude Code's compatible "PreToolUse" plugin format.
 EDIT_TOOL_NAME_HINTS = (
+    "delete",
     "edit",
     "write",
     "create_file",
     "createfile",
+    "move",
+    "remove",
+    "rename",
+    "unlink",
     "applypatch",
     "apply_patch",
     "str_replace",
@@ -121,11 +126,46 @@ def _iter_path_strings(value: Any, key_hinted: bool = False) -> Iterator[str]:
 def _targets_candidate_workspace(tool_args: Any) -> bool:
     # A bare-string argument to an edit tool is itself path-shaped.
     if isinstance(tool_args, str):
-        return CANDIDATE_WORKSPACE_MARKER in tool_args
+        return bool(_CANDIDATE_WORKSPACE.search(tool_args))
     return any(
-        CANDIDATE_WORKSPACE_MARKER in text
-        for text in _iter_path_strings(tool_args)
+        _CANDIDATE_WORKSPACE.search(text) for text in _iter_path_strings(tool_args)
     )
+
+
+def _shell_references_candidate_workspace(command_text: str) -> bool:
+    """Return whether a shell command directly names candidate-owned state.
+
+    Unlike file-edit tools, a shell tool can mutate a path hidden anywhere in
+    its command text (redirection, ``sed``, Python, and so on), so the full
+    command is intentionally checked. Repo front-door commands such as
+    ``just practice-test`` do not name the private path and stay allowed.
+    """
+    return bool(_CANDIDATE_WORKSPACE.search(command_text))
+
+
+def _iter_shell_commands(value: Any, key_hinted: bool = False) -> Iterator[str]:
+    """Yield only command-shaped shell input, never explanatory prose."""
+    if isinstance(value, str):
+        if key_hinted:
+            yield value
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            name = str(key).lower()
+            hinted = (
+                key_hinted
+                or name in {"cmd", "script"}
+                or name.endswith(("command", "commands"))
+            )
+            yield from _iter_shell_commands(item, hinted)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _iter_shell_commands(item, key_hinted)
+
+
+def _shell_command_text(tool_args: Any) -> str:
+    if isinstance(tool_args, str):
+        return tool_args
+    return "\n".join(_iter_shell_commands(tool_args))
 
 
 def _has_recursive_force_flags(command_text: str) -> bool:
@@ -153,8 +193,13 @@ def _is_force_push(command_text: str) -> bool:
 
 def decide(payload: dict[str, Any]) -> dict[str, Any]:
     """Return one preToolUse decision for a single hook invocation payload."""
-    tool_name = str(payload.get("toolName", ""))
-    tool_args = _parse_tool_args(payload.get("toolArgs"))
+    # Copilot CLI/cloud use camelCase. VS Code converts the same lower-camel
+    # hook declaration to its Preview PascalCase event and sends snake_case.
+    tool_name = str(payload.get("toolName", payload.get("tool_name", "")))
+    raw_args = (
+        payload["toolArgs"] if "toolArgs" in payload else payload.get("tool_input")
+    )
+    tool_args = _parse_tool_args(raw_args)
 
     if _matches_any_hint(
         tool_name, EDIT_TOOL_NAME_HINTS
@@ -168,7 +213,16 @@ def decide(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
     if _matches_any_hint(tool_name, SHELL_TOOL_NAME_HINTS):
-        command_text = "\n".join(_iter_strings(tool_args))
+        command_text = _shell_command_text(tool_args)
+        if _shell_references_candidate_workspace(command_text):
+            return {
+                "permissionDecision": "deny",
+                "permissionDecisionReason": (
+                    "shell command directly references candidate-owned "
+                    ".challenges/ state; use the repo practice front doors or "
+                    "ask the candidate to make the change themselves"
+                ),
+            }
         if _is_destructive_rm(command_text):
             return {
                 "permissionDecision": "deny",
@@ -198,7 +252,18 @@ def main() -> int:
     except json.JSONDecodeError as exc:
         print(f"guard_pretooluse: invalid JSON payload: {exc}", file=sys.stderr)
         return 2
-    print(json.dumps(decide(payload)))
+    decision = decide(payload)
+    if payload.get("hook_event_name") == "PreToolUse":
+        hook_output = {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": decision["permissionDecision"],
+        }
+        reason = decision.get("permissionDecisionReason")
+        if reason is not None:
+            hook_output["permissionDecisionReason"] = reason
+        print(json.dumps({"hookSpecificOutput": hook_output}))
+    else:
+        print(json.dumps(decision))
     return 0
 
 

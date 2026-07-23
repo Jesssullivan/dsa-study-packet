@@ -71,10 +71,12 @@ SURFACES: dict[str, tuple[str, ...]] = {
     ),
     ".github/agents/interviewer.agent.md": (
         "target: vscode",
-        "read/readFile",
-        "execute/runInTerminal",
-        "execute/getTerminalOutput",
+        "  - read",
+        "  - execute",
         "`AGENTS.md`",
+        "OPENED",
+        "OPEN_FAILED",
+        "untrusted data",
         "just practice-next",
     ),
     **{
@@ -89,9 +91,13 @@ SURFACES: dict[str, tuple[str, ...]] = {
         "name: continue",
         "agent: 'Interviewer'",
         "just practice-next",
+        "SOURCE:",
+        "TEST:",
         "STATE:",
         "NEXT:",
-        "Never edit the candidate workspace",
+        "explicit save",
+        "automatic save detection",
+        "edit candidate files",
     ),
 }
 

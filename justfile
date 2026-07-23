@@ -193,8 +193,12 @@ packet: pdf-booklet
 # they delegate to the wrapper when BAZEL_REMOTE_CACHE is attached and degrade to
 # a local disk_cache build otherwise. Never call raw bazel -- always `just remote-*`.
 
+_remote-prepare:
+    @echo "Generating booklet.tex..."
+    @uv run python scripts/gen_booklet.py
+
 # Cache-first compile of a target set (default //:booklet, the neutral packet).
-remote-compile *targets:
+remote-compile *targets: _remote-prepare
     #!/usr/bin/env bash
     set -euo pipefail
     set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
@@ -205,20 +209,15 @@ remote-compile *targets:
     echo "compatibility-local-only (BAZEL_REMOTE_CACHE unset) -> local disk_cache build: $targets"
     exec "${BAZEL_BIN:-bazelisk}" build $targets
 
-# Cache-first build (default //:booklet); regenerate generated TeX when the
-# neutral packet is in the requested target set.
+# Cache-first build (default //:booklet).
 remote-build *targets:
     #!/usr/bin/env bash
     set -euo pipefail
     targets="{{ targets }}"
-    if [ -z "$targets" ] || [[ " $targets " == *" //:booklet "* ]]; then
-        echo "Generating booklet.tex..."
-        uv run python scripts/gen_booklet.py
-    fi
     exec just remote-compile $targets
 
 # Cache-first bazel test (default //...). `just test` runs the real uv/pytest suite.
-remote-test *targets:
+remote-test *targets: _remote-prepare
     #!/usr/bin/env bash
     set -euo pipefail
     set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
@@ -242,12 +241,10 @@ remote-check:
     just flywheel-verify
 
 # Build the overlay-pattern demo (examples/overlay-demo) -> wrapped PDF
-# Cache-first via remote-build (no raw bazel); booklet.tex is regenerated first.
+# Cache-first via remote-build (no raw bazel); its front door prepares booklet.tex.
 overlay-demo:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "Generating booklet.tex..."
-    uv run python scripts/gen_booklet.py
     echo "Composing overlay demo via the cache-first front door..."
     just remote-build //examples/overlay-demo:study_packet_example
     echo "-> bazel-bin/examples/overlay-demo/study_packet_example.pdf"
@@ -345,7 +342,7 @@ practice-new paradigm topic="" problem="":
     fi
     exec uv run python scripts/practice_workspace.py start "$paradigm" "$topic" "$problem" --fresh
 
-# Show comment-gate and candidate-test status for the current rep.
+# Show target, candidate-test, and focused-test receipt status for the current rep.
 practice-status:
     @uv run python scripts/practice_workspace.py status
 
@@ -391,7 +388,7 @@ practice-current:
 practice-finish note:
     @uv run python scripts/practice_workspace.py finish {{ quote(note) }}
 
-# Print a cold committed problem statement. Omit both values to draw one.
+# Open safe candidate tabs, then print a cold statement. Omit both values to draw.
 practice-present topic="" problem="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -427,7 +424,7 @@ practice-reference topic="" problem="":
     fi
     exec uv run python scripts/practice_workspace.py reference "$topic" "$problem"
 
-# Board/talk compatibility entry point: cold presentation, no file mutation.
+# Board/talk entry point: prepare/open safe candidate files, then present cold.
 interview topic="" problem="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -438,7 +435,7 @@ interview topic="" problem="":
     else
         just practice-present "$topic" "$problem"
     fi
-    echo "Interview (cold): reason out loud first. Start an editor rep only when requested."
+    echo "Interview (cold): reason out loud first; the safe candidate tabs stay visible."
 
 # Compatibility entry point: plain comment-driven isolated editor rep.
 interview-comment topic problem:

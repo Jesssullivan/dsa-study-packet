@@ -13,10 +13,11 @@ import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -66,6 +67,63 @@ def _support(values: list[int]) -> int:
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
+
+
+def _inject_after_future(source: str, injected: str) -> str:
+    marker = "from __future__ import annotations\n"
+    assert marker in source
+    return source.replace(marker, f"{marker}\n{injected}", 1)
+
+
+def _legacy_schema4_metadata(
+    metadata: dict[str, Any], paradigm_name: str | None = None
+) -> dict[str, Any]:
+    name = paradigm_name or str(metadata["paradigm"])
+    paradigm = practice._metadata_paradigm(name)
+    assert paradigm is not None
+    legacy = dict(metadata)
+    legacy.update(
+        {
+            "schema": practice.LEGACY_METADATA_SCHEMA,
+            "paradigm": name,
+            "paradigm_title": practice.LEGACY_SCHEMA4_TITLES[name],
+            "seeds": list(paradigm.seeds),
+            "pre_code_labels": list(
+                practice._legacy_schema4_pre_code_labels(name, paradigm)
+            ),
+            "lock": practice.LEGACY_SCHEMA4_LOCK,
+        }
+    )
+    return legacy
+
+
+def _rewrite_as_legacy_prepared(
+    root: Path, metadata: dict[str, Any], *, extra_source: str = ""
+) -> str:
+    paradigm = practice.PARADIGMS["comments"]
+    source_path = root / str(metadata["source"])
+    legacy_lines = [
+        *paradigm.seeds[:3],
+        practice.LEGACY_SCHEMA4_LOCK,
+        *paradigm.seeds[3:],
+    ]
+    legacy_block = "".join(f"    {line}\n" for line in legacy_lines)
+    legacy_source = source_path.read_text().replace(
+        f"    {practice.SOURCE_COMMENT_GUIDANCE}\n",
+        legacy_block,
+    )
+    assert legacy_source != source_path.read_text()
+    legacy_source += extra_source
+    source_path.write_text(legacy_source)
+    metadata_path = root / practice.WORKSPACE_REL / practice.METADATA_NAME
+    metadata_path.write_text(
+        json.dumps(
+            _legacy_schema4_metadata(metadata, "comments"),
+            indent=2,
+        )
+        + "\n"
+    )
+    return legacy_source
 
 
 def _lock_is_available(path: Path) -> bool:
@@ -229,7 +287,7 @@ def test_every_catalog_algorithm_can_start_with_one_explicit_target(
         namespace: dict[str, object] = {}
         exec(compile(candidate, f"{topic}/{problem}.py", "exec"), namespace)
         assert target in namespace
-        assert candidate.count(practice.PRACTICE_LOCK) == 1
+        assert "THINKING GATE" not in candidate
         output = tmp_path / topic / f"{problem}.py"
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(candidate)
@@ -322,21 +380,63 @@ def _workspace_snapshot(workspace: Path) -> dict[Path, bytes]:
 
 
 @pytest.mark.parametrize("paradigm_name", tuple(practice.PARADIGMS))
-def test_each_paradigm_has_one_ordered_thinking_gate(paradigm_name: str) -> None:
+def test_each_paradigm_is_source_native_without_a_thinking_gate(
+    paradigm_name: str,
+) -> None:
     paradigm = practice.PARADIGMS[paradigm_name]
     rendered = practice.render_candidate(SOURCE.format(problem="first"), paradigm)
-    lines = [line.strip() for line in rendered.splitlines()]
-    expected = [
-        *paradigm.seeds[: paradigm.lock_after],
-        practice.PRACTICE_LOCK,
-        *paradigm.seeds[paradigm.lock_after :],
-    ]
-    start = lines.index(paradigm.seeds[0])
 
-    assert lines[start : start + len(expected)] == expected
-    assert rendered.count(practice.PRACTICE_LOCK) == 1
-    assert all(rendered.count(seed) == 1 for seed in paradigm.seeds)
+    assert "THINKING GATE" not in rendered
+    if paradigm_name == "comments":
+        assert practice.SOURCE_COMMENT_GUIDANCE in rendered
+        assert not any(seed in rendered for seed in paradigm.seeds)
+    else:
+        assert all(rendered.count(seed) == 1 for seed in paradigm.seeds)
     assert "secret = sum(values)" not in rendered
+
+
+def test_guidance_is_inserted_only_at_the_selected_function_stub() -> None:
+    source = (
+        "def helper() -> None:\n"
+        "    raise ValueError('ordinary failure')\n"
+        "\n"
+        "def solve() -> int:\n"
+        "    raise NotImplementedError\n"
+    )
+
+    rendered = practice._insert_source_guidance(
+        source, "solve", ("# Explain the next choice in your own words.",)
+    )
+
+    assert "    raise ValueError('ordinary failure')" in rendered
+    assert (
+        "def solve() -> int:\n"
+        "    # Explain the next choice in your own words.\n"
+        "    raise NotImplementedError\n"
+    ) in rendered
+    assert "THINKING GATE" not in rendered
+
+
+def test_guidance_uses_the_first_stub_in_a_selected_class() -> None:
+    source = (
+        "class Solver:\n"
+        "    def __init__(self) -> None:\n"
+        "        raise NotImplementedError\n"
+        "\n"
+        "    def run(self) -> int:\n"
+        "        raise NotImplementedError\n"
+    )
+
+    rendered = practice._insert_source_guidance(
+        source, "Solver", ("# Describe how the object will maintain its state.",)
+    )
+
+    assert rendered.count("# Describe how the object will maintain its state.") == 1
+    assert (
+        "    def __init__(self) -> None:\n"
+        "        # Describe how the object will maintain its state.\n"
+        "        raise NotImplementedError\n"
+    ) in rendered
 
 
 def test_workspace_is_created_without_mutating_tracked_source(
@@ -355,18 +455,22 @@ def test_workspace_is_created_without_mutating_tracked_source(
     assert archived is None
     assert tracked.read_text() == before
     assert candidate.is_file()
-    assert practice.PRACTICE_LOCK in candidate.read_text()
+    assert "THINKING GATE" not in candidate.read_text()
     assert "secret = sum(values)" not in candidate.read_text()
     assert "return _support(values)" not in candidate.read_text()
     assert "def alternate" not in candidate.read_text()
     assert "from dataclasses import dataclass" not in candidate.read_text()
-    assert metadata["schema"] == 4
+    assert metadata["schema"] == 5
     assert uuid.UUID(metadata["session_id"]).version == 4
     assert metadata["target"] == "solve"
     assert metadata["source"] == ".challenges/workspace/first.py"
     assert metadata["candidate_test"] == (
         ".challenges/workspace/test_first_candidate.py"
     )
+    raw_metadata = json.loads((workspace / practice.METADATA_NAME).read_text())
+    assert raw_metadata == metadata
+    assert {"lock", "seeds", "pre_code_labels"}.isdisjoint(raw_metadata)
+    assert "THINKING GATE" not in json.dumps(raw_metadata)
     assert (
         "# from algo.arrays.first import solve"
         in (workspace / "test_first_candidate.py").read_text()
@@ -398,7 +502,7 @@ def test_present_reads_committed_statement_without_creating_workspace(
     assert not (practice_repo / ".challenges/workspace").exists()
 
 
-def test_open_target_creates_plain_comments_candidate_surface(
+def test_open_target_creates_neutral_prepared_candidate_surface(
     practice_repo: Path,
 ) -> None:
     tracked = practice_repo / "src/algo/arrays/first.py"
@@ -408,14 +512,62 @@ def test_open_target_creates_plain_comments_candidate_surface(
 
     candidate = practice_repo / str(metadata["source"])
     assert metadata["prepared_only"] is True
-    assert metadata["paradigm"] == "comments"
+    assert metadata["paradigm"] == "prepared"
     assert metadata["candidate_test"] == (
         ".challenges/workspace/test_first_candidate.py"
     )
-    assert practice.PRACTICE_LOCK in candidate.read_text()
+    assert "THINKING GATE" not in candidate.read_text()
+    assert practice.SOURCE_COMMENT_GUIDANCE in candidate.read_text()
+    assert not any(
+        label in candidate.read_text()
+        for label in ("RESTATE:", "REPEAT:", "CLARIFY:", "UNDERSTAND:")
+    )
     assert "secret = _support(values)" not in candidate.read_text()
     assert "def alternate" not in candidate.read_text()
     assert tracked.read_text() == before
+
+
+def test_legacy_pristine_prepared_tabs_use_the_legacy_render_for_disposition(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    legacy_source = _rewrite_as_legacy_prepared(practice_repo, prepared)
+
+    next_prepared = practice.prepare_open_target(practice_repo, "arrays", "second")
+
+    assert next_prepared["problem"] == "second"
+    archives = list((practice_repo / practice.HISTORY_REL).iterdir())
+    assert len(archives) == 1
+    archived_source = (archives[0] / "first.py").read_text()
+    assert archived_source == legacy_source.replace(
+        f"    {practice.LEGACY_SCHEMA4_LOCK}\n", ""
+    )
+    archived_metadata = json.loads((archives[0] / practice.METADATA_NAME).read_text())
+    assert archived_metadata["schema"] == practice.METADATA_SCHEMA
+    assert {"lock", "seeds", "pre_code_labels"}.isdisjoint(archived_metadata)
+
+
+def test_legacy_edited_prepared_tabs_are_preserved_and_block_replacement(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    _rewrite_as_legacy_prepared(
+        practice_repo,
+        prepared,
+        extra_source="\n# Keep this candidate-authored note.\n",
+    )
+
+    with pytest.raises(practice.PracticeError, match="contain unclosed work"):
+        practice.prepare_open_target(practice_repo, "arrays", "second")
+
+    candidate = practice_repo / str(prepared["source"])
+    assert "Keep this candidate-authored note" in candidate.read_text()
+    assert practice.LEGACY_SCHEMA4_LOCK not in candidate.read_text()
+    persisted = json.loads(
+        (practice_repo / practice.WORKSPACE_REL / practice.METADATA_NAME).read_text()
+    )
+    assert persisted["schema"] == practice.METADATA_SCHEMA
+    assert not (practice_repo / practice.HISTORY_REL).exists()
 
 
 def test_prepared_tabs_promote_to_comments_without_modification(
@@ -438,58 +590,39 @@ def test_prepared_tabs_promote_to_comments_without_modification(
     assert not (practice_repo / practice.HISTORY_REL).exists()
 
 
-def test_pristine_prepared_tabs_can_start_another_paradigm_without_history(
+@pytest.mark.parametrize("paradigm_name", tuple(practice.PARADIGMS))
+@pytest.mark.parametrize("dirty", [False, True])
+def test_prepared_tabs_activate_any_mode_without_discarding_candidate_files(
     practice_repo: Path,
-) -> None:
-    practice.prepare_open_target(practice_repo, "arrays", "first")
-
-    active, action, archived = practice.prepare_session(
-        practice_repo, "reacto", "arrays", "first"
-    )
-
-    assert action == "created"
-    assert archived is not None
-    assert "prepared_only" not in active
-    assert active["paradigm"] == "reacto"
-    candidate = practice_repo / str(active["source"])
-    assert "# REPEAT:" in candidate.read_text()
-    assert archived.is_dir()
-
-
-def test_dirty_prepared_tabs_refuse_a_different_paradigm_without_mutation(
-    practice_repo: Path,
+    paradigm_name: str,
+    dirty: bool,
 ) -> None:
     prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    workspace = practice_repo / practice.WORKSPACE_REL
     candidate = practice_repo / str(prepared["source"])
-    candidate.write_text(candidate.read_text() + "\n# Keep this reading note.\n")
-    workspace = practice_repo / practice.WORKSPACE_REL
-    before = _workspace_snapshot(workspace)
-
-    with pytest.raises(
-        practice.PracticeError, match="prepared candidate tabs contain unclosed work"
-    ):
-        practice.prepare_session(practice_repo, "reacto", "arrays", "first")
-
-    assert practice.current_metadata(practice_repo) == prepared
-    assert _workspace_snapshot(workspace) == before
-    assert not (practice_repo / practice.HISTORY_REL).exists()
-
-
-def test_extra_prepared_scratch_file_is_never_discarded_as_pristine(
-    practice_repo: Path,
-) -> None:
-    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
-    workspace = practice_repo / practice.WORKSPACE_REL
+    candidate_test = practice_repo / str(prepared["candidate_test"])
+    if dirty:
+        candidate.write_text(candidate.read_text() + "\n# Keep this reading note.\n")
+        candidate_test.write_text(
+            candidate_test.read_text() + "\n# Keep this candidate test note.\n"
+        )
     scratch = workspace / "scratch.txt"
     scratch.write_text("candidate notes\n")
+    source_before = candidate.read_bytes()
+    test_before = candidate_test.read_bytes()
+    scratch_before = scratch.read_bytes()
 
-    with pytest.raises(
-        practice.PracticeError, match="prepared candidate tabs contain unclosed work"
-    ):
-        practice.prepare_session(practice_repo, "reacto", "arrays", "first")
+    active, action, archived = practice.prepare_session(
+        practice_repo, paradigm_name, "arrays", "first"
+    )
 
-    assert practice.current_metadata(practice_repo) == prepared
-    assert scratch.read_text() == "candidate notes\n"
+    assert action == "resumed"
+    assert archived is None
+    assert active["paradigm"] == paradigm_name
+    assert "prepared_only" not in active
+    assert candidate.read_bytes() == source_before
+    assert candidate_test.read_bytes() == test_before
+    assert scratch.read_bytes() == scratch_before
     assert not (practice_repo / practice.HISTORY_REL).exists()
 
 
@@ -691,34 +824,10 @@ def test_same_session_resumes_without_overwriting_candidate_work(
     assert "candidate test survives" in candidate_test.read_text()
 
 
-def _fill_seed(text: str, seed: str) -> str:
-    return text.replace(seed, f"{seed} candidate reasoning")
-
-
-def _replace_scaffold_with_comments(
-    text: str, metadata: dict[str, Any], comments: list[str]
-) -> str:
-    seeds = {str(seed) for seed in metadata["seeds"]}
-    rendered: list[str] = []
-    inserted = False
-    for line in text.splitlines():
-        if line.strip() not in seeds:
-            rendered.append(line)
-            continue
-        if not inserted:
-            indent = line[: len(line) - len(line.lstrip())]
-            rendered.extend(f"{indent}# {comment}" for comment in comments)
-            inserted = True
-    return "\n".join(rendered) + "\n"
-
-
 def _complete_session(root: Path, metadata: dict[str, Any]) -> None:
     candidate = root / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+        candidate.read_text().replace(
             "raise NotImplementedError",
             "return sum(values)  # Sum once, then return the total.",
         )
@@ -726,482 +835,271 @@ def _complete_session(root: Path, metadata: dict[str, Any]) -> None:
     (root / str(metadata["candidate_test"])).write_text(
         "def test_candidate_example() -> None:\n    assert True\n"
     )
-
-
-def test_next_step_reports_one_action_for_resumed_state(practice_repo: Path) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "reacto", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "THINK",
-        "Add 3 more ordinary reasoning comments above the gate, save, then run /continue.",
-    )
-
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
-    candidate.write_text(text)
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "THINK",
-        "Delete the THINKING GATE yourself, then implement below it.",
+    practice._write_test_receipt(
+        root,
+        metadata,
+        "passed",
+        practice._test_input_digests(root, metadata),
     )
 
 
-@pytest.mark.parametrize(
-    ("paradigm_name", "pre_required"),
-    [("reacto", 3), ("clarp", 2), ("umpire", 3), ("comments", 3)],
-)
-def test_each_paradigm_accepts_ordinary_comments_without_labels(
-    practice_repo: Path, paradigm_name: str, pre_required: int
+def _implement_with_candidate_test(
+    root: Path,
+    metadata: dict[str, Any],
+    commentary: str = "",
+) -> None:
+    candidate = root / str(metadata["source"])
+    replacement = (
+        f"{commentary}\n    return sum(values)"
+        if commentary
+        else ("return sum(values)")
+    )
+    candidate.write_text(
+        candidate.read_text().replace("raise NotImplementedError", replacement)
+    )
+    (root / str(metadata["candidate_test"])).write_text(
+        "from algo.arrays.first import solve\n\n\n"
+        "def test_candidate_example() -> None:\n"
+        "    assert solve([1, 2]) == 3\n"
+    )
+
+
+@pytest.mark.parametrize("paradigm_name", tuple(practice.PARADIGMS))
+def test_each_paradigm_uses_the_same_mechanical_state_machine(
+    practice_repo: Path,
+    paradigm_name: str,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, paradigm_name, "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    comments = [
-        "Return the sum of the input values.",
-        "For [1, 2], return 3; for [], return 0.",
-        "Use a running total and visit each value once.",
-    ][:pre_required]
-    candidate.write_text(
-        _replace_scaffold_with_comments(candidate.read_text(), metadata, comments)
-    )
 
-    source = candidate.read_text()
-    assert all(str(seed) not in source for seed in metadata["seeds"])
-    assert practice.next_step(practice_repo, metadata) == (
-        "THINK",
-        "Delete the THINKING GATE yourself, then implement below it.",
-    )
-
-
-def test_comments_mode_seeds_plain_prompts_instead_of_framework_fields(
-    practice_repo: Path,
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-
-    assert len(metadata["pre_code_labels"]) == 3
-    assert all(":" not in str(seed) for seed in metadata["seeds"])
-    assert not any(
-        label in candidate.read_text()
-        for label in ("RESTATE:", "EXAMPLE:", "INVARIANT:", "APPROACH:")
-    )
-    assert practice._comment_evidence(candidate.read_text(), metadata) == (
-        practice.CommentEvidence(0, 0)
-    )
-
-
-def test_natural_comments_drive_think_build_reflect_close(
-    practice_repo: Path,
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For [1, 2], return 3; for [], return 0.",
-                "Use a running total and visit each value once.",
-            ],
-        )
-    )
-    candidate.write_text(
-        candidate.read_text()
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace("raise NotImplementedError", "return sum(values)")
-    )
-    (practice_repo / str(metadata["candidate_test"])).write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "BUILD",
-        "Write a new ordinary implementation comment beside the code it explains, "
-        "save, then run /continue.",
-    )
+    assert "THINKING GATE" not in candidate.read_text()
+    assert practice.next_step(practice_repo, metadata)[0] == "THINK"
 
     candidate.write_text(
-        candidate.read_text().replace(
-            "    return sum(values)",
-            "    total = sum(values)\n"
-            "    # Accumulate the values once, then return the total.\n"
-            "    return total",
-        )
+        candidate.read_text().replace("raise NotImplementedError", "return sum(values)")
     )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "REFLECT",
-        "Write a new ordinary comment tracing the saved example through the code, "
-        "save, then run /continue.",
-    )
-
-    candidate.write_text(
-        candidate.read_text().replace(
-            "    return total",
-            "    # The saved [1, 2] example reaches a total of 3.\n    return total",
-        )
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "REFLECT",
-        "Write a new ordinary comment with final complexity or a remaining edge, "
-        "save, then run /continue.",
-    )
-
-    candidate.write_text(
-        candidate.read_text().replace(
-            "    return total",
-            "    # Summing takes O(n) time; an empty input returns zero.\n"
-            "    return total",
-        )
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "CLOSE",
-        "Run just practice-test, reconcile comments with code, then use just practice-finish.",
-    )
-
-
-def _replace_scaffold_with_docstring(
-    text: str, metadata: dict[str, Any], docstring_lines: list[str]
-) -> str:
-    """Swap every scaffold seed for a function docstring answering THINK."""
-    seeds = {str(seed) for seed in metadata["seeds"]}
-    rendered: list[str] = []
-    inserted = False
-    for line in text.splitlines():
-        if line.strip() not in seeds:
-            rendered.append(line)
-            continue
-        if not inserted:
-            indent = line[: len(line) - len(line.lstrip())]
-            rendered.append(f'{indent}"""{docstring_lines[0]}')
-            rendered.append("")
-            rendered.extend(f"{indent}{line_text}" for line_text in docstring_lines[1:])
-            rendered.append(f'{indent}"""')
-            inserted = True
-    return "\n".join(rendered) + "\n"
-
-
-def test_function_docstring_satisfies_think_then_comments_drive_build_reflect_close(
-    practice_repo: Path,
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(
-        _replace_scaffold_with_docstring(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For [1, 2], return 3; for [], return 0.",
-                "Use a running total and visit each value once.",
-            ],
-        )
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "THINK",
-        "Delete the THINKING GATE yourself, then implement below it.",
-    )
-
-    candidate.write_text(
-        candidate.read_text()
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace("raise NotImplementedError", "return sum(values)")
-    )
-    (practice_repo / str(metadata["candidate_test"])).write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "BUILD",
-        "Write a new ordinary implementation comment beside the code it explains, "
-        "save, then run /continue.",
-    )
-
-    candidate.write_text(
-        candidate.read_text().replace(
-            "    return sum(values)",
-            "    total = sum(values)\n"
-            "    # Accumulate the values once, then return the total.\n"
-            "    return total",
-        )
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "REFLECT",
-        "Write a new ordinary comment tracing the saved example through the code, "
-        "save, then run /continue.",
-    )
-
-    candidate.write_text(
-        candidate.read_text().replace(
-            "    return total",
-            "    # The saved [1, 2] example reaches a total of 3.\n    return total",
-        )
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "REFLECT",
-        "Write a new ordinary comment with final complexity or a remaining edge, "
-        "save, then run /continue.",
-    )
-
-    candidate.write_text(
-        candidate.read_text().replace(
-            "    return total",
-            "    # Summing takes O(n) time; an empty input returns zero.\n"
-            "    return total",
-        )
-    )
-
-    assert practice.next_step(practice_repo, metadata) == (
-        "CLOSE",
-        "Run just practice-test, reconcile comments with code, then use just practice-finish.",
-    )
-
-
-def test_temporal_receipt_advances_stacked_comments_on_one_line_solution(
-    practice_repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For [1, 2], return 3; for [], return 0.",
-                "Use a running total and visit each value once.",
-            ],
-        )
-    )
-
-    assert practice.show_next(practice_repo, metadata) == 0
-    assert "STATE: THINK" in capsys.readouterr().out
-
-    candidate.write_text(
-        candidate.read_text()
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace("raise NotImplementedError", "return sum(values)")
-    )
-    (practice_repo / str(metadata["candidate_test"])).write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
-    assert practice.show_next(practice_repo, metadata) == 0
-    assert "STATE: BUILD" in capsys.readouterr().out
-
-    steps = [
-        ("Sum the values once before returning.", "STATE: REFLECT"),
-        ("The saved [1, 2] example returns 3.", "STATE: REFLECT"),
-        ("The single pass takes O(n) time.", "STATE: CLOSE"),
-    ]
-    for comment, expected_state in steps:
-        candidate.write_text(
-            candidate.read_text().replace(
-                "    return sum(values)",
-                f"    # {comment}\n    return sum(values)",
-            )
-        )
-        assert practice.show_next(practice_repo, metadata) == 0
-        assert expected_state in capsys.readouterr().out
-
-
-def test_armed_receipt_accepts_a_batch_of_stacked_post_comments(
-    practice_repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For [1, 2], return 3; for [], return 0.",
-                "Use a running total and visit each value once.",
-            ],
-        )
-    )
-    assert practice.show_next(practice_repo, metadata) == 0
-    capsys.readouterr()
-
-    candidate.write_text(
-        candidate.read_text()
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace(
-            "raise NotImplementedError",
-            "# Sum the values once before returning.\n"
-            "    # The saved [1, 2] example returns 3.\n"
-            "    # The single pass takes O(n) time.\n"
-            "    return sum(values)",
-        )
-    )
-    (practice_repo / str(metadata["candidate_test"])).write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
-
-    assert practice.show_next(practice_repo, metadata) == 0
-    assert "STATE: CLOSE" in capsys.readouterr().out
-
-    text = candidate.read_text()
-    for comment in (
-        "Return the sum of the input values.",
-        "For [1, 2], return 3; for [], return 0.",
-        "Use a running total and visit each value once.",
-    ):
-        text = text.replace(f"    # {comment}\n", "")
-    candidate.write_text(text)
-
     assert practice.next_step(practice_repo, metadata)[0] == "BUILD"
 
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_example() -> None:\n    assert True\n"
+    )
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
 
-def test_unchanged_upfront_comments_do_not_accumulate_temporal_credit(
-    practice_repo: Path, capsys: pytest.CaptureFixture[str]
+    practice._write_test_receipt(
+        practice_repo,
+        metadata,
+        "passed",
+        practice._test_input_digests(practice_repo, metadata),
+    )
+    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
+
+    candidate.write_text(candidate.read_text() + "\n# Revise after the run.\n")
+    assert practice._test_receipt_status(practice_repo, metadata) == "stale"
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+
+
+@pytest.mark.parametrize("paradigm_name", tuple(practice.PARADIGMS))
+@pytest.mark.parametrize(
+    "commentary",
+    [
+        "",
+        "# Visit each value once and return the accumulated total.",
+        (
+            '"""Return the sum of the values.\n\n'
+            "An empty input returns zero; otherwise visit each value once.\n"
+            '"""'
+        ),
+        "# RESTATE EXAMPLE APPROACH REACTO CLARP UMPIRE TODO TODO TODO",
+    ],
+    ids=["none", "ordinary-comment", "docstring", "keyword-stuffing"],
+)
+def test_prose_shape_never_changes_mechanical_progress(
+    practice_repo: Path,
+    paradigm_name: str,
+    commentary: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, paradigm_name, "arrays", "first"
+    )
+
+    _implement_with_candidate_test(practice_repo, metadata, commentary)
+
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+    practice._require_unlocked(practice_repo, metadata)
+
+
+@pytest.mark.parametrize("paradigm_name", tuple(practice.PARADIGMS))
+def test_practice_next_is_read_only_and_idempotent(
+    practice_repo: Path,
+    paradigm_name: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, paradigm_name, "arrays", "first"
+    )
+    workspace = practice_repo / practice.WORKSPACE_REL
+    before = _workspace_snapshot(workspace)
+
+    assert practice.show_next(practice_repo, metadata) == 0
+    first = capsys.readouterr().out
+    assert practice.show_next(practice_repo, metadata) == 0
+    second = capsys.readouterr().out
+
+    assert first == second
+    assert _workspace_snapshot(workspace) == before
+    assert not (workspace / "comment-receipt.json").exists()
+    assert not practice._test_receipt_path(practice_repo).exists()
+
+
+@pytest.mark.parametrize(
+    ("outcome", "returncode", "timed_out", "expected_state"),
+    [
+        ("passed", 0, False, "CLOSE"),
+        ("failed", 1, False, "REFLECT"),
+        ("timeout", 124, True, "REFLECT"),
+    ],
+)
+def test_focused_run_receipt_controls_close_state(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: str,
+    returncode: int,
+    timed_out: bool,
+    expected_state: str,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For [1, 2], return 3; for [], return 0.",
-                "Use a running total and visit each value once.",
-                "Ask whether negative values are allowed.",
-                "Keep the implementation to one pass.",
-                "Initialize the accumulator before scanning.",
-            ],
+    _implement_with_candidate_test(practice_repo, metadata)
+
+    def focused_run(
+        _root: Path, _current: dict[str, Any], before: dict[str, str]
+    ) -> practice.TestRun:
+        return practice.TestRun(
+            returncode=returncode,
+            before=before,
+            after=dict(before),
+            timed_out=timed_out,
+            completed=not timed_out,
         )
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace("raise NotImplementedError", "return sum(values)")
-    )
-    (practice_repo / str(metadata["candidate_test"])).write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
 
-    for _ in range(3):
-        assert practice.show_next(practice_repo, metadata) == 0
-        output = capsys.readouterr().out
-        assert "STATE: BUILD" in output
-        assert "STATE: CLOSE" not in output
+    monkeypatch.setattr(practice, "_execute_test_run", focused_run)
+
+    assert practice.run_tests(practice_repo, metadata) == returncode
+    assert practice._test_receipt_status(practice_repo, metadata) == outcome
+    assert practice.next_step(practice_repo, metadata)[0] == expected_state
 
 
-def test_labeled_post_comments_written_while_locked_do_not_get_post_credit(
-    practice_repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "reacto", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    assert practice.show_next(practice_repo, metadata) == 0
-    capsys.readouterr()
-
-    text = candidate.read_text()
-    for seed in metadata["seeds"]:
-        text = _fill_seed(text, str(seed))
-    candidate.write_text(text)
-    assert practice.show_next(practice_repo, metadata) == 0
-    assert "STATE: THINK" in capsys.readouterr().out
-
-    candidate.write_text(
-        candidate.read_text()
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace("raise NotImplementedError", "return sum(values)")
-    )
-    (practice_repo / str(metadata["candidate_test"])).write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
-
-    assert practice.show_next(practice_repo, metadata) == 0
-    output = capsys.readouterr().out
-    assert "STATE: BUILD" in output
-    assert "STATE: CLOSE" not in output
-
-
-def test_post_comments_observed_before_pre_completion_do_not_get_credit(
-    practice_repo: Path, capsys: pytest.CaptureFixture[str]
+def test_pass_receipt_becomes_stale_after_any_candidate_edit(
+    practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            ["Return the sum of the input values."],
-        )
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace(
-            "raise NotImplementedError",
-            "return sum(values)  # Sum the values once before returning.\n"
-            "    # Trace the saved example through the return.\n"
-            "    # The implementation takes O(n) time.",
-        )
+    _implement_with_candidate_test(practice_repo, metadata)
+    practice._write_test_receipt(
+        practice_repo,
+        metadata,
+        "passed",
+        practice._test_input_digests(practice_repo, metadata),
     )
-    (practice_repo / str(metadata["candidate_test"])).write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
-    assert practice.show_next(practice_repo, metadata) == 0
-    assert "STATE: THINK" in capsys.readouterr().out
+    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
 
-    candidate.write_text(
-        candidate.read_text().replace(
-            "    # Return the sum of the input values.\n",
-            "    # Return the sum of the input values.\n"
-            "    # An empty input returns zero.\n"
-            "    # Visit each value once.\n",
-        )
-    )
-    assert practice.show_next(practice_repo, metadata) == 0
-    assert "STATE: BUILD" in capsys.readouterr().out
+    candidate_test = practice_repo / str(metadata["candidate_test"])
+    candidate_test.write_text(candidate_test.read_text() + "\n# another edge\n")
+
+    assert practice._test_receipt_status(practice_repo, metadata) == "stale"
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
 
 
-def test_source_change_during_receipt_write_rolls_back_receipt(
-    practice_repo: Path, monkeypatch: pytest.MonkeyPatch
+def test_pass_receipt_becomes_stale_after_committed_reference_source_changes(
+    practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
-    candidate = practice_repo / str(metadata["source"])
-    receipt_path = practice._comment_receipt_path(practice_repo)
-    original_replace = practice._replace_file
-    changed = False
+    _implement_with_candidate_test(practice_repo, metadata)
+    practice._write_test_receipt(
+        practice_repo,
+        metadata,
+        "passed",
+        practice._test_input_digests(practice_repo, metadata),
+    )
+    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
 
-    def replace_then_save(path: Path, text: str) -> None:
-        nonlocal changed
-        original_replace(path, text)
-        if path == receipt_path and not changed:
-            changed = True
-            candidate.write_text(candidate.read_text() + "\n")
+    reference = practice_repo / "src/algo/arrays/first.py"
+    reference.write_text(
+        reference.read_text().replace("return sum(values)", "return 7")
+    )
+    subprocess.run(["git", "add", reference], cwd=practice_repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgSign=false",
+            "commit",
+            "-qm",
+            "change reference",
+        ],
+        cwd=practice_repo,
+        check=True,
+    )
 
-    monkeypatch.setattr(practice, "_replace_file", replace_then_save)
+    assert practice._test_receipt_status(practice_repo, metadata) == "stale"
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
 
-    with pytest.raises(practice.PracticeError, match="source changed"):
-        practice.show_next(practice_repo, metadata)
-    assert not receipt_path.exists()
+
+def test_legacy_test_receipt_is_treated_as_no_current_evidence(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    legacy_inputs = {
+        key: digest
+        for key, digest in practice._test_input_digests(practice_repo, metadata).items()
+        if key in practice.LEGACY_TEST_INPUT_KEYS
+    }
+    practice._test_receipt_path(practice_repo).write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "session_id": metadata["session_id"],
+                "outcome": "passed",
+                "inputs": legacy_inputs,
+            }
+        )
+    )
+
+    assert practice._test_receipt_status(practice_repo, metadata) == "never"
+
+
+def test_focused_receipt_contains_only_outcome_and_digests(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    private_reasoning = "# My private example is [41, 1]."
+    _implement_with_candidate_test(practice_repo, metadata, private_reasoning)
+    practice._write_test_receipt(
+        practice_repo,
+        metadata,
+        "passed",
+        practice._test_input_digests(practice_repo, metadata),
+    )
+
+    receipt = practice._test_receipt_path(practice_repo).read_text()
+    assert private_reasoning not in receipt
+    assert "passed" in receipt
 
 
 def test_test_preflight_rejects_a_save_during_unlock_validation(
@@ -1230,51 +1128,39 @@ def test_test_preflight_rejects_a_save_during_unlock_validation(
         )
 
 
-def test_placeholder_comments_do_not_unlock_tests(practice_repo: Path) -> None:
+def test_placeholder_keywords_do_not_control_tool_authorization(
+    practice_repo: Path,
+) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
     candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For [1, 2], return 3.",
-                "TODO later",
-            ],
-        ).replace(f"    {practice.PRACTICE_LOCK}\n", "")
-    )
-
-    with pytest.raises(practice.PracticeError, match="add 1 ordinary comment"):
-        practice._require_unlocked(practice_repo, metadata)
-
-
-def test_next_step_moves_from_build_to_verify(practice_repo: Path) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"]:
-        text = _fill_seed(text, str(seed))
-    text = text.replace(practice.PRACTICE_LOCK + "\n", "")
-    candidate.write_text(
-        text.replace(
-            "raise NotImplementedError",
-            "return sum(values)  # Sum the values once before returning.",
+        candidate.read_text().replace(
+            practice.SOURCE_COMMENT_GUIDANCE,
+            "# TODO RESTATE EXAMPLE APPROACH CODE TEST OPTIMIZE",
         )
     )
-    candidate_test = practice_repo / str(metadata["candidate_test"])
-    candidate_test.write_text(
-        "def test_candidate_example() -> None:\n    assert True\n"
-    )
 
-    assert practice.next_step(practice_repo, metadata) == (
-        "CLOSE",
-        "Run just practice-test, reconcile comments with code, then use just practice-finish.",
+    practice._require_unlocked(practice_repo, metadata)
+
+
+def test_candidate_tests_require_a_fresh_pass_before_close(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
     )
+    _implement_with_candidate_test(practice_repo, metadata)
+
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+    practice._write_test_receipt(
+        practice_repo,
+        metadata,
+        "passed",
+        practice._test_input_digests(practice_repo, metadata),
+    )
+    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
 
 
 def test_next_step_reports_candidate_test_syntax_error(practice_repo: Path) -> None:
@@ -1282,16 +1168,14 @@ def test_next_step_reports_candidate_test_syntax_error(practice_repo: Path) -> N
         practice_repo, "reacto", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
-    candidate.write_text(text.replace(practice.PRACTICE_LOCK + "\n", ""))
+    candidate.write_text(
+        candidate.read_text().replace("raise NotImplementedError", "return sum(values)")
+    )
     (practice_repo / str(metadata["candidate_test"])).write_text("def broken(:\n")
 
-    assert practice.next_step(practice_repo, metadata) == (
-        "BUILD",
-        "Fix the syntax error in your test file, then run /continue.",
-    )
+    state, next_action = practice.next_step(practice_repo, metadata)
+    assert state == "BUILD"
+    assert "syntax error in your test file" in next_action
 
 
 def test_source_syntax_error_fails_closed_after_natural_comments(
@@ -1302,23 +1186,12 @@ def test_source_syntax_error_fails_closed_after_natural_comments(
     )
     candidate = practice_repo / str(metadata["source"])
     candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For [1, 2], return 3; for [], return 0.",
-                "Use a running total and visit each value once.",
-            ],
-        )
-        .replace(f"    {practice.PRACTICE_LOCK}\n", "")
-        .replace("raise NotImplementedError", "value = (")
+        candidate.read_text().replace("raise NotImplementedError", "value = (")
     )
 
-    assert practice.next_step(practice_repo, metadata) == (
-        "BUILD",
-        "Fix the syntax error in your source file, then run /continue.",
-    )
+    state, next_action = practice.next_step(practice_repo, metadata)
+    assert state == "BUILD"
+    assert "syntax error in your source file" in next_action
     with pytest.raises(practice.PracticeError, match="source has a syntax error"):
         practice._require_unlocked(practice_repo, metadata)
 
@@ -1332,10 +1205,9 @@ def test_renamed_target_reports_build_instead_of_an_impossible_think_loop(
     candidate = practice_repo / str(metadata["source"])
     candidate.write_text(candidate.read_text().replace("def solve(", "def renamed("))
 
-    assert practice.next_step(practice_repo, metadata) == (
-        "BUILD",
-        "Restore the required `solve` definition, then run /continue.",
-    )
+    state, next_action = practice.next_step(practice_repo, metadata)
+    assert state == "BUILD"
+    assert "Restore the required `solve` definition" in next_action
     with pytest.raises(
         practice.PracticeError,
         match="source no longer defines required target 'solve'",
@@ -1347,6 +1219,7 @@ def test_class_target_without_methods_is_not_a_usable_definition() -> None:
     source = "class Solver:\n    pass\n"
 
     assert practice._target_definition(source, "Solver") is None
+    assert not practice._target_is_started(source, "Solver")
     assert not practice._target_is_implemented(source, "Solver")
 
 
@@ -1359,13 +1232,43 @@ def test_nested_class_method_does_not_make_outer_target_usable() -> None:
     )
 
     assert practice._target_definition(source, "Solver") is None
+    assert not practice._target_is_started(source, "Solver")
     assert not practice._target_is_implemented(source, "Solver")
+
+
+def test_partial_class_implementation_advances_from_think_to_build(
+    practice_repo: Path,
+) -> None:
+    source = (
+        "class Solver:\n"
+        '    """Candidate reasoning alone does not change mechanical state."""\n'
+        "\n"
+        "    def __init__(self) -> None:\n"
+        "        self.values: list[int] = []\n"
+        "\n"
+        "    def run(self) -> int:\n"
+        "        raise NotImplementedError\n"
+    )
+    metadata = {
+        "target": "Solver",
+        "candidate_test": ".challenges/workspace/test_solver_candidate.py",
+    }
+    _write(practice_repo / str(metadata["candidate_test"]), "")
+
+    assert practice._target_is_started(source, "Solver")
+    assert not practice._target_is_implemented(source, "Solver")
+    state, next_action = practice._next_source_native_step(
+        practice_repo, metadata, source
+    )
+    assert state == "BUILD"
+    assert "no cold stubs" in next_action
 
 
 def test_duplicate_target_definitions_are_not_a_usable_definition() -> None:
     source = "def solve() -> int:\n    return 1\n\ndef solve() -> int:\n    return 2\n"
 
     assert practice._target_definition(source, "solve") is None
+    assert not practice._target_is_started(source, "solve")
     assert not practice._target_is_implemented(source, "solve")
 
 
@@ -1373,10 +1276,11 @@ def test_later_target_assignment_is_not_a_usable_definition() -> None:
     source = "def solve() -> int:\n    return 1\n\nsolve = lambda: 2\n"
 
     assert practice._target_definition(source, "solve") is None
+    assert not practice._target_is_started(source, "solve")
     assert not practice._target_is_implemented(source, "solve")
 
 
-def test_status_reports_comment_counts(
+def test_status_reports_only_mechanical_progress(
     practice_repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     metadata, _, _ = practice.prepare_session(
@@ -1385,10 +1289,9 @@ def test_status_reports_comment_counts(
 
     assert practice.show_status(practice_repo, metadata) == 0
     assert capsys.readouterr().out.splitlines() == [
-        "pre-code comments: 0/3",
-        "post-code comments: 0/3",
-        "lock: locked",
+        "target: stub",
         "candidate tests: 0",
+        "focused tests: never",
     ]
 
 
@@ -1399,10 +1302,7 @@ def test_pytest_fixture_named_like_a_test_does_not_count(
         practice_repo, "comments", "arrays", "first"
     )
     (practice_repo / str(metadata["candidate_test"])).write_text(
-        "import pytest\n\n"
-        "@pytest.fixture\n"
-        "def test_case() -> int:\n"
-        "    return 1\n"
+        "import pytest\n\n@pytest.fixture\ndef test_case() -> int:\n    return 1\n"
     )
 
     assert practice._candidate_test_count(practice_repo, metadata) == 0
@@ -1525,11 +1425,7 @@ def test_unrelated_fixture_attribute_does_not_hide_a_test(
             "def test_local_decorator() -> None:\n"
             "    assert True\n"
         ),
-        (
-            "@staticmethod\n"
-            "def test_static() -> None:\n"
-            "    assert True\n"
-        ),
+        ("@staticmethod\ndef test_static() -> None:\n    assert True\n"),
     ],
 )
 def test_known_callable_preserving_decorators_count(
@@ -1652,9 +1548,7 @@ def test_falsey_module_test_flag_prevents_collection(
         practice_repo, "comments", "arrays", "first"
     )
     (practice_repo / str(metadata["candidate_test"])).write_text(
-        "__test__ = 0\n\n"
-        "def test_example() -> None:\n"
-        "    assert True\n"
+        "__test__ = 0\n\ndef test_example() -> None:\n    assert True\n"
     )
 
     assert practice._candidate_test_count(practice_repo, metadata) == 0
@@ -1667,9 +1561,7 @@ def test_falsey_collection_module_test_flag_prevents_collection(
         practice_repo, "comments", "arrays", "first"
     )
     (practice_repo / str(metadata["candidate_test"])).write_text(
-        "__test__ = []\n\n"
-        "def test_example() -> None:\n"
-        "    assert True\n"
+        "__test__ = []\n\ndef test_example() -> None:\n    assert True\n"
     )
 
     assert practice._candidate_test_count(practice_repo, metadata) == 0
@@ -1816,6 +1708,7 @@ def test_status_remains_available_while_finish_runs_candidate_tests(
             returncode=0,
             before=before,
             after=practice._test_input_digests(root, current),
+            completed=True,
         )
 
     monkeypatch.setattr(practice, "_execute_test_run", slow_pytest)
@@ -1849,7 +1742,30 @@ def test_finish_preserves_progress_for_similar_problem_name(
     assert "arrays/first " in progress
 
 
-def test_locked_session_can_close_without_claiming_tests_ran(
+def test_finish_refuses_an_incomplete_zero_exit(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _complete_session(practice_repo, metadata)
+    workspace = practice_repo / practice.WORKSPACE_REL
+    (workspace / "sitecustomize.py").write_text("import os\nos._exit(0)\n")
+
+    with pytest.raises(
+        practice.PracticeError,
+        match="ended before pytest completed",
+    ):
+        practice.finish_session(practice_repo, metadata, "trace the edge")
+
+    assert not (practice_repo / ".challenges/reps.md").exists()
+    assert not (practice_repo / ".challenges/progress.md").exists()
+    current = practice.current_metadata(practice_repo)
+    assert "finished_at" not in current
+    assert "finish_note" not in current
+
+
+def test_stub_session_can_close_without_claiming_tests_ran(
     practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
@@ -1871,6 +1787,109 @@ def test_locked_session_can_close_without_claiming_tests_ran(
     assert (practice_repo / ".challenges/progress.md").is_file()
 
 
+def test_schema4_sessions_read_and_migrate_without_touching_candidate_work(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    paradigm = practice.PARADIGMS["comments"]
+    candidate = practice_repo / str(metadata["source"])
+    original_candidate = candidate.read_text()
+    legacy_lines = [
+        *paradigm.seeds[:3],
+        practice.LEGACY_SCHEMA4_LOCK,
+        *paradigm.seeds[3:],
+    ]
+    legacy_block = "".join(f"    {line}\n" for line in legacy_lines)
+    legacy_candidate = original_candidate.replace(
+        f"    {practice.SOURCE_COMMENT_GUIDANCE}\n",
+        legacy_block,
+    )
+    assert legacy_candidate != original_candidate
+    legacy_candidate += "\n# preserve this unfinished note\n"
+    candidate.write_text(legacy_candidate)
+    candidate_test = practice_repo / str(metadata["candidate_test"])
+    candidate_test.write_text(
+        candidate_test.read_text() + "\n# preserve this candidate test note\n"
+    )
+    expected_source = "".join(
+        line
+        for line in legacy_candidate.splitlines(keepends=True)
+        if line.strip() != practice.LEGACY_SCHEMA4_LOCK
+    )
+    expected_test = candidate_test.read_text()
+    metadata_path = practice_repo / ".challenges/workspace/session.json"
+    metadata_path.write_text(
+        json.dumps(_legacy_schema4_metadata(metadata), indent=2) + "\n"
+    )
+    legacy_receipt = (
+        practice_repo / practice.WORKSPACE_REL / practice.LEGACY_COMMENT_RECEIPT_NAME
+    )
+    legacy_receipt.write_text('{"schema": 1, "obsolete": true}\n')
+    migrated = practice.current_metadata(practice_repo)
+    assert migrated["schema"] == practice.METADATA_SCHEMA
+    assert {"lock", "seeds", "pre_code_labels"}.isdisjoint(migrated)
+    assert json.loads(metadata_path.read_text())["schema"] == 4
+    assert candidate.read_text() == legacy_candidate
+
+    assert practice.show_next(practice_repo, migrated) == 0
+    assert candidate.read_text() == expected_source
+    assert candidate_test.read_text() == expected_test
+    assert not legacy_receipt.exists()
+    persisted = json.loads(metadata_path.read_text())
+    assert persisted["schema"] == practice.METADATA_SCHEMA
+    assert {"lock", "seeds", "pre_code_labels"}.isdisjoint(persisted)
+
+    assert practice.finish_session(practice_repo, migrated, "keep notes natural") == 0
+    finished = json.loads(metadata_path.read_text())
+    assert finished["schema"] == practice.METADATA_SCHEMA
+    assert {"lock", "seeds", "pre_code_labels"}.isdisjoint(finished)
+
+    finished_source = candidate.read_text()
+    candidate.write_text(finished_source + f"{practice.LEGACY_SCHEMA4_LOCK}\n")
+    metadata_path.write_text(
+        json.dumps(_legacy_schema4_metadata(finished), indent=2) + "\n"
+    )
+    migrated_finished = practice.current_metadata(practice_repo)
+    assert migrated_finished["finished_at"] == finished["finished_at"]
+    assert migrated_finished["schema"] == practice.METADATA_SCHEMA
+    assert (
+        practice.finish_session(practice_repo, migrated_finished, "keep notes natural")
+        == 0
+    )
+    assert candidate.read_text() == finished_source
+    assert candidate_test.read_text() == expected_test
+    assert json.loads(metadata_path.read_text())["schema"] == practice.METADATA_SCHEMA
+
+
+def test_schema4_migration_rejects_symlinked_legacy_comment_receipt(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(candidate.read_text() + f"\n{practice.LEGACY_SCHEMA4_LOCK}\n")
+    metadata_path = practice_repo / practice.WORKSPACE_REL / practice.METADATA_NAME
+    metadata_path.write_text(
+        json.dumps(_legacy_schema4_metadata(metadata), indent=2) + "\n"
+    )
+    outside = practice_repo / "outside-receipt.json"
+    outside.write_text('{"keep": true}\n')
+    receipt = (
+        practice_repo / practice.WORKSPACE_REL / practice.LEGACY_COMMENT_RECEIPT_NAME
+    )
+    receipt.symlink_to(outside)
+
+    with pytest.raises(practice.PracticeError, match="cannot be a symlink"):
+        practice.show_next(practice_repo, practice.current_metadata(practice_repo))
+
+    assert outside.read_text() == '{"keep": true}\n'
+    assert practice.LEGACY_SCHEMA4_LOCK in candidate.read_text()
+    assert json.loads(metadata_path.read_text())["schema"] == 4
+
+
 def test_explicit_fresh_switch_archives_then_resets_workspace(
     practice_repo: Path,
 ) -> None:
@@ -1889,7 +1908,7 @@ def test_explicit_fresh_switch_archives_then_resets_workspace(
     assert "# CLARIFY:" in clarp_candidate.read_text()
     assert "# REPEAT:" not in clarp_candidate.read_text()
     assert "reacto trail" not in clarp_candidate.read_text()
-    assert clarp_candidate.read_text().count(practice.PRACTICE_LOCK) == 1
+    assert "THINKING GATE" not in clarp_candidate.read_text()
 
     clarp_candidate.write_text(clarp_candidate.read_text() + "\n# first trail\n")
     second, action, first_archive = practice.prepare_session(
@@ -1925,85 +1944,34 @@ def test_unfinished_switch_requires_finish_or_explicit_fresh_archive(
     assert not (practice_repo / ".challenges/history").exists()
 
 
-def test_locked_session_refuses_to_run_tests(
-    practice_repo: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-
-    def unexpected_run(*args: object, **kwargs: object) -> None:
-        raise AssertionError("pytest must not launch while the thinking gate is locked")
-
-    monkeypatch.setattr(practice, "_execute_test_run", unexpected_run)
-    with pytest.raises(
-        practice.PracticeError,
-        match="add 3 ordinary reasoning comments above it",
-    ):
-        practice.run_tests(practice_repo, metadata)
-
-
-def test_completed_reasoning_with_gate_still_refuses_tests(
-    practice_repo: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(
-        _replace_scaffold_with_comments(
-            candidate.read_text(),
-            metadata,
-            [
-                "Return the sum of the input values.",
-                "For an empty input, return zero.",
-                "Visit each value exactly once.",
-            ],
-        )
-    )
-
-    def unexpected_run(*args: object, **kwargs: object) -> None:
-        raise AssertionError("pytest must not launch while the gate remains")
-
-    monkeypatch.setattr(practice, "_execute_test_run", unexpected_run)
-    with pytest.raises(practice.PracticeError, match="delete the gate yourself"):
-        practice.run_tests(practice_repo, metadata)
-
-
-def test_deleting_gate_before_filling_comments_still_refuses_tests(
-    practice_repo: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
-    )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(candidate.read_text().replace(practice.PRACTICE_LOCK, ""))
-
-    def unexpected_run(*args: object, **kwargs: object) -> None:
-        raise AssertionError("pytest must not launch before reasoning is present")
-
-    monkeypatch.setattr(practice, "_execute_test_run", unexpected_run)
-    with pytest.raises(
-        practice.PracticeError,
-        match="add 3 ordinary comments before the implementation",
-    ):
-        practice.run_tests(practice_repo, metadata)
-
-
-def test_next_step_points_unlocked_planning_comments_before_implementation(
+@pytest.mark.parametrize("paradigm_name", tuple(practice.PARADIGMS))
+def test_tests_watch_and_repl_are_not_authorized_by_prose_counts(
     practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    paradigm_name: str,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
-        practice_repo, "comments", "arrays", "first"
+        practice_repo, paradigm_name, "arrays", "first"
     )
-    candidate = practice_repo / str(metadata["source"])
-    candidate.write_text(candidate.read_text().replace(practice.PRACTICE_LOCK, ""))
+    _implement_with_candidate_test(practice_repo, metadata)
+    calls: list[tuple[str, list[str]]] = []
 
-    assert practice.next_step(practice_repo, metadata) == (
-        "THINK",
-        "Add 3 more ordinary reasoning comments before the implementation, "
-        "save, then run /continue.",
-    )
+    def focused_run(
+        _root: Path, _current: dict[str, Any], before: dict[str, str]
+    ) -> practice.TestRun:
+        return practice.TestRun(0, before, dict(before), completed=True)
+
+    def fake_execvpe(executable: str, args: list[str], _env: dict[str, str]) -> None:
+        calls.append((executable, args))
+
+    monkeypatch.setattr(practice, "_execute_test_run", focused_run)
+    monkeypatch.setattr(practice.shutil, "which", lambda _name: "/mock/watchexec")
+    monkeypatch.setattr(practice.os, "execvpe", fake_execvpe)
+
+    assert practice.run_tests(practice_repo, metadata) == 0
+    assert practice.run_watch(practice_repo, metadata) == 1
+    assert practice.run_repl(practice_repo, metadata) == 1
+    assert len(calls) == 2
 
 
 def test_unlocked_session_tests_candidate_instead_of_reference(
@@ -2013,11 +1981,8 @@ def test_unlocked_session_tests_candidate_instead_of_reference(
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+        candidate.read_text().replace(
             "raise NotImplementedError",
             "return sum(values)  # Sum once, then return the total.",
         )
@@ -2055,11 +2020,8 @@ def test_candidate_is_active_during_test_module_import(practice_repo: Path) -> N
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+        candidate.read_text().replace(
             "raise NotImplementedError",
             "if values:\n        return sum(values)\n    return -1",
         )
@@ -2081,13 +2043,8 @@ def test_ambient_pytest_options_cannot_turn_failures_into_collection_only(
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
-            "raise NotImplementedError", "return 0"
-        )
+        candidate.read_text().replace("raise NotImplementedError", "return 0")
     )
     (practice_repo / str(metadata["candidate_test"])).write_text(
         "def test_candidate_smoke() -> None:\n    assert True\n"
@@ -2100,6 +2057,179 @@ def test_ambient_pytest_options_cannot_turn_failures_into_collection_only(
     assert "PYTEST_PLUGINS" not in env
     assert env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
     assert practice.run_tests(practice_repo, metadata) == 1
+
+
+def test_repo_pytest_config_cannot_turn_failures_into_collection_only(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        candidate.read_text().replace("raise NotImplementedError", "return 0")
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_smoke() -> None:\n    assert False\n"
+    )
+    (practice_repo / "pyproject.toml").write_text(
+        '[tool.pytest.ini_options]\naddopts = ["--collect-only"]\n'
+    )
+
+    assert practice.run_tests(practice_repo, metadata) == 1
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+
+
+def test_candidate_conftest_cannot_skip_locked_or_candidate_tests(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        candidate.read_text().replace("raise NotImplementedError", "return 0")
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_smoke() -> None:\n    assert False\n"
+    )
+    workspace = practice_repo / practice.WORKSPACE_REL
+    (workspace / "conftest.py").write_text(
+        "import pytest\n\n"
+        "def pytest_collection_modifyitems(items):\n"
+        "    for item in items:\n"
+        "        item.add_marker(pytest.mark.skip)\n"
+    )
+
+    assert practice.run_tests(practice_repo, metadata) == 1
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+
+
+@pytest.mark.parametrize("marker", ["skip", "xfail"])
+def test_candidate_tests_must_really_pass(
+    practice_repo: Path,
+    marker: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        candidate.read_text().replace(
+            "raise NotImplementedError", "return sum(values)"
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "import pytest\n\n"
+        f"@pytest.mark.{marker}\n"
+        "def test_candidate_smoke() -> None:\n"
+        "    assert False\n"
+    )
+
+    assert practice.run_tests(practice_repo, metadata) == 1
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+
+
+def test_candidate_target_cannot_skip_locked_tests(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        _inject_after_future(
+            candidate.read_text().replace(
+                "raise NotImplementedError", "pytest.skip('not ready')"
+            ),
+            "import pytest\n",
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_smoke() -> None:\n    assert True\n"
+    )
+
+    assert practice.run_tests(practice_repo, metadata) == 1
+    assert practice._test_receipt_status(practice_repo, metadata) == "failed"
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+
+
+@pytest.mark.parametrize("exit_surface", ["candidate", "sitecustomize"])
+def test_zero_exit_before_pytest_completion_is_not_a_pass(
+    practice_repo: Path,
+    exit_surface: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        _inject_after_future(
+            candidate.read_text().replace(
+                "raise NotImplementedError", "return sum(values)"
+            ),
+            "import os\nos._exit(0)\n",
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_smoke() -> None:\n    assert False\n"
+    )
+    if exit_surface == "sitecustomize":
+        candidate.write_text(
+            candidate.read_text()
+            .replace("import os\nos._exit(0)\n", "")
+        )
+        workspace = practice_repo / practice.WORKSPACE_REL
+        (workspace / "sitecustomize.py").write_text("import os\nos._exit(0)\n")
+
+    assert practice.run_tests(practice_repo, metadata) == 3
+    assert practice._test_receipt_status(practice_repo, metadata) == "never"
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+
+
+def test_detached_completion_writer_cannot_hang_test_runner(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        _inject_after_future(
+            candidate.read_text().replace(
+                "raise NotImplementedError", "return sum(values)"
+            ),
+            "import os\n"
+            "import time\n"
+            "pid = os.fork()\n"
+            "if pid == 0:\n"
+            "    os.setsid()\n"
+            "    with open('.challenges/workspace/detached.pid', 'w') as handle:\n"
+            "        handle.write(str(os.getpid()))\n"
+            "    time.sleep(30)\n"
+            "    os._exit(0)\n"
+            "deadline = time.monotonic() + 2\n"
+            "while not os.path.exists('.challenges/workspace/detached.pid'):\n"
+            "    if time.monotonic() >= deadline:\n"
+            "        os._exit(2)\n"
+            "    time.sleep(0.01)\n"
+            "os._exit(0)\n",
+        )
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "def test_candidate_smoke() -> None:\n    assert False\n"
+    )
+    pid_path = practice_repo / practice.WORKSPACE_REL / "detached.pid"
+
+    started = time.monotonic()
+    try:
+        assert practice.run_tests(practice_repo, metadata) == 3
+        assert time.monotonic() - started < 2
+        assert pid_path.is_file()
+    finally:
+        if pid_path.exists():
+            with suppress(ProcessLookupError):
+                os.kill(int(pid_path.read_text()), signal.SIGKILL)
 
 
 def test_open_session_targets_reasoning_line_and_candidate_test(
@@ -2122,7 +2252,7 @@ def test_open_session_targets_reasoning_line_and_candidate_test(
     assert practice.open_session(practice_repo, metadata)
     source = str(metadata["source"])
     source_path = practice_repo / source
-    first_seed = str(metadata["seeds"][0]).split(":", 1)[0]
+    first_seed = practice.PARADIGMS["umpire"].seeds[0].split(":", 1)[0]
     line = next(
         number
         for number, text in enumerate(source_path.read_text().splitlines(), start=1)
@@ -2230,15 +2360,11 @@ def test_candidate_source_syntax_error_stays_in_build(practice_repo: Path) -> No
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
-    candidate.write_text(text.replace(practice.PRACTICE_LOCK + "\n", "") + "\nif (\n")
+    candidate.write_text(candidate.read_text() + "\nif (\n")
 
-    assert practice.next_step(practice_repo, metadata) == (
-        "BUILD",
-        "Fix the syntax error in your source file, then run /continue.",
-    )
+    state, next_action = practice.next_step(practice_repo, metadata)
+    assert state == "BUILD"
+    assert "syntax error in your source file" in next_action
 
 
 def test_nested_test_function_does_not_count_as_candidate_test(
@@ -2248,13 +2374,8 @@ def test_nested_test_function_does_not_count_as_candidate_test(
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
-            "raise NotImplementedError", "return sum(values)"
-        )
+        candidate.read_text().replace("raise NotImplementedError", "return sum(values)")
     )
     (practice_repo / str(metadata["candidate_test"])).write_text(
         "def helper() -> None:\n"
@@ -2270,11 +2391,8 @@ def test_pytest_class_method_counts_as_candidate_test(practice_repo: Path) -> No
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+        candidate.read_text().replace(
             "raise NotImplementedError",
             "return sum(values)  # Sum once, then return the total.",
         )
@@ -2285,7 +2403,8 @@ def test_pytest_class_method_counts_as_candidate_test(practice_repo: Path) -> No
         "        assert True\n"
     )
 
-    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
+    assert practice._candidate_test_count(practice_repo, metadata) == 1
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
 
 
 @pytest.mark.parametrize(
@@ -2307,13 +2426,8 @@ def test_uncollected_tests_do_not_advance_state(
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
-            "raise NotImplementedError", "return sum(values)"
-        )
+        candidate.read_text().replace("raise NotImplementedError", "return sum(values)")
     )
     (practice_repo / str(metadata["candidate_test"])).write_text(candidate_tests)
 
@@ -2327,11 +2441,8 @@ def test_candidate_helper_stub_does_not_hide_implemented_target(
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+        candidate.read_text().replace(
             "raise NotImplementedError",
             "return sum(values)  # Sum once, then return the total.",
             1,
@@ -2342,7 +2453,7 @@ def test_candidate_helper_stub_does_not_hide_implemented_target(
         "def test_candidate_example() -> None:\n    assert True\n"
     )
 
-    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
 
 
 def test_committed_private_support_is_not_injected_into_candidate_tests(
@@ -2352,11 +2463,8 @@ def test_committed_private_support_is_not_injected_into_candidate_tests(
         practice_repo, "comments", "arrays", "first"
     )
     candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
     candidate.write_text(
-        text.replace(practice.PRACTICE_LOCK + "\n", "").replace(
+        candidate.read_text().replace(
             "raise NotImplementedError", "return _support(values)", 1
         )
     )
@@ -2398,9 +2506,6 @@ def test_real_helper_dependent_target_cannot_use_committed_implementation(
     metadata, _, _ = practice.prepare_session(tmp_path, "comments", topic, problem)
     candidate_path = tmp_path / str(metadata["source"])
     candidate = _reference_target_only(candidate_path.read_text(), committed, target)
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        candidate = _fill_seed(candidate, str(seed))
-    candidate = candidate.replace(practice.PRACTICE_LOCK + "\n", "")
     candidate_path.write_text(candidate)
 
     assert all(
@@ -2446,12 +2551,42 @@ def test_repl_exposes_only_target_and_omits_committed_helpers(
     assert proc.returncode == 0, proc.stderr
 
 
+def test_generated_repl_runs_candidate_code_in_an_actual_interactive_process(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(
+        practice_repo,
+        metadata,
+        '"""Visit the values once and return their sum."""',
+    )
+
+    proc = subprocess.run(
+        [sys.executable, "-i", str(practice_repo / str(metadata["repl"]))],
+        cwd=practice_repo,
+        env=practice._practice_env(practice_repo),
+        input="assert solve([1, 2]) == 3\nprint('REPL_OK')\nexit()\n",
+        text=True,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "REPL_OK" in proc.stdout
+
+
 def test_pytest_args_use_the_complete_reference_module(practice_repo: Path) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
 
-    args = practice._pytest_args(metadata)
+    args = practice._pytest_args(practice_repo, metadata)
+    assert args[args.index("-c") + 1] == os.devnull
+    assert args[args.index("--rootdir") + 1] == str(practice_repo)
+    assert "--noconftest" in args
     assert args[args.index("-p") + 1] == "practice_plugin"
     assert str(metadata["reference_test"]) in args
     assert all("::" not in arg for arg in args)
@@ -2623,7 +2758,7 @@ def test_invalid_partial_workspace_is_archived_and_rebuilt(
     assert action == "created"
     assert archived is not None
     assert (archived / "partial.txt").read_text() == "candidate work\n"
-    assert metadata["schema"] == 4
+    assert metadata["schema"] == 5
 
 
 def test_failed_build_never_replaces_the_visible_workspace(
@@ -2667,7 +2802,7 @@ def test_stale_session_cannot_close_a_new_workspace(practice_repo: Path) -> None
         practice.finish_session(practice_repo, first, "trace before optimizing")
 
 
-def test_failing_close_state_is_logged_with_failed_outcome(
+def test_stale_pass_receipt_closes_as_reflect_without_claiming_a_test(
     practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(practice_repo, "clarp", "arrays", "first")
@@ -2680,10 +2815,33 @@ def test_failing_close_state_is_logged_with_failed_outcome(
     assert practice.finish_session(practice_repo, metadata, "trace the failure") == 0
 
     finished = practice.current_metadata(practice_repo)
-    assert finished["finish_state"] == "CLOSE"
-    assert finished["test_outcome"] == "failed"
+    assert finished["finish_state"] == "REFLECT"
+    assert finished["test_outcome"] == "not_run"
     assert set(finished["test_inputs_before"]) == set(practice.TEST_INPUT_KEYS)
     assert set(finished["test_inputs_after"]) == set(practice.TEST_INPUT_KEYS)
+
+
+@pytest.mark.parametrize("outcome", ["failed", "timeout"])
+def test_fresh_nonpassing_receipt_is_preserved_on_unfinished_close(
+    practice_repo: Path,
+    outcome: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    practice._write_test_receipt(
+        practice_repo,
+        metadata,
+        outcome,
+        practice._test_input_digests(practice_repo, metadata),
+    )
+
+    assert practice.finish_session(practice_repo, metadata, "trace the failure") == 0
+
+    finished = practice.current_metadata(practice_repo)
+    assert finished["finish_state"] == "REFLECT"
+    assert finished["test_outcome"] == outcome
 
 
 def test_distinct_sessions_keep_duplicate_human_readable_reps(
@@ -2788,11 +2946,6 @@ def test_test_result_is_stale_when_any_non_candidate_input_changes(
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
-    candidate = practice_repo / str(metadata["source"])
-    text = candidate.read_text()
-    for seed in metadata["seeds"][: len(metadata["pre_code_labels"])]:
-        text = _fill_seed(text, str(seed))
-    candidate.write_text(text.replace(practice.PRACTICE_LOCK + "\n", ""))
 
     def mutating_run(
         root: Path, current: dict[str, Any], before: dict[str, str]
@@ -2803,6 +2956,7 @@ def test_test_result_is_stale_when_any_non_candidate_input_changes(
             returncode=0,
             before=before,
             after=practice._test_input_digests(root, current),
+            completed=True,
         )
 
     monkeypatch.setattr(practice, "_execute_test_run", mutating_run)
@@ -2831,6 +2985,7 @@ def test_candidate_tests_run_without_holding_the_state_lock(
             returncode=0,
             before=before,
             after=practice._test_input_digests(root, current),
+            completed=True,
         )
 
     monkeypatch.setattr(practice, "_execute_test_run", nested_state_write)
@@ -3010,6 +3165,7 @@ def test_stale_test_inputs_abort_before_closeout_journal(
             returncode=0,
             before=before,
             after=practice._test_input_digests(root, current),
+            completed=True,
         )
 
     monkeypatch.setattr(practice, "_execute_test_run", mutating_pytest)
@@ -3152,6 +3308,82 @@ def test_reference_cli_without_args_uses_current_session(
     assert "secret = _support(values)" in capsys.readouterr().out
 
 
+def test_present_cli_prepares_and_opens_exact_tabs_before_printing_prompt(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    events: list[str] = []
+    real_select = practice.select_problem
+    real_prepare = practice.prepare_open_target
+    real_present = practice.present_problem
+
+    def select_once(
+        root: Path, topic: str | None = None, problem: str | None = None
+    ) -> tuple[str, str]:
+        events.append("select")
+        return cast("tuple[str, str]", real_select(root, topic, problem))
+
+    def prepare(root: Path, topic: str, problem: str) -> dict[str, Any]:
+        events.append("prepare")
+        return cast("dict[str, Any]", real_prepare(root, topic, problem))
+
+    def open_tabs(_root: Path, metadata: dict[str, Any]) -> bool:
+        events.append("open")
+        assert metadata["paradigm"] == "prepared"
+        return True
+
+    def present(root: Path, topic: str, problem: str) -> str:
+        events.append("present")
+        return cast("str", real_present(root, topic, problem))
+
+    monkeypatch.delenv("PRACTICE_NO_OPEN", raising=False)
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "select_problem", select_once)
+    monkeypatch.setattr(practice, "prepare_open_target", prepare)
+    monkeypatch.setattr(practice, "open_session", open_tabs)
+    monkeypatch.setattr(practice, "present_problem", present)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["practice_workspace.py", "present", "arrays", "first"],
+    )
+
+    assert practice.main() == 0
+    assert events == ["prepare", "select", "open", "present"]
+    assert "PRACTICE: arrays/first" in capsys.readouterr().out
+
+
+def test_present_cli_does_not_print_a_cold_prompt_when_editor_open_fails(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    presented = False
+
+    def reject_open(_root: Path, _metadata: dict[str, Any]) -> bool:
+        return False
+
+    def unexpected_present(_root: Path, _topic: str, _problem: str) -> str:
+        nonlocal presented
+        presented = True
+        return "must not print"
+
+    monkeypatch.delenv("PRACTICE_NO_OPEN", raising=False)
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", reject_open)
+    monkeypatch.setattr(practice, "present_problem", unexpected_present)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["practice_workspace.py", "present", "arrays", "first"],
+    )
+
+    assert practice.main() == 1
+    assert not presented
+    assert "PRACTICE:" not in capsys.readouterr().out
+
+
 def test_open_cli_forwards_an_exact_pair_to_the_safe_workspace(
     practice_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -3172,7 +3404,7 @@ def test_open_cli_forwards_an_exact_pair_to_the_safe_workspace(
 
     assert practice.main() == 0
     assert len(opened) == 1
-    assert opened[0]["paradigm"] == "comments"
+    assert opened[0]["paradigm"] == "prepared"
     assert opened[0]["source"] == ".challenges/workspace/first.py"
     assert opened[0]["candidate_test"] == (
         ".challenges/workspace/test_first_candidate.py"
@@ -3192,6 +3424,31 @@ def test_open_cli_reports_editor_launch_failure(
     )
 
     assert practice.main() == 1
+
+
+def test_start_cli_reports_editor_launch_failure_before_presenting_state(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("PRACTICE_NO_OPEN", raising=False)
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", lambda _root, _metadata: False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "practice_workspace.py",
+            "start",
+            "comments",
+            "arrays",
+            "first",
+        ],
+    )
+
+    assert practice.main() == 1
+    assert "STATE:" not in capsys.readouterr().out
+    assert practice.current_metadata(practice_repo)["topic"] == "arrays"
 
 
 def test_prepared_tabs_refuse_editor_commands_until_a_mode_starts(
