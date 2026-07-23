@@ -121,8 +121,8 @@ class TestRendering:
         rendered = render_continue_prompt()
         assert "just practice-next" in rendered
         assert "Success: relay `STATE:`" in rendered
-        assert "read exact emitted `SOURCE:`/`TEST:`" in rendered
-        read = rendered.index("read exact emitted")
+        assert "read exact `SOURCE:`/`TEST:`" in rendered
+        read = rendered.index("read exact `SOURCE:`/`TEST:`")
         reasoning = rendered.index(
             "First paraphrase one concrete candidate-authored idea from source"
         )
