@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -545,9 +546,45 @@ def test_copilot_hooks_reference_an_existing_guard_script() -> None:
             assert entry["type"] == "command"
             assert entry["cwd"] == "."
             command = entry["bash"]
-            assert command.startswith("python3 ")
-            script_relative = command.removeprefix("python3 ").split()[0]
+            assert command.startswith("uv run python ")
+            script_relative = command.removeprefix("uv run python ").split()[0]
             script_path = ROOT / script_relative
             assert script_path.is_file(), f"{hook_path}: missing {script_relative}"
             assert "powershell" not in entry
     assert (ROOT / ".github/hooks/README.md").is_file()
+
+
+def test_copilot_hook_launcher_needs_no_system_python(tmp_path: Path) -> None:
+    hook_path = ROOT / ".github/hooks/candidate-workspace-guard.json"
+    config = json.loads(hook_path.read_text())
+    command = config["hooks"]["preToolUse"][0]["bash"]
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    _write_executable(
+        fake_bin / "uv",
+        """#!/bin/sh
+[ "$1" = run ] && [ "$2" = python ] || exit 64
+shift 2
+exec "$HOOK_PYTHON" "$@"
+""",
+    )
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "runTerminalCommand",
+        "tool_input": {"command": "just practice-open arrays two_sum"},
+    }
+    proc = subprocess.run(
+        command,
+        shell=True,
+        executable="/bin/sh",
+        cwd=ROOT,
+        env=os.environ | {"PATH": str(fake_bin), "HOOK_PYTHON": sys.executable},
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout == '{"continue": true}\n'
