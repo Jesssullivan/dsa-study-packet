@@ -1,6 +1,6 @@
 ---
 title: Source of Truth
-description: See which files own algorithms, practice methods, generated artifacts, private state, and the public reading surface.
+description: See which files own the current Python practice track, generated artifacts, private state, and the production reading site.
 ---
 
 # Source of Truth
