@@ -96,7 +96,7 @@ control of your work.
 
 ## 4. Stop cleanly
 
-Name one specific thing that worked and the single change you want next time.
+Name one win and the one fix you want next time.
 Then close the private log and spaced-review update together:
 
 ```bash
