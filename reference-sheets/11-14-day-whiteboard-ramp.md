@@ -16,8 +16,8 @@ in [sheet 10](10-whiteboard-performance-protocol.md).
 ## The daily editor loop
 
 1. **Pick**: run `just study-spaced 1` and use its printed editor command.
-2. **Think**: fill the pre-code comments, save, and delete the THINKING GATE
-   yourself.
+2. **Think**: write ordinary source comments or docstrings in your own words,
+   then save and explicitly continue.
 3. **Build**: implement in the isolated source and add cases in your test tab.
 4. **Check**: use `/continue` or `just practice-next`, then run `just
    practice-test` or `just practice-repl`.

@@ -31,7 +31,7 @@ draw, or schedule.
 2. Run that exact `just practice-start` command. Default to CLARP unless the
    candidate requested REACTO, UMPIRE, or plain comments.
 3. Follow the `AGENTS.md` editor state loop. The candidate owns the source,
-   tests, comments, and gate.
+   tests, and comments.
 4. Close with one win, one fix, and `just practice-finish "one specific fix"`.
    Stop at 90 minutes even if work remains.
 

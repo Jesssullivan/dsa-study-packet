@@ -12,11 +12,11 @@ belongs in private downstream overlays; see the
 
 ## Start in Codespaces
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main)
 
-When the editor opens, enter `/comments` in Copilot Chat. It starts ordinary
-reasoning comments with no required labels or prefixes; the reasoning comments
-(and docstrings) live in the opened source file, not in chat.
+When the editor opens, confirm Copilot Chat is signed in and available, then
+enter `/comments`. The command starts a rep; the reasoning itself belongs in
+ordinary source comments or docstrings, with no required labels or prefixes.
 
 ```text
 /comments
@@ -31,20 +31,21 @@ The rep opens two gitignored files under `.challenges/workspace/`: your source
 file and your test file. The committed implementation under `src/algo/` stays
 unchanged.
 
-1. Fill the reasoning comments and save.
-2. Delete the `THINKING GATE` yourself.
+1. Write reasoning in ordinary source comments or docstrings.
+2. Save, then enter `/continue` or run `just practice-next`.
 3. Implement the solution and add focused tests.
-4. Enter `/continue` or run `just practice-next` for the next instruction.
+4. Save and continue again when you want the next instruction.
 5. Run `just practice-test`, then close with `just practice-finish "one fix"`.
 
-The interviewer never writes your code, tests, or gate. Copilot is optional;
+Write comments in the source file, not the Chat composer. There is no required
+prefix, comment count, or gate deletion. The interviewer never writes your
+code or tests. Copilot is optional;
 the same flow starts from a terminal with `just practice-start comments`.
 
 The named frameworks are vocabulary choices, not grading systems. Keep their
-labels, replace them, or use natural Python comments in your own words.
-`/continue` checks that saved reasoning comments are present before and during
-the code, then returns one next action. It does not grade their wording; tests
-remain the correctness signal.
+labels, replace them, or use ordinary source comments and docstrings in your
+own words. `/continue` reads the saved source and test files, then returns one
+next action. It does not grade wording; tests remain the correctness signal.
 
 ## Current-rep commands
 

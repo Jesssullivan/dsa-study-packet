@@ -1,6 +1,6 @@
 # Welcome to the woodshed
 
-Start in the editor. Open Copilot Chat and choose one comment format:
+Start in the editor. Open Copilot Chat and choose one practice mode:
 
 ```text
 /reacto
@@ -13,9 +13,12 @@ The command draws the next due problem. Add a topic and problem when you want
 one directly, such as `/reacto arrays two_sum`.
 
 Two gitignored files open under `.challenges/workspace/`: your source and your
-test file. Fill the reasoning comments, save, and delete the `THINKING GATE`
-yourself. Then implement and add examples or edge cases. The interviewer does
-not write your code, tests, or gate.
+test file. Write ordinary source comments or docstrings in your own words,
+before and alongside the code. The comments belong in the file, not the Chat
+composer, and need no prefixes or minimum count. Save, then enter `/continue`
+so the interviewer can read the saved files and return one current state and
+next action. There is no gate to delete. The interviewer does not write your
+code or tests.
 
 Enter `/continue` after a save, or use the terminal controls:
 
@@ -33,7 +36,8 @@ Finish with one useful correction:
 just practice-finish "state the one fix"
 ```
 
-Copilot is optional. `just practice-start reacto` begins the same rep from a
+Copilot is optional. When using it, confirm Chat is signed in and available in
+the VS Code UI. `just practice-start reacto` begins the same rep from a
 terminal. Codespaces needs no repository API key and starts no external agent.
 Claude Code, Codex, and other CLIs are optional tools you launch and
 authenticate yourself.

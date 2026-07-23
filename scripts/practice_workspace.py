@@ -2,7 +2,7 @@
 
 The committed algorithm implementations remain immutable reference material.
 Each rep is rendered from ``HEAD`` into gitignored ``.challenges/workspace``
-with a paradigm-specific comment scaffold and a candidate-owned test file.
+with optional source-comment coaching and a candidate-owned test file.
 Reference tests import the workspace implementation through a tiny pytest
 plugin, so candidates can code, test, watch, and use a REPL without mutating
 the packet's source tree.
@@ -26,6 +26,7 @@ import hashlib
 import json
 import os
 import re
+import select
 import shutil
 import signal
 import subprocess
@@ -44,15 +45,9 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from catalog import selection_error
 from core42 import PRACTICE_TARGETS
+from python_candidate_target import selected_target
 from rep_schema import RepLineError, parse_rep_line
-from scaffold_status import (
-    CommentEvidence,
-    CommentSnapshot,
-    _selected_target,
-    candidate_comment_snapshot,
-)
 from strip_solution import (
-    inject_scaffold,
     module_docstring_block,
     strip_solution,
     truncate_module_docstring,
@@ -64,29 +59,39 @@ STATE_REL = Path(".challenges")
 WORKSPACE_REL = Path(".challenges/workspace")
 HISTORY_REL = Path(".challenges/history")
 METADATA_NAME = "session.json"
-COMMENT_RECEIPT_NAME = "comment-receipt.json"
-METADATA_SCHEMA = 4
-COMMENT_RECEIPT_SCHEMA = 1
+TEST_RECEIPT_NAME = "test-receipt.json"
+LEGACY_COMMENT_RECEIPT_NAME = "comment-receipt.json"
+METADATA_SCHEMA = 5
+LEGACY_METADATA_SCHEMA = 4
+TEST_RECEIPT_SCHEMA = 2
 JOURNAL_REL = Path(".challenges/practice-closeout.json")
 NON_EDITOR_RECEIPTS_REL = Path(".challenges/non-editor-receipts.json")
 LOCK_REL = Path(".challenges/.practice.lock")
 MAX_HISTORY_ENTRIES = 100
 MAX_HISTORY_BYTES = 512 * 1024 * 1024
 MAX_NON_EDITOR_RECEIPTS = 100
-MAX_REQUIRED_PRE_CODE_COMMENTS = 3
-REQUIRED_POST_CODE_COMMENTS = 3
-MAX_COMMENT_RECEIPT_KEYS = 256
 DEFAULT_TEST_TIMEOUT_SECONDS = 120
 MAX_TEST_TIMEOUT_SECONDS = 900
 EDITOR_OPEN_TIMEOUT_SECONDS = 10
 TEST_PROCESS_POLL_SECONDS = 0.02
 TEST_PROCESS_TERM_GRACE_SECONDS = 0.25
 TEST_PROCESS_KILL_WAIT_SECONDS = 2
-TEST_INPUT_KEYS = ("source", "candidate_test", "reference_test", "plugin")
-PRACTICE_LOCK = (
+TEST_ATTEST_WAIT_SECONDS = 0.25
+LEGACY_TEST_INPUT_KEYS = ("source", "candidate_test", "reference_test", "plugin")
+TEST_INPUT_KEYS = (
+    *LEGACY_TEST_INPUT_KEYS,
+    "reference_source",
+    "runtime_sources",
+)
+LEGACY_SCHEMA4_LOCK = (
     "# ==== THINKING GATE: complete the comments above, then delete this line "
     "to code ===="
 )
+SOURCE_COMMENT_GUIDANCE = (
+    "# Keep your reasoning beside the code in ordinary comments or a docstring; "
+    "revise it as code and tests change your mind."
+)
+PREPARED_PARADIGM_NAME = "prepared"
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 HEX_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 _LOCAL = threading.local()
@@ -104,6 +109,7 @@ class TestRun:
     before: dict[str, str]
     after: dict[str, str]
     timed_out: bool = False
+    completed: bool = False
 
     @property
     def fresh(self) -> bool:
@@ -111,12 +117,11 @@ class TestRun:
 
 
 @dataclass(frozen=True)
-class CommentReceipt:
-    """Private temporal evidence for comments added after the thinking phase."""
+class TestReceipt:
+    """Private result tied to the exact files exercised by focused tests."""
 
-    armed: bool
-    observed: frozenset[str]
-    accepted: frozenset[str]
+    outcome: str
+    inputs: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -125,14 +130,6 @@ class Paradigm:
 
     title: str
     seeds: tuple[str, ...]
-    lock_after: int
-
-    @property
-    def pre_code_labels(self) -> tuple[str, ...]:
-        return tuple(
-            seed.split(":", 1)[0].removeprefix("# ")
-            for seed in self.seeds[: self.lock_after]
-        )
 
 
 PARADIGMS: dict[str, Paradigm] = {
@@ -146,7 +143,6 @@ PARADIGMS: dict[str, Paradigm] = {
             "# TEST: add cases in the candidate test tab; record a line-by-line trace",
             "# OPTIMIZE: final time/space, remaining edges, and any trade-off",
         ),
-        lock_after=3,
     ),
     "clarp": Paradigm(
         title="CLARP",
@@ -157,7 +153,6 @@ PARADIGMS: dict[str, Paradigm] = {
             "# RUN: trace the stated example and record focused test cases/results",
             "# POLISH: final time/space complexity and remaining edges",
         ),
-        lock_after=2,
     ),
     "umpire": Paradigm(
         title="UMPIRE",
@@ -169,10 +164,12 @@ PARADIGMS: dict[str, Paradigm] = {
             "# REVIEW: trace the example and record focused test cases/results",
             "# EVALUATE: final time/space complexity, edges, and trade-offs",
         ),
-        lock_after=3,
     ),
     "comments": Paradigm(
-        title="comment-driven",
+        title="ordinary source comments",
+        # Keep the schema-4 seed identity so an existing ignored workspace can
+        # resume. New candidates receive only SOURCE_COMMENT_GUIDANCE below;
+        # these legacy values no longer gate or classify prose.
         seeds=(
             "# Write what this function should return and any assumptions in your own words.",
             "# Work one ordinary example and one edge case by hand.",
@@ -181,9 +178,41 @@ PARADIGMS: dict[str, Paradigm] = {
             "# Trace one example and note which tests prove the important edges.",
             "# Record the final time and space costs plus anything still uncertain.",
         ),
-        lock_after=3,
     ),
 }
+
+PREPARED_PARADIGM = Paradigm(
+    title="prepared",
+    seeds=(SOURCE_COMMENT_GUIDANCE,),
+)
+
+LEGACY_SCHEMA4_PRE_CODE_COUNTS = {
+    "reacto": 3,
+    "clarp": 2,
+    "umpire": 3,
+    "comments": 3,
+    PREPARED_PARADIGM_NAME: 0,
+}
+LEGACY_SCHEMA4_TITLES = {
+    "reacto": "REACTO",
+    "clarp": "CLARP",
+    "umpire": "UMPIRE",
+    "comments": "comment-driven",
+    PREPARED_PARADIGM_NAME: "prepared",
+}
+
+
+def _metadata_paradigm(name: str) -> Paradigm | None:
+    if name == PREPARED_PARADIGM_NAME:
+        return PREPARED_PARADIGM
+    return PARADIGMS.get(name)
+
+
+def _legacy_schema4_pre_code_labels(name: str, paradigm: Paradigm) -> tuple[str, ...]:
+    count = LEGACY_SCHEMA4_PRE_CODE_COUNTS[name]
+    return tuple(
+        seed.split(":", 1)[0].removeprefix("# ") for seed in paradigm.seeds[:count]
+    )
 
 
 def _workspace(root: Path) -> Path:
@@ -543,8 +572,62 @@ def _candidate_dependencies(
     return [rendered[order] for order in sorted(rendered)]
 
 
-def render_candidate(source: str, paradigm: Paradigm, target: str | None = None) -> str:
-    """Return one cold public interface with its minimum input-model surface."""
+def _insert_source_guidance(
+    source: str,
+    target: str,
+    comments: tuple[str, ...],
+) -> str:
+    """Insert optional comments into one freshly rendered candidate stub."""
+    if any(
+        "\n" in comment or not comment.lstrip().startswith("#") for comment in comments
+    ):
+        raise ValueError("candidate guidance must be single-line Python comments")
+
+    tree = ast.parse(source)
+    selected = selected_target(tree, target)
+    if selected is None:
+        raise ValueError(f"candidate target {target!r} is not unique")
+
+    functions: list[ast.FunctionDef | ast.AsyncFunctionDef]
+    if isinstance(selected, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        functions = [selected]
+    else:
+        class_end = selected.end_lineno or selected.lineno
+        functions = [
+            node
+            for node in ast.walk(selected)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and selected.lineno < node.lineno
+            and (node.end_lineno or node.lineno) <= class_end
+        ]
+
+    def is_stub(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        if not node.body or not isinstance(node.body[-1], ast.Raise):
+            return False
+        exception = node.body[-1].exc
+        if isinstance(exception, ast.Call):
+            exception = exception.func
+        return isinstance(exception, ast.Name) and exception.id == "NotImplementedError"
+
+    hosts = sorted(
+        (node for node in functions if is_stub(node)), key=lambda node: node.lineno
+    )
+    if not hosts:
+        raise ValueError(f"candidate target {target!r} has no implementation stub")
+    stub = hosts[0].body[-1]
+    padding = " " * stub.col_offset
+    block = [f"{padding}{comment}\n" for comment in comments]
+    lines = source.splitlines(keepends=True)
+    lines[stub.lineno - 1 : stub.lineno - 1] = block
+    return "".join(lines)
+
+
+def _render_candidate_with_comments(
+    source: str,
+    comments: tuple[str, ...],
+    target: str | None = None,
+) -> str:
+    """Return one cold public interface with exact optional comment prompts."""
     # Stripping every body is insufficient: alternate names, imports, comments,
     # and definition docstrings can still disclose the intended approach.
     original = ast.parse(source)
@@ -570,13 +653,17 @@ def render_candidate(source: str, paradigm: Paradigm, target: str | None = None)
         ast.fix_missing_locations(ast.Module(body=body, type_ignores=[]))
     )
     cold += "\n"
-    return inject_scaffold(
-        cold,
-        seeds=paradigm.seeds,
-        lock_sentinel=PRACTICE_LOCK,
-        lock_after=paradigm.lock_after,
-        target_name=selected.name,
+    return _insert_source_guidance(cold, selected.name, comments)
+
+
+def render_candidate(source: str, paradigm: Paradigm, target: str | None = None) -> str:
+    """Return one cold public interface with its minimum input-model surface."""
+    comments = (
+        (SOURCE_COMMENT_GUIDANCE,)
+        if paradigm in {PARADIGMS["comments"], PREPARED_PARADIGM}
+        else paradigm.seeds
     )
+    return _render_candidate_with_comments(source, comments, target)
 
 
 def present_problem(root: Path, topic: str, problem: str) -> str:
@@ -653,6 +740,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import os
 import subprocess
 import sys
 import types
@@ -672,6 +760,8 @@ SUPPORT: tuple[str, ...] = ()
 _REFERENCE: types.ModuleType | None = None
 _CANDIDATE_MODULE: types.ModuleType | None = None
 _REFERENCE_TARGET: object | None = None
+_FOCUSED_NODEIDS: set[str] = set()
+_PASSED_FOCUSED_NODEIDS: set[str] = set()
 
 
 def _committed_reference() -> types.ModuleType:
@@ -731,6 +821,7 @@ def pytest_configure() -> None:
 
 def pytest_collection_modifyitems(items: list[object]) -> None:
     """Repair direct aliases captured before the candidate facade was installed."""
+    global _FOCUSED_NODEIDS
     if _REFERENCE is None or _CANDIDATE_MODULE is None or _REFERENCE_TARGET is None:
         raise RuntimeError("practice plugin was not configured")
     candidate_target = getattr(_CANDIDATE_MODULE, TARGET)
@@ -747,13 +838,50 @@ def pytest_collection_modifyitems(items: list[object]) -> None:
     sys.modules[MODULE] = _CANDIDATE_MODULE
     setattr(parent, child_name, _CANDIDATE_MODULE)
     candidate_path = CANDIDATE_TEST.resolve()
-    if not any(
-        Path(str(getattr(item, "path", ""))).resolve() == candidate_path
+    candidate_items = [
+        item
         for item in items
-    ):
+        if Path(str(getattr(item, "path", ""))).resolve() == candidate_path
+    ]
+    if not candidate_items:
         raise pytest.UsageError(
             "candidate test file collected no tests; add a top-level test_ function"
         )
+    _FOCUSED_NODEIDS = {{
+        str(getattr(item, "nodeid", "")) for item in items
+    }}
+
+
+def pytest_runtest_logreport(report: object) -> None:
+    """Record real passing calls, excluding skips, xfails, and collection only."""
+    nodeid = str(getattr(report, "nodeid", ""))
+    if (
+        nodeid in _FOCUSED_NODEIDS
+        and getattr(report, "when", "") == "call"
+        and getattr(report, "outcome", "") == "passed"
+        and not getattr(report, "wasxfail", False)
+    ):
+        _PASSED_FOCUSED_NODEIDS.add(nodeid)
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session: object, exitstatus: int) -> None:
+    """Enforce focused calls, then write the parent completion marker."""
+    del exitstatus
+    missing = _FOCUSED_NODEIDS - _PASSED_FOCUSED_NODEIDS
+    if missing:
+        config = getattr(session, "config")
+        reporter = config.pluginmanager.get_plugin("terminalreporter")
+        if reporter is not None:
+            reporter.write_line(
+                "focused tests must run and pass; skipped or xfailed cases remain open",
+                red=True,
+            )
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
+    descriptor = int(os.environ["PRACTICE_TEST_COMPLETION_FD"])
+    token = os.environ["PRACTICE_TEST_COMPLETION_TOKEN"].encode()
+    os.write(descriptor, token)
+    os.close(descriptor)
 '''
 
 
@@ -784,13 +912,18 @@ def _parse_timestamp(value: object, field: str) -> str:
     return value
 
 
-def _validate_digest_map(value: object, field: str) -> dict[str, str]:
-    if not isinstance(value, dict) or set(value) != set(TEST_INPUT_KEYS):
+def _validate_digest_map(
+    value: object, field: str, *, allow_legacy: bool = False
+) -> dict[str, str]:
+    if not isinstance(value, dict) or (
+        set(value) != set(TEST_INPUT_KEYS)
+        and not (allow_legacy and set(value) == set(LEGACY_TEST_INPUT_KEYS))
+    ):
         raise PracticeError(
             f"invalid current-rep metadata: {field} must cover all test inputs"
         )
     result: dict[str, str] = {}
-    for key in TEST_INPUT_KEYS:
+    for key in value:
         digest = value.get(key)
         if type(digest) is not str or HEX_DIGEST.fullmatch(digest) is None:
             raise PracticeError(
@@ -828,7 +961,7 @@ def _required_file(root: Path, relative: str, *, workspace: bool) -> Path:
 def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise PracticeError("invalid current-rep metadata: expected an object")
-    required = {
+    current_required = {
         "schema",
         "session_id",
         "paradigm",
@@ -842,11 +975,23 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
         "reference_test",
         "plugin",
         "repl",
-        "seeds",
-        "pre_code_labels",
-        "lock",
         "created_at",
     }
+    legacy_fields = {"seeds", "pre_code_labels", "lock"}
+    schema = value.get("schema")
+    if type(schema) is not int or schema not in {
+        LEGACY_METADATA_SCHEMA,
+        METADATA_SCHEMA,
+    }:
+        raise PracticeError(
+            "invalid current-rep metadata: schema must be "
+            f"{METADATA_SCHEMA} or legacy {LEGACY_METADATA_SCHEMA}"
+        )
+    required = (
+        current_required | legacy_fields
+        if schema == LEGACY_METADATA_SCHEMA
+        else current_required
+    )
     finished_fields = {
         "finished_at",
         "finish_note",
@@ -884,10 +1029,6 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
         raise PracticeError(
             f"invalid current-rep metadata: partial closeout fields {missing}"
         )
-    if type(value["schema"]) is not int or value["schema"] != METADATA_SCHEMA:
-        raise PracticeError(
-            f"invalid current-rep metadata: schema must be {METADATA_SCHEMA}"
-        )
     session_id = value["session_id"]
     if type(session_id) is not str:
         raise PracticeError("invalid current-rep metadata: session_id must be text")
@@ -904,9 +1045,13 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
         if type(value[field]) is not str:
             raise PracticeError(f"invalid current-rep metadata: {field} must be text")
     paradigm_name = value["paradigm"]
-    paradigm = PARADIGMS.get(paradigm_name)
+    paradigm = _metadata_paradigm(paradigm_name)
     if paradigm is None:
         raise PracticeError("invalid current-rep metadata: unknown paradigm")
+    if paradigm_name == PREPARED_PARADIGM_NAME and not is_prepared:
+        raise PracticeError(
+            "invalid current-rep metadata: prepared paradigm requires prepared tabs"
+        )
     topic = value["topic"]
     problem = value["problem"]
     _validate_problem(topic, problem)
@@ -917,8 +1062,13 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
         target = _practice_target(topic, problem, committed)
     module = f"algo.{topic}.{problem}"
     candidate_name = f"{problem}.py"
+    expected_title = (
+        LEGACY_SCHEMA4_TITLES[paradigm_name]
+        if schema == LEGACY_METADATA_SCHEMA
+        else paradigm.title
+    )
     expected = {
-        "paradigm_title": paradigm.title,
+        "paradigm_title": expected_title,
         "target": target,
         "module": module,
         "source": (WORKSPACE_REL / candidate_name).as_posix(),
@@ -926,19 +1076,26 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
         "reference_test": (Path("tests") / topic / f"test_{problem}.py").as_posix(),
         "plugin": (WORKSPACE_REL / "practice_plugin.py").as_posix(),
         "repl": (WORKSPACE_REL / "repl.py").as_posix(),
-        "lock": PRACTICE_LOCK,
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
             raise PracticeError(
                 f"invalid current-rep metadata: {field} is not canonical"
             )
-    if value.get("seeds") != list(paradigm.seeds):
-        raise PracticeError("invalid current-rep metadata: seeds do not match paradigm")
-    if value.get("pre_code_labels") != list(paradigm.pre_code_labels):
-        raise PracticeError(
-            "invalid current-rep metadata: pre-code labels do not match paradigm"
-        )
+    if schema == LEGACY_METADATA_SCHEMA:
+        if value.get("lock") != LEGACY_SCHEMA4_LOCK:
+            raise PracticeError(
+                "invalid current-rep metadata: legacy lock is not canonical"
+            )
+        if value.get("seeds") != list(paradigm.seeds):
+            raise PracticeError(
+                "invalid current-rep metadata: legacy seeds do not match paradigm"
+            )
+        legacy_labels = _legacy_schema4_pre_code_labels(paradigm_name, paradigm)
+        if value.get("pre_code_labels") != list(legacy_labels):
+            raise PracticeError(
+                "invalid current-rep metadata: legacy labels do not match paradigm"
+            )
     _parse_timestamp(value["created_at"], "created_at")
 
     for field in ("source", "candidate_test", "plugin", "repl"):
@@ -968,11 +1125,26 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
             "not_run",
             "passed",
             "failed",
+            "timeout",
         }:
             raise PracticeError("invalid current-rep metadata: bad test_outcome")
-        _validate_digest_map(value["test_inputs_before"], "test_inputs_before")
-        _validate_digest_map(value["test_inputs_after"], "test_inputs_after")
-    return dict(value)
+        _validate_digest_map(
+            value["test_inputs_before"],
+            "test_inputs_before",
+            allow_legacy=True,
+        )
+        _validate_digest_map(
+            value["test_inputs_after"],
+            "test_inputs_after",
+            allow_legacy=True,
+        )
+    migrated = dict(value)
+    if schema == LEGACY_METADATA_SCHEMA:
+        migrated["schema"] = METADATA_SCHEMA
+        migrated["paradigm_title"] = paradigm.title
+        for field in legacy_fields:
+            migrated.pop(field)
+    return migrated
 
 
 def _journal_path(root: Path) -> Path:
@@ -1265,7 +1437,39 @@ def _practice_lock(
         handle.close()
 
 
-def _read_metadata(root: Path) -> dict[str, Any]:
+def _migrate_schema4_session(root: Path, metadata: dict[str, Any]) -> dict[str, Any]:
+    """Persist schema 5 and remove obsolete lexical-scoring artifacts.
+
+    Callers must hold the exclusive practice lock. Source is replaced first so
+    a crash can only leave schema 4 to retry, never schema 5 with a visible
+    legacy gate.
+    """
+    source = root / str(metadata["source"])
+    comment_receipt = _workspace(root) / LEGACY_COMMENT_RECEIPT_NAME
+    if comment_receipt.is_symlink():
+        raise PracticeError("legacy comment receipt cannot be a symlink")
+    if comment_receipt.exists() and not comment_receipt.is_file():
+        raise PracticeError("legacy comment receipt must be a regular file")
+    original = source.read_text()
+    migrated_source = "".join(
+        line
+        for line in original.splitlines(keepends=True)
+        if line.strip() != LEGACY_SCHEMA4_LOCK
+    )
+    if migrated_source != original:
+        _replace_file(source, migrated_source)
+    if comment_receipt.exists():
+        comment_receipt.unlink()
+        directory = os.open(comment_receipt.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    _replace_file(_metadata_path(root), json.dumps(metadata, indent=2) + "\n")
+    return metadata
+
+
+def _read_metadata(root: Path, *, migrate_legacy: bool = False) -> dict[str, Any]:
     _state_dir(root)
     workspace = _workspace(root)
     if workspace.is_symlink():
@@ -1283,7 +1487,11 @@ def _read_metadata(root: Path) -> dict[str, Any]:
         value = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
         raise PracticeError(f"invalid current-rep metadata: {exc}") from exc
-    return _validate_metadata(root, value)
+    legacy = isinstance(value, dict) and value.get("schema") == LEGACY_METADATA_SCHEMA
+    metadata = _validate_metadata(root, value)
+    if legacy and migrate_legacy:
+        return _migrate_schema4_session(root, metadata)
+    return metadata
 
 
 def current_metadata(root: Path) -> dict[str, Any]:
@@ -1300,7 +1508,7 @@ def _archive_current(root: Path) -> Path | None:
         return None
     _confined_directory(root, workspace, "practice workspace", create=False)
     try:
-        current = _read_metadata(root)
+        current = _read_metadata(root, migrate_legacy=True)
     except PracticeError:
         current = {}
     parts = [
@@ -1384,10 +1592,12 @@ def _prepared_workspace_is_pristine(root: Path, metadata: dict[str, Any]) -> boo
     target = str(metadata["target"])
     source_rel = Path("src/algo") / topic / f"{problem}.py"
     committed = _committed_source(root, source_rel)
+    paradigm = _metadata_paradigm(str(metadata["paradigm"]))
+    if paradigm is None:
+        return False
+    current_source = render_candidate(committed, paradigm, target)
+    legacy_source = _render_candidate_with_comments(committed, paradigm.seeds, target)
     expected = {
-        str(metadata["source"]): render_candidate(
-            committed, PARADIGMS[str(metadata["paradigm"])], target
-        ),
         str(metadata["candidate_test"]): _candidate_test(topic, problem, target),
         str(metadata["plugin"]): _pytest_plugin(
             str(metadata["module"]), f"{problem}.py", source_rel, target
@@ -1397,13 +1607,20 @@ def _prepared_workspace_is_pristine(root: Path, metadata: dict[str, Any]) -> boo
     workspace = _workspace(root)
     expected_entries = {
         (root / relative).relative_to(workspace) for relative in expected
-    } | {Path(METADATA_NAME)}
+    } | {
+        (root / str(metadata["source"])).relative_to(workspace),
+        Path(METADATA_NAME),
+    }
     entries = list(workspace.iterdir())
     if any(path.is_symlink() or not path.is_file() for path in entries):
         return False
     if {path.relative_to(workspace) for path in entries} != expected_entries:
         return False
-    return all(
+    source_matches = (root / str(metadata["source"])).read_text() in {
+        current_source,
+        legacy_source,
+    }
+    return source_matches and all(
         (root / relative).read_text() == text for relative, text in expected.items()
     )
 
@@ -1414,7 +1631,8 @@ def _prepared_session_error(
     current = f"{metadata['topic']}/{metadata['problem']}"
     return PracticeError(
         f"prepared candidate tabs contain unclosed work for {current}\n"
-        f"NEXT: keep it with `just practice-start comments {current.replace('/', ' ')}`; "
+        f"NEXT: keep it with `just practice-start {paradigm} "
+        f"{current.replace('/', ' ')}`; "
         "close the matching talk or board rep; or explicitly archive it with "
         f"`just practice-new {paradigm} {topic} {problem}`."
     )
@@ -1453,7 +1671,7 @@ def prepare_session(
             raise PracticeError("practice workspace cannot be a symlink")
         if workspace.exists() and not fresh:
             try:
-                metadata = _read_metadata(root)
+                metadata = _read_metadata(root, migrate_legacy=True)
             except PracticeError:
                 metadata = None
             if metadata is not None and "finished_at" not in metadata:
@@ -1464,12 +1682,10 @@ def prepare_session(
                 if _is_prepared(metadata):
                     if prepared_only and same_target:
                         return metadata, "resumed", None
-                    if (
-                        not prepared_only
-                        and same_target
-                        and metadata["paradigm"] == paradigm_name
-                    ):
+                    if not prepared_only and same_target:
                         activated = dict(metadata)
+                        activated["paradigm"] = paradigm_name
+                        activated["paradigm_title"] = paradigm.title
                         activated.pop("prepared_only")
                         activated.pop("presented_at", None)
                         _replace_file(
@@ -1498,7 +1714,11 @@ def prepare_session(
             raise PracticeError(f"missing reference tests: {reference_test_rel}")
         committed = _committed_source(root, source_rel)
         target = _practice_target(topic, problem, committed)
-        candidate = render_candidate(committed, paradigm, target)
+        session_paradigm_name = (
+            PREPARED_PARADIGM_NAME if prepared_only else paradigm_name
+        )
+        session_paradigm = PREPARED_PARADIGM if prepared_only else paradigm
+        candidate = render_candidate(committed, session_paradigm, target)
 
         challenges = _state_dir(root)
         temporary = Path(
@@ -1510,8 +1730,8 @@ def prepare_session(
         metadata = {
             "schema": METADATA_SCHEMA,
             "session_id": str(uuid.uuid4()),
-            "paradigm": paradigm_name,
-            "paradigm_title": paradigm.title,
+            "paradigm": session_paradigm_name,
+            "paradigm_title": session_paradigm.title,
             "topic": topic,
             "problem": problem,
             "target": target,
@@ -1521,9 +1741,6 @@ def prepare_session(
             "reference_test": reference_test_rel.as_posix(),
             "plugin": (WORKSPACE_REL / "practice_plugin.py").as_posix(),
             "repl": (WORKSPACE_REL / "repl.py").as_posix(),
-            "seeds": list(paradigm.seeds),
-            "pre_code_labels": list(paradigm.pre_code_labels),
-            "lock": PRACTICE_LOCK,
             "created_at": datetime.now(UTC).isoformat(),
         }
         if prepared_only:
@@ -1558,8 +1775,8 @@ def prepare_open_target(
     """Return safe candidate tabs for one exact selection.
 
     A matching unfinished workspace is reopened without changing its paradigm
-    or contents. With no current workspace, the ordinary-comments renderer
-    creates the same stripped candidate surface used by an editor rep. A
+    or contents. With no current workspace, a neutral renderer creates a
+    stripped candidate surface without selecting an editor paradigm. A
     different unfinished workspace keeps the normal switch boundary.
     """
     metadata, _, archived = prepare_session(
@@ -1577,10 +1794,14 @@ def prepare_open_target(
 
 def _cursor_line(root: Path, metadata: dict[str, Any]) -> int:
     path = root / str(metadata["source"])
-    first = str(metadata["seeds"][0]).split(":", 1)[0]
-    for number, line in enumerate(path.read_text().splitlines(), start=1):
-        if first in line:
-            return number
+    candidates = [SOURCE_COMMENT_GUIDANCE]
+    paradigm = _metadata_paradigm(str(metadata["paradigm"]))
+    if paradigm is not None:
+        candidates.extend(seed.split(":", 1)[0] for seed in paradigm.seeds)
+    for candidate in candidates:
+        for number, line in enumerate(path.read_text().splitlines(), start=1):
+            if candidate in line:
+                return number
     return 1
 
 
@@ -1590,9 +1811,16 @@ def open_session(root: Path, metadata: dict[str, Any]) -> bool:
     source = str(metadata["source"])
     candidate_test = str(metadata["candidate_test"])
     line = _cursor_line(root, metadata)
-    if code is None:
-        print(f"Open {source}:{line} and {candidate_test}")
+
+    def failed(reason: str) -> bool:
+        print(f"OPEN_FAILED: {reason}")
+        print(f"SOURCE: {source}")
+        print(f"TEST: {candidate_test}")
+        print("NEXT: Restore the code CLI, then run just practice-open.")
         return False
+
+    if code is None:
+        return failed("code CLI is unavailable")
     try:
         proc = subprocess.run(
             [code, "--reuse-window", candidate_test, "--goto", f"{source}:{line}"],
@@ -1601,12 +1829,12 @@ def open_session(root: Path, metadata: dict[str, Any]) -> bool:
             timeout=EDITOR_OPEN_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
-        print(f"Open {source}:{line} and {candidate_test}")
-        return False
+        return failed("code CLI timed out")
     if proc.returncode != 0:
-        print(f"Open {source}:{line} and {candidate_test}")
-        return False
-    print(f"Opened {source}:{line} and {candidate_test}")
+        return failed(f"code CLI exited {proc.returncode}")
+    print(f"OPENED: {source}:{line}")
+    print(f"SOURCE: {source}")
+    print(f"TEST: {candidate_test}")
     return True
 
 
@@ -1625,198 +1853,6 @@ def _print_start(
     if archived is not None:
         print(f"Previous workspace archived: {archived.relative_to(root)}")
     show_next(root, metadata)
-
-
-def _comment_evidence(source: str, metadata: dict[str, Any]) -> CommentEvidence:
-    return _comment_snapshot(source, metadata).evidence
-
-
-def _comment_snapshot(source: str, metadata: dict[str, Any]) -> CommentSnapshot:
-    seeds = tuple(str(seed) for seed in metadata["seeds"])
-    lock = str(metadata["lock"])
-    pre_required, _ = _comment_requirements(metadata)
-    return candidate_comment_snapshot(
-        source,
-        seeds=seeds,
-        lock_sentinel=lock,
-        pre_code_count=len(metadata["pre_code_labels"]),
-        natural_pre_code_count=pre_required,
-        target=str(metadata["target"]),
-    )
-
-
-def _comment_receipt_path(root: Path) -> Path:
-    return _workspace(root) / COMMENT_RECEIPT_NAME
-
-
-def _comment_key_digest(session_id: str, key: str) -> str:
-    return hashlib.sha256(f"{session_id}\0{key}".encode()).hexdigest()
-
-
-def _comment_key_digests(
-    snapshot: CommentSnapshot, session_id: str
-) -> tuple[set[str], set[str], set[str], set[str]]:
-    all_keys = {
-        _comment_key_digest(session_id, key) for key in snapshot.all_keys
-    }
-    pre_keys = {
-        _comment_key_digest(session_id, key) for key in snapshot.pre_keys
-    }
-    anchored_post_keys = {
-        _comment_key_digest(session_id, key)
-        for key in snapshot.anchored_post_keys
-    }
-    legacy_post_keys = {
-        _comment_key_digest(session_id, key)
-        for key in snapshot.legacy_post_keys
-    }
-    return all_keys, pre_keys, anchored_post_keys, legacy_post_keys
-
-
-def _read_comment_receipt(
-    root: Path, metadata: dict[str, Any]
-) -> CommentReceipt | None:
-    path = _comment_receipt_path(root)
-    if not path.exists():
-        return None
-    if path.is_symlink() or not path.is_file():
-        raise PracticeError("comment receipt must be a regular file")
-    try:
-        value = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise PracticeError(f"invalid comment receipt: {exc}") from exc
-    expected_fields = {"schema", "session_id", "armed", "observed", "accepted"}
-    if not isinstance(value, dict) or set(value) != expected_fields:
-        raise PracticeError("invalid comment receipt fields")
-    if value["schema"] != COMMENT_RECEIPT_SCHEMA:
-        raise PracticeError("invalid comment receipt schema")
-    if value["session_id"] != metadata["session_id"]:
-        raise PracticeError("comment receipt belongs to a different practice session")
-    if type(value["armed"]) is not bool:
-        raise PracticeError("invalid comment receipt armed state")
-
-    def digest_set(field: str) -> frozenset[str]:
-        items = value[field]
-        if not isinstance(items, list) or len(items) > MAX_COMMENT_RECEIPT_KEYS:
-            raise PracticeError(f"invalid comment receipt {field} list")
-        if any(type(item) is not str or HEX_DIGEST.fullmatch(item) is None for item in items):
-            raise PracticeError(f"invalid comment receipt {field} digest")
-        if len(set(items)) != len(items):
-            raise PracticeError(f"duplicate comment receipt {field} digest")
-        return frozenset(items)
-
-    observed = digest_set("observed")
-    accepted = digest_set("accepted")
-    if not accepted <= observed:
-        raise PracticeError("comment receipt accepted keys were not observed")
-    return CommentReceipt(bool(value["armed"]), observed, accepted)
-
-
-def _comment_receipt_text(
-    metadata: dict[str, Any], receipt: CommentReceipt
-) -> str:
-    value = {
-        "schema": COMMENT_RECEIPT_SCHEMA,
-        "session_id": metadata["session_id"],
-        "armed": receipt.armed,
-        "observed": sorted(receipt.observed),
-        "accepted": sorted(receipt.accepted),
-    }
-    return json.dumps(value, indent=2) + "\n"
-
-
-def _effective_comment_evidence(
-    root: Path,
-    metadata: dict[str, Any],
-    source: str,
-    snapshot: CommentSnapshot,
-) -> CommentEvidence:
-    receipt = _read_comment_receipt(root, metadata)
-    if receipt is None:
-        pre_required, _ = _comment_requirements(metadata)
-        post_count = (
-            len(snapshot.anchored_post_keys | snapshot.legacy_post_keys)
-            if str(metadata["lock"]) not in source
-            and len(snapshot.pre_keys) >= pre_required
-            else 0
-        )
-        return CommentEvidence(
-            len(snapshot.pre_keys), post_count
-        )
-    current, pre_keys, anchored_post, _legacy_post = _comment_key_digests(
-        snapshot, str(metadata["session_id"])
-    )
-    active_post = (set(receipt.accepted) & current) - pre_keys
-    if str(metadata["lock"]) not in source:
-        eligible = current if receipt.armed else anchored_post
-        active_post.update((current - set(receipt.observed)) & eligible)
-        active_post.difference_update(pre_keys)
-    return CommentEvidence(len(snapshot.pre_keys), len(active_post))
-
-
-def _advance_comment_receipt(
-    root: Path,
-    metadata: dict[str, Any],
-    source: str,
-    snapshot: CommentSnapshot,
-) -> CommentEvidence:
-    previous_receipt = _read_comment_receipt(root, metadata)
-    receipt = previous_receipt
-    if receipt is None:
-        receipt = CommentReceipt(False, frozenset(), frozenset())
-    current, pre_keys, anchored_post, legacy_post = _comment_key_digests(
-        snapshot, str(metadata["session_id"])
-    )
-    observed = set(receipt.observed)
-    accepted = set(receipt.accepted)
-    pre_required, _ = _comment_requirements(metadata)
-    locked = str(metadata["lock"]) in source
-    armed = receipt.armed
-    pre_complete = len(snapshot.pre_keys) >= pre_required
-    if locked or not pre_complete:
-        if locked and pre_complete:
-            armed = True
-    else:
-        if armed:
-            accepted.update(current - observed)
-        else:
-            initial_anchors = anchored_post
-            if previous_receipt is None:
-                initial_anchors |= legacy_post
-            accepted.update((current - observed) & initial_anchors)
-        armed = True
-    observed.update(current)
-    if len(observed) > MAX_COMMENT_RECEIPT_KEYS:
-        raise PracticeError(
-            "comment receipt is full; start a fresh rep before adding more comments"
-        )
-    accepted.intersection_update(observed)
-    updated = CommentReceipt(armed, frozenset(observed), frozenset(accepted))
-    source_path = root / str(metadata["source"])
-    if source_path.read_text() != source:
-        raise PracticeError("source changed while reading comments; run /continue again")
-    receipt_path = _comment_receipt_path(root)
-    _replace_file(receipt_path, _comment_receipt_text(metadata, updated))
-    if source_path.read_text() != source:
-        if previous_receipt is None:
-            if receipt_path.is_symlink():
-                raise PracticeError(
-                    "comment receipt became a symlink while reading comments"
-                )
-            receipt_path.unlink(missing_ok=True)
-        else:
-            _replace_file(
-                receipt_path,
-                _comment_receipt_text(metadata, previous_receipt),
-            )
-        raise PracticeError("source changed while reading comments; run /continue again")
-    active_post = (accepted & current) - pre_keys
-    return CommentEvidence(len(snapshot.pre_keys), len(active_post))
-
-
-def _comment_requirements(metadata: dict[str, Any]) -> tuple[int, int]:
-    pre_code = min(MAX_REQUIRED_PRE_CODE_COMMENTS, len(metadata["pre_code_labels"]))
-    return pre_code, REQUIRED_POST_CODE_COMMENTS
 
 
 def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
@@ -1839,7 +1875,7 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
     def literal(value: ast.expr) -> object:
         try:
             return ast.literal_eval(value)
-        except (ValueError, TypeError, RecursionError):
+        except ValueError, TypeError, RecursionError:
             return unknown
 
     def resolved_literal(value: ast.expr, env: dict[str, binding_type]) -> object:
@@ -1862,9 +1898,7 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
         path.append(current.id)
         return tuple(reversed(path))
 
-    def resolve_binding(
-        value: ast.expr, env: dict[str, binding_type]
-    ) -> binding_type:
+    def resolve_binding(value: ast.expr, env: dict[str, binding_type]) -> binding_type:
         if isinstance(value, ast.Name):
             return env.get(value.id, other_binding)
         path = attribute_path(value)
@@ -1959,19 +1993,15 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
             }:
                 kinds.add(resolved)
             elif (
-                (
-                    resolved == "function"
-                    and resolved_node is not None
-                    and id(resolved_node) in identity_decorators
+                resolved == "function"
+                and resolved_node is not None
+                and id(resolved_node) in identity_decorators
+            ) or (
+                isinstance(base, ast.Name)
+                and (
+                    base.id == "staticmethod" or (in_class and base.id == "classmethod")
                 )
-                or (
-                    isinstance(base, ast.Name)
-                    and (
-                        base.id == "staticmethod"
-                        or (in_class and base.id == "classmethod")
-                    )
-                    and base.id not in env
-                )
+                and base.id not in env
             ):
                 kinds.add("safe_decorator")
             else:
@@ -2019,9 +2049,7 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
             object_flags[id(subject)] = value
         return True
 
-    def delete_object_flag(
-        target: ast.expr, env: dict[str, binding_type]
-    ) -> bool:
+    def delete_object_flag(target: ast.expr, env: dict[str, binding_type]) -> bool:
         if not (
             isinstance(target, ast.Attribute)
             and target.attr == "__test__"
@@ -2142,7 +2170,11 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
             elif isinstance(statement, ast.ClassDef):
                 bases: list[binding_type] = []
                 for base in statement.bases:
-                    if isinstance(base, ast.Name) and base.id == "object" and base.id not in env:
+                    if (
+                        isinstance(base, ast.Name)
+                        and base.id == "object"
+                        and base.id not in env
+                    ):
                         bases.append(("object_base", base))
                     else:
                         bases.append(resolve_binding(base, env))
@@ -2204,9 +2236,7 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
         )
 
     module_bindings, module_flag = analyze_namespace(tree.body, {}, in_class=False)
-    if module_flag is unknown or (
-        module_flag is not missing and not bool(module_flag)
-    ):
+    if module_flag is unknown or (module_flag is not missing and not bool(module_flag)):
         return 0
 
     def node_flag(node: ast.AST) -> object:
@@ -2270,7 +2300,9 @@ def _candidate_test_count(root: Path, metadata: dict[str, Any]) -> int:
         if "__init__" in members or "__new__" in members:
             return True
         next_seen = seen | {id(node)}
-        return any(constructor_blocked(base, next_seen) for base in inherited_nodes(node))
+        return any(
+            constructor_blocked(base, next_seen) for base in inherited_nodes(node)
+        )
 
     def abstract_names(
         node: ast.ClassDef, seen: frozenset[int] = frozenset()
@@ -2364,7 +2396,7 @@ def _candidate_source_syntax(source: str) -> str | None:
 
 def _target_definition(source: str, target: str) -> ast.AST | None:
     tree = ast.parse(source)
-    selected = _selected_target(tree, target)
+    selected = selected_target(tree, target)
     if selected is None or (
         isinstance(selected, ast.ClassDef)
         and not any(
@@ -2381,128 +2413,157 @@ def _target_is_implemented(source: str, target: str) -> bool:
     if selected is None:
         return False
 
-    def is_not_implemented(node: ast.AST) -> bool:
-        if not isinstance(node, ast.Raise) or node.exc is None:
-            return False
-        exc = node.exc.func if isinstance(node.exc, ast.Call) else node.exc
-        return isinstance(exc, ast.Name) and exc.id == "NotImplementedError"
+    return not any(_is_not_implemented(node) for node in ast.walk(selected))
 
-    return not any(is_not_implemented(node) for node in ast.walk(selected))
+
+def _is_not_implemented(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Raise) or node.exc is None:
+        return False
+    exc = node.exc.func if isinstance(node.exc, ast.Call) else node.exc
+    return isinstance(exc, ast.Name) and exc.id == "NotImplementedError"
+
+
+def _target_is_started(source: str, target: str) -> bool:
+    """Return whether executable candidate work exists beside any cold stubs."""
+    selected = _target_definition(source, target)
+    if selected is None:
+        return False
+
+    def body_started(body: list[ast.stmt]) -> bool:
+        for index, statement in enumerate(body):
+            if (
+                index == 0
+                and isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Constant)
+                and isinstance(statement.value.value, str)
+            ):
+                continue
+            if _is_not_implemented(statement):
+                continue
+            if isinstance(
+                statement,
+                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
+            ):
+                if body_started(statement.body):
+                    return True
+                continue
+            return True
+        return False
+
+    return body_started(selected.body)
 
 
 def show_status(root: Path, metadata: dict[str, Any]) -> int:
     source = (root / str(metadata["source"])).read_text()
-    snapshot = _comment_snapshot(source, metadata)
-    evidence = _effective_comment_evidence(root, metadata, source, snapshot)
-    pre_required, post_required = _comment_requirements(metadata)
-    print(f"pre-code comments: {min(evidence.pre_code, pre_required)}/{pre_required}")
-    print(
-        f"post-code comments: {min(evidence.post_code, post_required)}/{post_required}"
-    )
-    print(f"lock: {'locked' if str(metadata['lock']) in source else 'unlocked'}")
+    syntax_error = _candidate_source_syntax(source)
+    if syntax_error is not None:
+        print("target: syntax error")
+    else:
+        target = str(metadata["target"])
+        definition = _target_definition(source, target)
+        if definition is None:
+            print("target: missing")
+        else:
+            status = "started" if _target_is_started(source, target) else "stub"
+            print(f"target: {status}")
     try:
         count = _candidate_test_count(root, metadata)
     except PracticeError:
         print("candidate tests: syntax error")
+        print(f"focused tests: {_test_receipt_status(root, metadata)}")
         return 1
     print(f"candidate tests: {count}")
+    print(f"focused tests: {_test_receipt_status(root, metadata)}")
     return 0
 
 
-def _next_step_from_source(
+def _next_source_native_step(
     root: Path,
     metadata: dict[str, Any],
     source: str,
-    evidence: CommentEvidence,
 ) -> tuple[str, str]:
+    """Derive mechanical state without pretending to understand prose."""
     if _candidate_source_syntax(source) is not None:
-        return "BUILD", "Fix the syntax error in your source file, then run /continue."
+        return (
+            "BUILD",
+            "Fix the syntax error in your source file, save, then run /continue.",
+        )
     target = str(metadata["target"])
     if _target_definition(source, target) is None:
         return (
             "BUILD",
-            f"Restore the required `{target}` definition, then run /continue.",
+            f"Restore the required `{target}` definition, save, then run /continue.",
         )
-
-    pre_required, post_required = _comment_requirements(metadata)
-    if evidence.pre_code < pre_required:
-        remaining = pre_required - evidence.pre_code
-        noun = "comment" if remaining == 1 else "comments"
-        location = (
-            "above the gate"
-            if str(metadata["lock"]) in source
-            else "before the implementation"
-        )
+    if not _target_is_started(source, target):
         return (
             "THINK",
-            f"Add {remaining} more ordinary reasoning {noun} {location}, "
-            "save, then run /continue.",
+            "Work through the problem in ordinary source comments or a docstring. "
+            "When your plan is clear, implement it, save, then run /continue.",
         )
-    if str(metadata["lock"]) in source:
+    if not _target_is_implemented(source, target):
         return (
-            "THINK",
-            "Delete the THINKING GATE yourself, then implement below it.",
+            "BUILD",
+            "Continue the implementation until the selected target has no cold "
+            "stubs, save, then run /continue.",
         )
-
     try:
         candidate_test_count = _candidate_test_count(root, metadata)
     except PracticeError:
-        return "BUILD", "Fix the syntax error in your test file, then run /continue."
-
-    if (
-        not _target_is_implemented(source, str(metadata["target"]))
-        or candidate_test_count == 0
-    ):
         return (
             "BUILD",
-            "Implement the solution and add at least one focused test in your test file.",
+            "Fix the syntax error in your test file, save, then run /continue.",
+        )
+    if candidate_test_count == 0:
+        return (
+            "BUILD",
+            "Add at least one focused candidate test, save, then run /continue.",
         )
 
-    post_actions = (
-        (
-            "BUILD",
-            "Write a new ordinary implementation comment beside the code it explains, "
-            "save, then run /continue.",
-        ),
-        (
+    test_status = _test_receipt_status(root, metadata)
+    if test_status == "passed":
+        return (
+            "CLOSE",
+            "Reconcile the saved comments, code, trace, and tests, then use "
+            "just practice-finish.",
+        )
+    if test_status == "failed":
+        return (
             "REFLECT",
-            "Write a new ordinary comment tracing the saved example through the code, "
-            "save, then run /continue.",
-        ),
-        (
+            "Use the focused failure to revise your code, comments, or tests; "
+            "save, then rerun just practice-test.",
+        )
+    if test_status == "timeout":
+        return (
             "REFLECT",
-            "Write a new ordinary comment with final complexity or a remaining edge, "
-            "save, then run /continue.",
-        ),
-    )
-    if evidence.post_code < post_required:
-        return post_actions[min(evidence.post_code, len(post_actions) - 1)]
-
+            "The focused run timed out. Check the implementation and edge cases, "
+            "then rerun just practice-test.",
+        )
+    if test_status == "stale":
+        return (
+            "REFLECT",
+            "The saved files changed after the last focused run. Reconcile them, "
+            "then rerun just practice-test.",
+        )
     return (
-        "CLOSE",
-        "Run just practice-test, reconcile comments with code, then use just practice-finish.",
+        "REFLECT",
+        "Trace a saved example against the code and candidate test, then run "
+        "just practice-test.",
     )
 
 
 def next_step(root: Path, metadata: dict[str, Any]) -> tuple[str, str]:
-    """Return the current state without advancing temporal comment evidence."""
+    """Return the current state without advancing or judging prose."""
     source = (root / str(metadata["source"])).read_text()
-    snapshot = _comment_snapshot(source, metadata)
-    evidence = _effective_comment_evidence(root, metadata, source, snapshot)
-    return _next_step_from_source(root, metadata, source, evidence)
+    return _next_source_native_step(root, metadata, source)
 
 
 def show_next(root: Path, metadata: dict[str, Any]) -> int:
     with _practice_lock(root):
-        current = _read_metadata(root)
+        current = _read_metadata(root, migrate_legacy=True)
         if metadata.get("session_id") != current["session_id"]:
             raise PracticeError("stale rep session; reload `just practice-current`")
         source = (root / str(current["source"])).read_text()
-        snapshot = _comment_snapshot(source, current)
-        evidence = _advance_comment_receipt(root, current, source, snapshot)
-        state, next_action = _next_step_from_source(
-            root, current, source, evidence
-        )
+        state, next_action = _next_source_native_step(root, current, source)
     print(f"STATE: {state}")
     print(f"SOURCE: {current['source']}")
     print(f"TEST: {current['candidate_test']}")
@@ -2600,7 +2661,7 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
     normalized_note = _normalized_note(note)
     test_run: TestRun | None = None
     with _practice_lock(root):
-        current = _read_metadata(root)
+        current = _read_metadata(root, migrate_legacy=True)
         if supplied_id != current["session_id"]:
             raise PracticeError(
                 "stale rep session; reload `just practice-current` before closing"
@@ -2622,9 +2683,8 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
             ) from exc
 
         source = (root / str(current["source"])).read_text()
-        snapshot = _comment_snapshot(source, current)
-        evidence = _advance_comment_receipt(root, current, source, snapshot)
-        state, _ = _next_step_from_source(root, current, source, evidence)
+        state, _ = _next_source_native_step(root, current, source)
+        receipt_status = _test_receipt_status(root, current)
         if state == "CLOSE":
             before = _prepare_test_run(root, current, require_unlocked=True)
         else:
@@ -2635,12 +2695,14 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
         test_outcome = "passed" if test_run.returncode == 0 else "failed"
     else:
         after = dict(before)
-        test_outcome = "not_run"
+        test_outcome = (
+            receipt_status if receipt_status in {"failed", "timeout"} else "not_run"
+        )
 
     with _practice_lock(root):
         if test_run is not None:
             _restore_plugin_for_same_session(root, current)
-        current = _read_metadata(root)
+        current = _read_metadata(root, migrate_legacy=True)
         if supplied_id != current["session_id"]:
             raise PracticeError(
                 "stale rep session; reload `just practice-current` before closing"
@@ -2652,17 +2714,34 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
         if "finished_at" in current:
             _print_closed(paradigm, key, str(current["test_outcome"]))
             return 0
-        if test_run is not None and test_run.timed_out:
-            raise PracticeError(
-                f"focused tests exceeded {_test_timeout_seconds()} seconds; "
-                "the rep remains open"
-            )
         if before != after:
             raise PracticeError(
                 "test inputs changed while pytest was running; retry before closing"
             )
         if _test_input_digests(root, current) != after:
             raise PracticeError("practice files changed while closing; retry")
+        if (
+            test_run is not None
+            and not test_run.timed_out
+            and not test_run.completed
+        ):
+            raise PracticeError(
+                "focused tests ended before pytest completed; the rep remains open"
+            )
+        if test_run is not None:
+            outcome = (
+                "timeout"
+                if test_run.timed_out
+                else ("passed" if test_run.returncode == 0 else "failed")
+            )
+            _write_test_receipt(root, current, outcome, after)
+        if test_run is not None and test_run.timed_out:
+            raise PracticeError(
+                f"focused tests exceeded {_test_timeout_seconds()} seconds; "
+                "the rep remains open"
+            )
+        if test_run is not None and test_run.returncode != 0:
+            raise PracticeError("focused tests failed; the rep remains open")
         final_state, _ = next_step(root, current)
         if final_state != state:
             raise PracticeError("practice state changed while closing; retry")
@@ -2757,7 +2836,7 @@ def finish_non_editor(root: Path, topic: str, problem: str, line: str) -> int:
         current: dict[str, Any] | None = None
         metadata_path = _metadata_path(root)
         if metadata_path.exists() or metadata_path.is_symlink():
-            candidate = _read_metadata(root)
+            candidate = _read_metadata(root, migrate_legacy=True)
             if _is_prepared(candidate) and (
                 candidate["topic"],
                 candidate["problem"],
@@ -2821,6 +2900,7 @@ def finish_non_editor(root: Path, topic: str, problem: str, line: str) -> int:
 
 
 def _require_unlocked(root: Path, metadata: dict[str, Any]) -> None:
+    """Require a safe, parseable candidate target before executing it."""
     source = (root / str(metadata["source"])).read_text()
     syntax_error = _candidate_source_syntax(source)
     if syntax_error is not None:
@@ -2828,28 +2908,6 @@ def _require_unlocked(root: Path, metadata: dict[str, Any]) -> None:
     target = str(metadata["target"])
     if _target_definition(source, target) is None:
         raise PracticeError(f"source no longer defines required target {target!r}")
-    evidence = _comment_evidence(source, metadata)
-    pre_required, _ = _comment_requirements(metadata)
-    remaining = max(0, pre_required - evidence.pre_code)
-    if str(metadata["lock"]) in source:
-        if remaining:
-            noun = "comment" if remaining == 1 else "comments"
-            raise PracticeError(
-                "thinking gate is still locked; add "
-                f"{remaining} ordinary reasoning {noun} above it, save, then "
-                "delete the gate yourself"
-            )
-        raise PracticeError(
-            "thinking gate is still locked; delete the gate yourself before "
-            "running code"
-        )
-    if remaining:
-        noun = "comment" if remaining == 1 else "comments"
-        raise PracticeError(
-            "thinking gate was removed before enough pre-code reasoning was "
-            f"present; add {remaining} ordinary {noun} before the implementation "
-            "and save"
-        )
 
 
 def _practice_env(root: Path) -> dict[str, str]:
@@ -2864,10 +2922,15 @@ def _practice_env(root: Path) -> dict[str, str]:
     return env
 
 
-def _pytest_args(metadata: dict[str, Any]) -> list[str]:
+def _pytest_args(root: Path, metadata: dict[str, Any]) -> list[str]:
     return [
         "-m",
         "pytest",
+        "-c",
+        os.devnull,
+        "--rootdir",
+        str(root),
+        "--noconftest",
         "-p",
         "practice_plugin",
         str(metadata["reference_test"]),
@@ -2879,13 +2942,104 @@ def _pytest_args(metadata: dict[str, Any]) -> list[str]:
 def _test_input_digests(root: Path, metadata: dict[str, Any]) -> dict[str, str]:
     digests: dict[str, str] = {}
     for key in TEST_INPUT_KEYS:
-        path = root / str(metadata[key])
-        try:
-            contents = path.read_bytes()
-        except OSError as exc:
-            raise PracticeError(f"cannot digest test input {path}: {exc}") from exc
+        if key == "reference_source":
+            relative = (
+                Path("src/algo") / str(metadata["topic"]) / f"{metadata['problem']}.py"
+            )
+            contents = _committed_source(root, relative).encode()
+        elif key == "runtime_sources":
+            tree = hashlib.sha256()
+            source_root = root / "src"
+            try:
+                paths = sorted(source_root.rglob("*.py"))
+                for path in paths:
+                    if path.is_symlink() or not path.is_file():
+                        raise PracticeError(
+                            "cannot digest runtime source tree: "
+                            f"{path} is not a regular file"
+                        )
+                    relative = path.relative_to(root).as_posix().encode()
+                    contents = path.read_bytes()
+                    tree.update(len(relative).to_bytes(8, "big"))
+                    tree.update(relative)
+                    tree.update(len(contents).to_bytes(8, "big"))
+                    tree.update(contents)
+            except OSError as exc:
+                raise PracticeError(
+                    f"cannot digest runtime source tree: {exc}"
+                ) from exc
+            digests[key] = tree.hexdigest()
+            continue
+        else:
+            path = root / str(metadata[key])
+            try:
+                contents = path.read_bytes()
+            except OSError as exc:
+                raise PracticeError(f"cannot digest test input {path}: {exc}") from exc
         digests[key] = hashlib.sha256(contents).hexdigest()
     return digests
+
+
+def _test_receipt_path(root: Path) -> Path:
+    return _workspace(root) / TEST_RECEIPT_NAME
+
+
+def _read_test_receipt(root: Path, metadata: dict[str, Any]) -> TestReceipt | None:
+    path = _test_receipt_path(root)
+    if not path.exists():
+        return None
+    if path.is_symlink() or not path.is_file():
+        raise PracticeError("test receipt must be a regular file")
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PracticeError(f"invalid test receipt: {exc}") from exc
+    expected_fields = {"schema", "session_id", "outcome", "inputs"}
+    if not isinstance(value, dict) or set(value) != expected_fields:
+        raise PracticeError("invalid test receipt fields")
+    schema = value["schema"]
+    if type(schema) is not int:
+        raise PracticeError("invalid test receipt schema")
+    if schema == 1:
+        return None
+    if schema != TEST_RECEIPT_SCHEMA:
+        raise PracticeError("invalid test receipt schema")
+    if value["session_id"] != metadata["session_id"]:
+        raise PracticeError("test receipt belongs to a different practice session")
+    outcome = value["outcome"]
+    if outcome not in {"passed", "failed", "timeout"}:
+        raise PracticeError("invalid test receipt outcome")
+    try:
+        inputs = _validate_digest_map(value["inputs"], "test receipt inputs")
+    except PracticeError as exc:
+        raise PracticeError(str(exc).replace("current-rep metadata: ", "")) from exc
+    return TestReceipt(str(outcome), inputs)
+
+
+def _write_test_receipt(
+    root: Path,
+    metadata: dict[str, Any],
+    outcome: str,
+    inputs: dict[str, str],
+) -> None:
+    if outcome not in {"passed", "failed", "timeout"}:
+        raise PracticeError("refusing to write an invalid test outcome")
+    value = {
+        "schema": TEST_RECEIPT_SCHEMA,
+        "session_id": metadata["session_id"],
+        "outcome": outcome,
+        "inputs": inputs,
+    }
+    _replace_file(_test_receipt_path(root), json.dumps(value, indent=2) + "\n")
+
+
+def _test_receipt_status(root: Path, metadata: dict[str, Any]) -> str:
+    receipt = _read_test_receipt(root, metadata)
+    if receipt is None:
+        return "never"
+    if receipt.inputs != _test_input_digests(root, metadata):
+        return "stale"
+    return receipt.outcome
 
 
 def _require_committed_reference_test(root: Path, metadata: dict[str, Any]) -> None:
@@ -3003,22 +3157,43 @@ def _execute_test_run(
     root: Path, metadata: dict[str, Any], before: dict[str, str]
 ) -> TestRun:
     timeout = _test_timeout_seconds()
+    read_fd, write_fd = os.pipe()
+    token = uuid.uuid4().hex
+    env = _practice_env(root)
+    env["PRACTICE_TEST_COMPLETION_FD"] = str(write_fd)
+    env["PRACTICE_TEST_COMPLETION_TOKEN"] = token
     try:
-        proc = subprocess.Popen(
-            [sys.executable, *_pytest_args(metadata)],
-            cwd=root,
-            env=_practice_env(root),
-            start_new_session=True,
-        )
+        try:
+            proc = subprocess.Popen(
+                [sys.executable, *_pytest_args(root, metadata)],
+                cwd=root,
+                env=env,
+                start_new_session=True,
+                pass_fds=(write_fd,),
+            )
+        finally:
+            os.close(write_fd)
     except OSError as exc:
+        os.close(read_fd)
         raise PracticeError(f"cannot launch focused tests: {exc}") from exc
     try:
         exited = _wait_for_test_process(proc, timeout)
     except BaseException:
         with suppress(Exception):
             _sweep_test_process_group(proc)
+        os.close(read_fd)
         raise
     returncode = _sweep_test_process_group(proc)
+    try:
+        readable, _, _ = select.select(
+            [read_fd],
+            [],
+            [],
+            TEST_ATTEST_WAIT_SECONDS,
+        )
+        completion = os.read(read_fd, len(token) + 1) if readable else b""
+    finally:
+        os.close(read_fd)
     timed_out = not exited
     if timed_out:
         returncode = 124
@@ -3028,6 +3203,7 @@ def _execute_test_run(
         before=before,
         after=after,
         timed_out=timed_out,
+        completed=completion == token.encode(),
     )
 
 
@@ -3068,18 +3244,26 @@ def _restore_plugin_for_same_session(root: Path, metadata: dict[str, Any]) -> No
 
 
 def run_tests(root: Path, metadata: dict[str, Any]) -> int:
-    with _practice_lock(root, shared=True):
-        current = _read_metadata(root)
+    with _practice_lock(root):
+        current = _read_metadata(root, migrate_legacy=True)
         if metadata.get("session_id") != current["session_id"]:
             raise PracticeError("stale rep session; reload `just practice-current`")
         before = _prepare_test_run(root, current, require_unlocked=True)
     result = _execute_test_run(root, current, before)
     with _practice_lock(root):
         _restore_plugin_for_same_session(root, current)
-        latest = _read_metadata(root)
+        latest = _read_metadata(root, migrate_legacy=True)
         if current["session_id"] != latest["session_id"]:
             raise PracticeError("stale rep session; reload `just practice-current`")
         latest_digests = _test_input_digests(root, latest)
+        stable = result.fresh and latest_digests == result.after
+        if stable and (result.completed or result.timed_out):
+            outcome = (
+                "timeout"
+                if result.timed_out
+                else ("passed" if result.returncode == 0 else "failed")
+            )
+            _write_test_receipt(root, latest, outcome, latest_digests)
     if result.timed_out:
         print(
             f"practice: focused tests exceeded {_test_timeout_seconds()} seconds; "
@@ -3087,7 +3271,14 @@ def run_tests(root: Path, metadata: dict[str, Any]) -> int:
             file=sys.stderr,
         )
         return 124
-    if not result.fresh or latest_digests != result.after:
+    if not result.completed:
+        print(
+            "practice: focused tests ended before pytest completed; "
+            "the rep remains open",
+            file=sys.stderr,
+        )
+        return 3
+    if not stable:
         print(
             "practice: test inputs changed while pytest was running; "
             "rerun for a fresh result",
@@ -3142,7 +3333,7 @@ def _parser() -> argparse.ArgumentParser:
     start.add_argument("--fresh", action="store_true")
     start.add_argument("--no-open", action="store_true")
     present = commands.add_parser(
-        "present", help="print one committed cold statement without opening the editor"
+        "present", help="open one safe candidate pair, then print its cold statement"
     )
     present.add_argument("topic", nargs="?")
     present.add_argument("problem", nargs="?")
@@ -3180,7 +3371,13 @@ def main() -> int:
     args = _parser().parse_args()
     try:
         if args.command == "present":
-            topic, problem = select_problem(ROOT, args.topic, args.problem)
+            metadata = prepare_open_target(ROOT, args.topic, args.problem)
+            topic = str(metadata["topic"])
+            problem = str(metadata["problem"])
+            if not os.environ.get("PRACTICE_NO_OPEN") and not open_session(
+                ROOT, metadata
+            ):
+                return 1
             print(present_problem(ROOT, topic, problem).rstrip())
             print()
             print(f"PRACTICE: {topic}/{problem}")
@@ -3203,8 +3400,12 @@ def main() -> int:
                 args.problem,
                 fresh=args.fresh,
             )
-            if not args.no_open and not os.environ.get("PRACTICE_NO_OPEN"):
-                open_session(ROOT, metadata)
+            if (
+                not args.no_open
+                and not os.environ.get("PRACTICE_NO_OPEN")
+                and not open_session(ROOT, metadata)
+            ):
+                return 1
             _print_start(ROOT, metadata, action, archived)
             return 0
         if args.command == "log":
@@ -3218,7 +3419,7 @@ def main() -> int:
                 if args.topic is not None or args.problem is not None:
                     metadata = prepare_open_target(ROOT, args.topic, args.problem)
                 else:
-                    metadata = _read_metadata(ROOT)
+                    metadata = _read_metadata(ROOT, migrate_legacy=True)
                 return 0 if open_session(ROOT, metadata) else 1
 
         metadata = current_metadata(ROOT)

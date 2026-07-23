@@ -38,9 +38,9 @@ Choose one lane:
 
 ## Start a rep
 
-With Copilot Chat installed and signed in, enter `/comments`. It uses ordinary
-reasoning comments with no required labels or prefixes. Add a topic and problem
-to choose one:
+With Copilot Chat installed and signed in, enter `/comments`. It starts a rep
+whose reasoning lives in ordinary source comments or docstrings, with no
+required labels or prefixes. Add a topic and problem to choose one:
 
 ```text
 /comments arrays two_sum
@@ -55,10 +55,12 @@ just practice-start comments
 just practice-start comments arrays two_sum
 ```
 
-Your source and test file open under `.challenges/workspace/`. Fill the
-reasoning comments, save, then delete the `THINKING GATE` yourself. Implement
-the solution and add focused tests. If the tabs do not open, the command prints
-their paths; `just practice-open` tries again.
+Your source and test file open under `.challenges/workspace/`. Write ordinary
+source comments or docstrings in your own words, save, then enter `/continue`
+or run `just practice-next`. The comments belong in the file, not Chat, and
+need no prefixes, minimum count, or gate deletion. Implement the solution and
+add focused tests. If the tabs do not open, the command prints their paths;
+`just practice-open` tries again.
 
 ## Continue and close
 
@@ -76,7 +78,8 @@ stays gitignored. Run `just doctor` when the toolchain looks wrong.
 
 Candidate tests are trusted local Python, not a sandbox. The runner bounds test
 time and cleans the pytest process group, but candidate tests must not launch
-detached or background daemons.
+detached or background daemons. Test receipts detect ordinary staleness and
+incomplete runs; they are workflow evidence, not a tamper-resistant boundary.
 
 Claude Code, Codex, and other external agents are optional. Install,
 authenticate, and launch the one you already use; the repository does not

@@ -1,9 +1,10 @@
-"""CI guard: fail if the generated Copilot files drift from the AGENTS.md persona.
+"""CI guard: fail if generated interviewer surfaces drift from their sources.
 
 AGENTS.md is the single source of truth for the resident-interviewer persona.
 `scripts/gen_agent_instructions.py` fans it out to the Copilot instruction
-files; this guard regenerates the expected content in memory and compares it to
-what is committed. Any mismatch (or a missing output) is drift — regenerate with
+files. The portable ``.agents`` interviewer skill is mirrored to ``.claude``.
+This guard regenerates the expected content in memory and compares it to what
+is committed. Any mismatch (or a missing output) is drift — regenerate with
 `just gen-agents` and commit the result.
 """
 
@@ -13,12 +14,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gen_agent_instructions import ROOT, PersonaMarkerError, generated_files
+from gen_agent_instructions import ROOT, PersonaMarkerError, all_generated_files
 
 
 def main() -> int:
     try:
-        files = generated_files()
+        files = all_generated_files()
     except (FileNotFoundError, PersonaMarkerError) as exc:
         print(f"Agent instruction guard failed: {exc}", file=sys.stderr)
         return 1
@@ -34,7 +35,7 @@ def main() -> int:
     if stale:
         print(
             "Agent instruction drift (generated files disagree with the "
-            "AGENTS.md persona):",
+            "portable interviewer sources):",
             file=sys.stderr,
         )
         for entry in stale:
@@ -43,7 +44,7 @@ def main() -> int:
         return 1
 
     rels = ", ".join(sorted(path.relative_to(ROOT).as_posix() for path in files))
-    print(f"Agent instruction guard passed; generated files match AGENTS.md: {rels}")
+    print(f"Agent instruction guard passed; generated files match sources: {rels}")
     return 0
 
 

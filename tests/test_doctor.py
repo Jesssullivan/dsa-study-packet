@@ -25,6 +25,7 @@ def test_git_is_a_required_core_tool(
         "which",
         lambda name: f"/tools/{name}" if name in {"uv", "just"} else None,
     )
+    monkeypatch.setattr(doctor, "pytest_interpreter", lambda: None)
 
     assert doctor.main() == 1
 
@@ -34,24 +35,32 @@ def test_git_is_a_required_core_tool(
     assert captured.err == "MISSING core tools: git\n"
 
 
-def test_codespaces_reports_builtin_copilot_and_editor_first_entrypoint(
+def test_codespaces_separates_environment_from_copilot_access(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CODESPACES", "true")
-    (tmp_path / ".venv").mkdir()
     monkeypatch.setattr(
         doctor.shutil,
         "which",
         lambda name: f"/tools/{name}" if name in {"uv", "just", "git"} else None,
     )
+    monkeypatch.setattr(
+        doctor,
+        "pytest_interpreter",
+        lambda: Path(".venv/bin/python"),
+    )
 
     assert doctor.main() == 0
 
     captured = capsys.readouterr()
-    assert "copilot    ok   built into Codespaces" in captured.out
-    assert "venv: .venv present; 'uv run pytest -q' should work" in captured.out
-    assert "Start with /reacto in Chat or 'just practice-start reacto'." in captured.out
+    assert "codespace  ok   Codespaces environment detected" in captured.out
+    assert "copilot    --   confirm Chat sign-in and entitlement" in captured.out
+    assert "pytest: ok; import succeeds with .venv/bin/python" in captured.out
+    assert (
+        "Start with /comments in Chat or 'just practice-start comments'."
+        in captured.out
+    )
     assert captured.err == ""

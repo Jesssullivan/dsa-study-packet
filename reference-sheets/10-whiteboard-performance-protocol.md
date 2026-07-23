@@ -168,7 +168,7 @@ being *interrupted and judged*. Both are the real stressor, split in two.
 
 Different bootcamps and platforms drill the same five-signal loop under
 different labels. If a candidate already thinks in REACTO or UMPIRE, don't
-make them relearn vocabulary mid-rep. Map the words and keep the gates.
+make them relearn vocabulary mid-rep. Map the words and keep the checkpoints.
 
 | CLARP (this packet) | REACTO (Fullstack Academy) | UMPIRE (CodePath) |
 |----------------------|------------------------------|--------------------|
@@ -178,15 +178,16 @@ make them relearn vocabulary mid-rep. Map the words and keep the gates.
 | Run | Test | Review |
 | Polish | Optimize | Evaluate |
 
-All three gate on whether a signal was **emitted**, never on whether the
-mid-rep work is correct. A phase passes on "did they say it," not "is it
-right." Two imports are worth stealing regardless of which spine you run:
-REACTO splits Repeat from Examples into two separate gates, so restating the
+All three observe whether a signal was **emitted**, never whether mid-rep work
+is correct. These are spoken interview checkpoints, never required source
+labels or prose gates. A phase passes on "did they say it," not "is it right."
+Two imports are worth stealing regardless of which spine you run: REACTO
+splits Repeat from Examples into two separate checkpoints, so restating the
 problem without a concrete example still fails visibly instead of sliding
 through (its Approach step is CLARP's Lay out under another name); UMPIRE's
-Match gate makes "name the pattern family" its own
-checkpoint, catching someone who restates and jumps straight to code without
-ever naming an approach.
+Match checkpoint makes "name the pattern family" its own signal, catching
+someone who restates and jumps straight to code without ever naming an
+approach.
 
 | Weak signal | Run |
 |--------------|-----|

@@ -13,9 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PARADIGMS = ("reacto", "clarp", "umpire", "comments")
 PROMPTS = (*PARADIGMS, "continue")
 AGENT_TOOLS = {
-    "read/readFile",
-    "execute/runInTerminal",
-    "execute/getTerminalOutput",
+    "read",
+    "execute",
 }
 
 
@@ -70,20 +69,6 @@ touch "$HOME/curl-called"
         """#!/bin/sh
 cat > "$HOME/checksum-input"
 exit "${FAKE_CHECKSUM_EXIT:-0}"
-""",
-    )
-    _write_executable(
-        path / "sudo",
-        """#!/bin/sh
-exec "$@"
-""",
-    )
-    _write_executable(
-        path / "apt-get",
-        """#!/bin/sh
-touch "$HOME/apt-get-called"
-printf '%s\n' "$*" >> "$HOME/apt-get-args"
-exit "${FAKE_APT_GET_EXIT:-0}"
 """,
     )
     _write_executable(
@@ -347,78 +332,13 @@ def test_setup_keeps_watchexec_optional_when_install_fails(tmp_path: Path) -> No
     assert "watch mode unavailable" in proc.stderr
 
 
-def test_setup_installs_sandbox_packages_when_missing(tmp_path: Path) -> None:
-    env, home = _setup_env(tmp_path)
+def test_setup_does_not_install_unused_agent_sandbox_packages() -> None:
+    setup = (ROOT / ".devcontainer/setup.sh").read_text()
 
-    proc = subprocess.run(
-        ["bash", ".devcontainer/setup.sh", "--tools"],
-        cwd=ROOT,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert proc.returncode == 0, proc.stderr
-    assert (home / "apt-get-called").is_file()
-    args = (home / "apt-get-args").read_text()
-    assert "install" in args
-    assert "bubblewrap" in args
-    assert "socat" in args
-
-
-def test_setup_skips_sandbox_packages_when_already_present(tmp_path: Path) -> None:
-    env, home = _setup_env(tmp_path)
-    system_bin = Path(env["PATH"].split(os.pathsep, 1)[0])
-    _fake_tool(system_bin / "bwrap", "bwrap", "0.0.0")
-    _fake_tool(system_bin / "socat", "socat", "0.0.0")
-
-    proc = subprocess.run(
-        ["bash", ".devcontainer/setup.sh", "--tools"],
-        cwd=ROOT,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert proc.returncode == 0, proc.stderr
-    assert not (home / "apt-get-called").exists()
-
-
-def test_setup_sandbox_packages_failure_is_non_fatal(tmp_path: Path) -> None:
-    env, home = _setup_env(tmp_path)
-    env["FAKE_APT_GET_EXIT"] = "1"
-
-    proc = subprocess.run(
-        ["bash", ".devcontainer/setup.sh", "--tools"],
-        cwd=ROOT,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert proc.returncode == 0, proc.stderr
-    assert (home / "apt-get-called").is_file()
-    assert "agent sandbox stays off" in proc.stderr
-
-
-def test_setup_skips_sandbox_packages_on_non_linux(tmp_path: Path) -> None:
-    env, home = _setup_env(tmp_path)
-    env["FAKE_UNAME_S"] = "Darwin"
-
-    proc = subprocess.run(
-        ["bash", ".devcontainer/setup.sh", "--tools"],
-        cwd=ROOT,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert proc.returncode == 0, proc.stderr
-    assert not (home / "apt-get-called").exists()
+    assert "apt-get" not in setup
+    assert "sudo " not in setup
+    assert "bubblewrap" not in setup
+    assert "socat" not in setup
 
 
 def test_devcontainer_workflow_uses_pinned_actions_and_login_free_path() -> None:
@@ -426,13 +346,12 @@ def test_devcontainer_workflow_uses_pinned_actions_and_login_free_path() -> None
     assert "export PATH=" not in workflow
     assert "bash --noprofile --norc" in workflow
     assert "# RESTATE:" not in workflow
-    for prompt in (
-        "Write what this function should return",
-        "Work one ordinary example and one edge case",
-        "Note the simplest correct plan",
-    ):
-        assert prompt in workflow
-    assert "NEXT: Add 1 more ordinary reasoning comment above the gate" in workflow
+    assert "ordinary comments or a docstring" in workflow
+    assert "THINKING GATE" not in workflow
+    assert "grep -q '^STATE: THINK$'" in workflow
+    assert "grep -q '^STATE: REFLECT$'" in workflow
+    assert "grep -q '^STATE: CLOSE$'" in workflow
+    assert workflow.count("just practice-test") >= 3
     action_refs = [
         line.strip().removeprefix("- uses: ").split(" #", 1)[0]
         for line in workflow.splitlines()
@@ -461,17 +380,18 @@ def test_workspace_autoapprove_allowlist_is_narrow() -> None:
     assert isinstance(settings, dict)
     auto_approve = settings["chat.tools.terminal.autoApprove"]
     assert auto_approve == {
-        r"/^just practice-start\b.*$/": True,
+        (
+            r"/^just practice-start (reacto|clarp|umpire|comments)"
+            r"( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/"
+        ): True,
         r"/^just practice-next$/": True,
         r"/^just practice-test$/": True,
         r"/^just practice-watch$/": True,
         r"/^just practice-repl$/": True,
-        r"/^just practice-open\b.*$/": True,
-        r"/^just practice-finish\b.*$/": True,
-        r"/^just practice-reference\b.*$/": True,
-        r"/^just interview\b.*$/": True,
-        r"/^just catalog\b.*$/": True,
-        r"/^uv run pytest\b.*$/": True,
+        r"/^just practice-open( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": True,
+        r"""/^just practice-finish "[A-Za-z0-9 .,;:!?()'_-]{1,500}"$/""": True,
+        r"/^just interview( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": True,
+        r"""/^just catalog "[A-Za-z0-9 _-]{1,120}"$/""": True,
     }
     assert all(value is True for value in auto_approve.values())
     assert "*" not in auto_approve
@@ -547,16 +467,26 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
         ".github/copilot-instructions.md",
     ):
         text = " ".join((ROOT / relative).read_text().split())
-        assert "just practice-open topic problem" in text
+        folded = text.casefold()
+        assert "just interview topic problem" in text
+        assert "practice-open" in text
         assert "reference tests" in text
-        assert "before placement" in text
-        assert "`START` immediately" in text
-        assert "Discuss without the editor" not in text
-        assert "otherwise run `just practice-open topic problem`" in text
-        assert "never `QUEUE`" in text
-        assert "takes priority" in text
-        assert "`PRACTICE:" in text
-        assert "before relaying the prompt" in text
+        assert "OPENED" in text
+        assert "OPEN_FAILED" in text
+        assert "`QUEUE`" in text
+        assert any(
+            phrase in folded
+            for phrase in (
+                "hold `queue`",
+                "never request `queue`",
+                "never `queue`",
+                "request no `queue`",
+            )
+        )
+        assert "atomic" in folded
+        assert "open/read" in folded
+        assert "without presentation" in folded
+        assert "reopen" in text
 
 
 def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
@@ -581,8 +511,10 @@ def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
     assert "just practice-next" in continuation_text
     assert "practice-status" not in continuation_text
     assert "practice-current" not in continuation_text
-    assert "`STATE:` and `NEXT:`" in continuation_text
-    assert "Never edit the candidate workspace" in continuation_text
+    for field in ("SOURCE:", "TEST:", "NEXT:"):
+        assert field in continuation_text
+    assert "edit candidate files" in continuation_text
+    assert "automatic save detection" in continuation_text
 
 
 def test_interviewer_agent_has_no_direct_edit_tool() -> None:

@@ -3,8 +3,8 @@
 #
 # Deliberately independent of flake.nix: the Nix devshell stays the
 # maintainer's local flow; containers get only the three command-line tools the
-# editor practice loop needs (Python via uv, just, and watchexec). GitHub
-# Copilot Chat is the native Codespaces interviewer.
+# editor practice loop needs (Python via uv, just, and watchexec). Codespaces
+# requests GitHub Copilot Chat; sign-in and entitlement are verified in VS Code.
 #
 # Modes:
 #   --tools  pinned tool installs only (onCreateCommand)
@@ -125,30 +125,6 @@ install_watchexec() {
 	return "$status"
 }
 
-install_sandbox_packages() {
-	# VS Code's agent terminal sandbox (chat.agent.sandbox.*, preview) kernel-
-	# isolates agent commands via bubblewrap + socat on Linux; without them,
-	# the committed chat.tools.terminal.autoApprove allowlist is the only
-	# approval path. Debian apt is this container's only OS-package path (see
-	# module header); skip cleanly off-Linux or wherever apt-get is absent,
-	# and never fail container setup over this either way.
-	if [ "$(uname -s)" != "Linux" ]; then
-		return 0
-	fi
-	if command -v bwrap >/dev/null 2>&1 && command -v socat >/dev/null 2>&1; then
-		return 0
-	fi
-	if ! command -v apt-get >/dev/null 2>&1; then
-		warn "apt-get unavailable; agent sandbox stays off, autoApprove allowlist still applies"
-		return 0
-	fi
-	log "installing bubblewrap + socat (VS Code agent sandbox prerequisites)"
-	if ! sudo apt-get update -qq \
-		|| ! sudo apt-get install -y --no-install-recommends bubblewrap socat; then
-		warn "bubblewrap/socat install failed; agent sandbox stays off, autoApprove allowlist still applies"
-	fi
-}
-
 tool_version() {
 	"$1" --version 2>/dev/null | awk 'NR == 1 { version = $2; sub(/^v/, "", version); print version }'
 }
@@ -217,7 +193,6 @@ install_tools() {
 		warn "watchexec $WATCHEXEC_VERSION unavailable; use just practice-test"
 	fi
 
-	install_sandbox_packages
 }
 
 case "${1:-}" in

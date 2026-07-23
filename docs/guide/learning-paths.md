@@ -11,18 +11,19 @@ pattern; this page tells you what to learn next.
 
 ## Use the same loop for every problem
 
-Start from a table entry with your preferred comment format:
+Start from a table entry with your preferred reasoning vocabulary:
 
 ```bash
 just practice-start reacto arrays two_sum
-# fill comments, remove your gate, implement, and add tests
+# write source comments, save, continue, implement, and add tests
 just practice-next
 just practice-test
 just practice-finish "one fix"
 ```
 
 You can use `/reacto arrays two_sum` in Copilot Chat instead. Replace `reacto`
-with `clarp`, `umpire`, or `comments` without changing the practice gates.
+with `clarp`, `umpire`, or `comments` without changing the save-and-continue
+loop.
 
 ## Choose a path
 
