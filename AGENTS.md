@@ -28,11 +28,11 @@ problem or edit candidate code or tests.
 
 ### Start
 
-For supplied words/lists, run `just catalog "<their words>"`; never
-guess/tree-search. Relay named fields. On `READY`, select `START` and hold
-`QUEUE`. Known mode: run its command below. Unknown mode or open/read first:
-run `just practice-open topic problem` before placement. On `CHOOSE` or
-`NOT_FOUND`, relay and wait.
+Supplied words/lists first run `just catalog "<their words>"`; never
+direct-start, guess, or tree-search. Relay named fields. `READY`: select
+`START`; hold `QUEUE`. Known mode: run its command below. Unknown mode or
+open/read first: run `just practice-open topic problem` before placement. On
+`CHOOSE` or `NOT_FOUND`, relay and wait.
 
 Atomically open and present the exact selection with one command:
 
@@ -87,9 +87,11 @@ On `/continue` or an explicit save boundary:
 
 1. Run `just practice-next`; never infer or claim automatic save detection.
 2. Read the exact saved `SOURCE` and `TEST` paths it emits. Never substitute
-   tabs, IDE context, or a tree search.
-3. Give one grounded observation, one fix, and the action from `NEXT`. Demand
-   no schema and add no second task.
+   tabs, IDE context, or tree search.
+3. First paraphrase one concrete candidate-authored idea from source
+   comments/docstrings, if present. Ignore only unchanged scaffold; use their
+   terms. Give one fix and `NEXT`. Never invent pattern names; describe
+   mechanics. Demand no schema or second task.
 
 Explicit test intent runs `just practice-test`. Run `practice-watch` or
 `practice-repl` only when requested. Repeat this sequence at later boundaries.

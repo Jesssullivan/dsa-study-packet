@@ -510,6 +510,10 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
         assert "open/read" in folded
         assert "without presentation" in folded
         assert "reopen" in text
+        assert "never start directly" in folded
+        assert "candidate-authored idea from source comments/docstrings" in folded
+        assert "unchanged scaffold" in folded
+        assert "never invent pattern names" in folded
 
 
 def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
@@ -523,7 +527,12 @@ def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
         assert f"name: {paradigm}" in frontmatter
         assert "agent: 'Interviewer'" in frontmatter
         assert not any(line.startswith("tools:") for line in frontmatter)
-        assert f"just practice-start {paradigm}" in path.read_text()
+        prompt = path.read_text()
+        assert f"just practice-start {paradigm}" in prompt
+        assert "never start directly" in prompt
+        assert prompt.index('just catalog "<arguments>"') < prompt.index(
+            f"just practice-start {paradigm} topic problem"
+        )
 
     continuation = prompt_dir / "continue.prompt.md"
     continuation_frontmatter = _frontmatter(continuation)
@@ -538,6 +547,9 @@ def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
         assert field in continuation_text
     assert "edit candidate files" in continuation_text
     assert "automatic save detection" in continuation_text
+    assert "candidate-authored idea from source comments/docstrings" in continuation_text
+    assert "unchanged scaffold" in continuation_text
+    assert "never invent pattern names" in continuation_text
 
 
 def test_interviewer_agent_has_no_direct_edit_tool() -> None:

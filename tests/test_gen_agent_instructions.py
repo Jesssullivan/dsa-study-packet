@@ -79,6 +79,10 @@ class TestRendering:
         assert "SUGGEST" in rendered
         assert "unknown mode or open/read first" in rendered.casefold()
         assert "prepares/reopens `START` without" in rendered
+        assert "never start directly" in rendered
+        assert "candidate-authored idea from source comments/docstrings" in rendered
+        assert "unchanged scaffold" in rendered
+        assert "Never invent pattern names" in rendered
         assert "edit/editFiles" not in rendered
         assert "not a security boundary" in rendered
         assert rendered.endswith("\n")
@@ -90,7 +94,7 @@ class TestRendering:
         rendered = render_start_prompt("reacto", "Start a REACTO editor rep")
         assert "just practice-start reacto" in rendered
         assert "just catalog" in rendered
-        assert "`READY`" in rendered
+        assert "`STATE: READY`" in rendered
         assert "`START: topic/problem`" in rendered
         assert "just practice-start reacto topic problem" in rendered
         assert "`QUEUE`" in rendered
@@ -103,30 +107,40 @@ class TestRendering:
         assert "editor-open" not in rendered
         assert "`SOURCE:`" in rendered
         assert "`TEST:`" in rendered
-        assert "Relay start output" in rendered
-        assert "cold\nstatement, created/resumed line" in rendered
+        assert "Relay cold statement; created/resumed" in rendered
         assert "Resume has no `STATE:`" in rendered
-        assert "`practice-next` before explicit save or `/continue`" in rendered
+        assert "derive/run `practice-next` before explicit save" in rendered
         assert "then `STATE:`" not in rendered
         assert "Never edit candidate files" in rendered
+        assert "never start directly" in rendered
+        catalog = rendered.index('just catalog "<arguments>"')
+        start = rendered.index("just practice-start reacto topic problem")
+        assert catalog < start
 
     def test_continue_prompt_delegates_state_to_one_command(self) -> None:
         rendered = render_continue_prompt()
         assert "just practice-next" in rendered
-        assert "On success, relay `STATE:`" in rendered
-        assert "read exactly the emitted saved" in rendered
-        assert rendered.index("On success") < rendered.index("read exactly")
-        assert rendered.index("read exactly") < rendered.index(
-            "Then give one grounded observation"
+        assert "Success: relay `STATE:`" in rendered
+        assert "read exact emitted `SOURCE:`/`TEST:`" in rendered
+        read = rendered.index("read exact emitted")
+        reasoning = rendered.index(
+            "First paraphrase one concrete candidate-authored idea from source"
         )
+        fix = rendered.index("Give one fix")
+        assert read < reasoning < fix
+        assert "Ignore only unchanged scaffold" in rendered
+        assert "use their terms" in rendered
+        assert "Never invent pattern names" in rendered
+        assert "require comment structure" in rendered
         assert "Otherwise read" not in rendered
         assert "practice-status" not in rendered
         assert "practice-current" not in rendered
 
-    def test_start_prompts_fit_the_low_power_budget(self) -> None:
+    def test_prompts_fit_the_low_power_budget(self) -> None:
         for name, description in PROMPT_SPECS.items():
             rendered = render_start_prompt(name, description)
             assert len(rendered.split()) <= 90
+        assert len(render_continue_prompt().split()) <= 90
 
 
 class TestGeneratedFiles:
