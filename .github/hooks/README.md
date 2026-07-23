@@ -71,7 +71,11 @@ tool. Hook timeouts are fail-open.
 
 The hook entry sets `cwd` to the repository root. VS Code otherwise launches
 hook commands from the remote user's home directory, where the relative
-`scripts/hooks/guard_pretooluse.py` path does not exist.
+`scripts/hooks/guard_pretooluse.py` path does not exist. It launches the guard
+with the already-synced `.venv/bin/python`: the devcontainer provisions pinned
+`uv` and a project-managed Python, not a system `python3`. Codespaces waits for
+dependency sync before the editor is ready, so authorization checks do not
+download, lock, or mutate the environment.
 
 Doc source: `docs.github.com/en/copilot/reference/hooks-reference`,
 `code.visualstudio.com/docs/agent-customization/hooks`, and

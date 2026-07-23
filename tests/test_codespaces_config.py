@@ -545,9 +545,39 @@ def test_copilot_hooks_reference_an_existing_guard_script() -> None:
             assert entry["type"] == "command"
             assert entry["cwd"] == "."
             command = entry["bash"]
-            assert command.startswith("python3 ")
-            script_relative = command.removeprefix("python3 ").split()[0]
+            assert command.startswith(".venv/bin/python ")
+            script_relative = command.removeprefix(".venv/bin/python ").split()[0]
             script_path = ROOT / script_relative
             assert script_path.is_file(), f"{hook_path}: missing {script_relative}"
             assert "powershell" not in entry
     assert (ROOT / ".github/hooks/README.md").is_file()
+
+
+def test_copilot_hook_launcher_uses_synced_python_with_empty_path(
+    tmp_path: Path,
+) -> None:
+    hook_path = ROOT / ".github/hooks/candidate-workspace-guard.json"
+    config = json.loads(hook_path.read_text())
+    command = config["hooks"]["preToolUse"][0]["bash"]
+
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "runTerminalCommand",
+        "tool_input": {"command": "just practice-open arrays two_sum"},
+    }
+    proc = subprocess.run(
+        command,
+        shell=True,
+        executable="/bin/sh",
+        cwd=ROOT,
+        env=os.environ | {"PATH": str(empty_bin)},
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout == '{"continue": true}\n'

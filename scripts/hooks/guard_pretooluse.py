@@ -14,7 +14,7 @@ Run as a hook (stdin -> stdout, exit 0 unless the payload itself is
 unreadable, in which case exit 2 so the caller's own fail-closed default
 applies):
 
-    python3 scripts/hooks/guard_pretooluse.py
+    .venv/bin/python scripts/hooks/guard_pretooluse.py
 """
 
 from __future__ import annotations
