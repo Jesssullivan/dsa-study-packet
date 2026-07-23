@@ -1,5 +1,6 @@
 ---
 title: Reference Sheets
+description: Browse concise Python, algorithm, complexity, system-design, and interview-practice sheets online or in print.
 ---
 
 # Reference Sheets

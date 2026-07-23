@@ -1,5 +1,6 @@
 ---
 title: Local VS Code
+description: Run the editor-first practice loop locally with the VS Code Dev Container or a small uv and just toolchain.
 ---
 
 # Local VS Code

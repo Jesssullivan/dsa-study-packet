@@ -1,5 +1,6 @@
 ---
 title: Practice Drills
+description: Choose an isolated problem and complete one focused rep with reasoning comments, candidate-owned code, and real tests.
 ---
 
 # Practice Drills

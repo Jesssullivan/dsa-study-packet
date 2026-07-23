@@ -1,5 +1,6 @@
 ---
 title: Printables
+description: Download the complete interview-practice booklet or individual reference sheets for focused offline review.
 ---
 
 # Printables

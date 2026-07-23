@@ -18,6 +18,9 @@ def public_repo(tmp_path: Path, monkeypatch: object) -> Path:
     git(tmp_path, "init", "-q")
     git(tmp_path, "config", "user.name", "Boundary Test")
     git(tmp_path, "config", "user.email", "boundary@example.invalid")
+    # Disposable fixture commits must not inherit a developer's global signing
+    # policy or open pinentry. This changes only the temporary repository.
+    git(tmp_path, "config", "commit.gpgsign", "false")
     victim = tmp_path / "tracked.txt"
     victim.write_text("public content\n")
     git(tmp_path, "add", "tracked.txt")

@@ -1,5 +1,6 @@
 ---
 title: Advanced Exercises
+description: Practice code reading, operational risk analysis, and open-ended problem decomposition after ordinary editor reps.
 ---
 
 # Advanced Exercises
