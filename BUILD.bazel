@@ -1,16 +1,29 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("@rules_tectonic//tectonic:defs.bzl", "tectonic_pdf")
 
 package(default_visibility = ["//visibility:public"])
 
 # booklet.tex is the SSOT artifact produced by `just packet` (gen_booklet.py).
 # Export it so other tools/repos can consume the source, and compile it here so
-# the neutral packet PDF is a cacheable Bazel graph node (remote-cache-friendly;
-# remote execution is intentionally not enabled — see .bazelrc) that the
-# private study lanes compose against.
+# the neutral packet PDF is a cacheable Bazel graph node (remote-cache-friendly,
+# but not a proved remote-execution class) that private study lanes compose
+# against.
 exports_files(["booklet.tex"])
 
 tectonic_pdf(
     name = "booklet",
     src = "booklet.tex",
     reruns = 2,
+    tags = ["no-remote-exec"],
+)
+
+# Keep `just remote-test` meaningful without implying RBE: this checks the
+# cache-first booklet artifact after Bazel materializes it for a local test.
+sh_test(
+    name = "booklet_smoke",
+    srcs = ["tests/booklet_pdf_smoke.sh"],
+    args = ["$(rootpath :booklet)"],
+    data = [":booklet"],
+    size = "small",
+    tags = ["no-remote-exec"],
 )
