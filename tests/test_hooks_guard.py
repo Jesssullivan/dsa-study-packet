@@ -3,7 +3,7 @@
 Exercises the persona invariant directly: the agent never edits
 candidate-owned files under .challenges/, never directly accesses them through
 a shell tool, and never runs an unbounded rm -rf or a forced git push.
-Maintenance edits to src/ and tests/ must stay allowed.
+Maintenance edits to src/ and tests/ must receive neutral continuation.
 """
 
 from __future__ import annotations
@@ -94,27 +94,27 @@ def test_denies_other_mutation_tools_targeting_candidate_workspace(
     assert decision["permissionDecision"] == "deny"
 
 
-def test_allows_edit_targeting_maintained_source() -> None:
+def test_continues_edit_targeting_maintained_source() -> None:
     decision = decide(
         {
             "toolName": "Edit",
             "toolArgs": {"file_path": "src/algo/arrays/two_sum.py"},
         }
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
-def test_allows_edit_targeting_tests_tree() -> None:
+def test_continues_edit_targeting_tests_tree() -> None:
     decision = decide(
         {
             "toolName": "str_replace_editor",
             "toolArgs": {"path": "tests/test_hooks_guard.py"},
         }
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
-def test_allows_maintenance_edit_whose_content_mentions_workspace() -> None:
+def test_continues_maintenance_edit_whose_content_mentions_workspace() -> None:
     decision = decide(
         {
             "toolName": "Edit",
@@ -124,7 +124,7 @@ def test_allows_maintenance_edit_whose_content_mentions_workspace() -> None:
             },
         }
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
 def test_read_only_tool_never_denies_even_over_candidate_path() -> None:
@@ -134,7 +134,7 @@ def test_read_only_tool_never_denies_even_over_candidate_path() -> None:
             "toolArgs": {"file_path": ".challenges/workspace/two_sum.py"},
         }
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
 def test_toolargs_as_json_encoded_string_is_parsed() -> None:
@@ -219,14 +219,14 @@ def test_denies_shell_variable_assigned_candidate_workspace() -> None:
     assert decision["permissionDecision"] == "deny"
 
 
-def test_allows_repo_practice_front_door_without_private_path() -> None:
+def test_continues_repo_practice_front_door_without_private_path() -> None:
     decision = decide(
         {
             "toolName": "execute",
             "toolArgs": {"command": "just practice-test"},
         }
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
 def test_shell_explanation_can_mention_candidate_workspace() -> None:
@@ -239,7 +239,7 @@ def test_shell_explanation_can_mention_candidate_workspace() -> None:
             },
         }
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
 def test_denies_rm_rf_outside_workspace_absolute_path() -> None:
@@ -284,11 +284,11 @@ def test_denies_rm_rf_inside_candidate_workspace() -> None:
     assert decision["permissionDecision"] == "deny"
 
 
-def test_allows_plain_rm_without_force_recursive_flags() -> None:
+def test_continues_plain_rm_without_force_recursive_flags() -> None:
     decision = decide(
         {"toolName": "bash", "toolArgs": {"command": "rm /var/tmp/one-file.txt"}}
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
 def test_denies_git_push_force_long_flag() -> None:
@@ -316,20 +316,20 @@ def test_denies_git_push_force_with_lease() -> None:
     assert decision["permissionDecision"] == "deny"
 
 
-def test_allows_plain_git_push() -> None:
+def test_continues_plain_git_push() -> None:
     decision = decide(
         {"toolName": "bash", "toolArgs": {"command": "git push origin main"}}
     )
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
-def test_allows_unrelated_shell_command() -> None:
+def test_continues_unrelated_shell_command() -> None:
     decision = decide({"toolName": "bash", "toolArgs": {"command": "uv run pytest -q"}})
-    assert decision["permissionDecision"] == "allow"
+    assert decision == {"continue": True}
 
 
-def test_missing_tool_name_and_args_default_to_allow() -> None:
-    assert decide({})["permissionDecision"] == "allow"
+def test_missing_tool_name_and_args_default_to_continue() -> None:
+    assert decide({}) == {"continue": True}
 
 
 def test_main_copilot_payload_prints_top_level_decision() -> None:
@@ -387,7 +387,7 @@ def test_main_vscode_payload_prints_nested_hook_specific_output() -> None:
         },
     ],
 )
-def test_main_allowed_payload_falls_through_to_runtime_permissions(
+def test_main_safe_payload_emits_documented_neutral_common_output(
     payload: dict[str, object],
 ) -> None:
     proc = subprocess.run(
@@ -398,7 +398,7 @@ def test_main_allowed_payload_falls_through_to_runtime_permissions(
         check=False,
     )
     assert proc.returncode == 0
-    assert json.loads(proc.stdout) == {}
+    assert proc.stdout == '{"continue": true}\n'
 
 
 def test_main_denies_via_nonzero_exit_on_unparseable_payload() -> None:

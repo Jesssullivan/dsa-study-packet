@@ -11,7 +11,7 @@ The guard denies:
   agent to relay the error and ask the candidate to make the edit themselves
 - any shell/terminal tool command that directly references `.challenges/**`,
   whether to read or write it; repo front doors such as `just practice-test`
-  remain allowed because they do not expose private paths
+  remain neutral because they do not expose private paths
 - `rm -rf` (or `-fr`, `--recursive --force`) targeting a path outside this
   workspace (absolute, `~`, `$HOME`, `${HOME}`, or a `..` traversal)
 - `git push --force`, `--force-with-lease`, or `-f`
@@ -52,18 +52,30 @@ that input the guard returns the VS Code shape:
 }
 ```
 
-Allowed calls return `{}` and fall through to the runtime's normal permission
-policy. The guard only narrows authority; it never bypasses VS Code's narrow
-terminal auto-approval list. Invalid JSON exits 2 instead of guessing. In VS
-Code, exit 2 blocks the tool and stops hook processing; in Copilot CLI/cloud,
-a failed `preToolUse` command denies the tool. Hook timeouts are fail-open.
+Safe calls return the VS Code-documented neutral common output:
+
+```json
+{
+  "continue": true
+}
+```
+
+This continues VS Code hook processing without setting a
+`permissionDecision`, so its normal approval policy still decides. Copilot
+CLI/cloud likewise receives no permission decision and falls through to its
+own default. The guard only narrows authority; it never returns `allow` or
+bypasses VS Code's narrow terminal auto-approval list. Invalid JSON exits 2
+instead of guessing. In VS Code, exit 2 blocks the tool and stops hook
+processing; in Copilot CLI/cloud, a failed `preToolUse` command denies the
+tool. Hook timeouts are fail-open.
 
 The hook entry sets `cwd` to the repository root. VS Code otherwise launches
 hook commands from the remote user's home directory, where the relative
 `scripts/hooks/guard_pretooluse.py` path does not exist.
 
-Doc source: `docs.github.com/en/copilot/reference/hooks-reference` and
-`code.visualstudio.com/docs/agent-customization/hooks` (verified 2026-07-23).
-VS Code support is Preview, so this is defense in depth rather than the
-candidate-ownership correctness boundary. The `bash` field is used because
-this repo's Codespaces surface is Linux-only.
+Doc source: `docs.github.com/en/copilot/reference/hooks-reference`,
+`code.visualstudio.com/docs/agent-customization/hooks`, and
+`code.visualstudio.com/docs/agents/reference/hooks-reference` (verified
+2026-07-23). VS Code support is Preview, so this is defense in depth rather
+than the candidate-ownership correctness boundary. The `bash` field is used
+because this repo's Codespaces surface is Linux-only.

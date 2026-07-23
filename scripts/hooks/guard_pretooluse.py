@@ -7,7 +7,8 @@ workspace, and clearly destructive shell patterns (``rm -rf`` outside this
 workspace, ``git push --force``). Every deny carries a reason telling the
 calling agent what to do instead. File-edit tools inspect only path-shaped
 argument fields, so maintenance edits that merely mention the workspace in
-file content stay allowed. Schema and doc source: .github/hooks/README.md.
+file content receive the neutral continuation output. Schema and doc source:
+.github/hooks/README.md.
 
 Run as a hook (stdin -> stdout, exit 0 unless the payload itself is
 unreadable, in which case exit 2 so the caller's own fail-closed default
@@ -137,7 +138,7 @@ def _shell_references_candidate_workspace(command_text: str) -> bool:
     Unlike file-edit tools, a shell tool can mutate a path hidden anywhere in
     its command text (redirection, ``sed``, Python, and so on), so the full
     command is intentionally checked. Repo front-door commands such as
-    ``just practice-test`` do not name the private path and stay allowed.
+    ``just practice-test`` do not name the private path and stay neutral.
     """
     return bool(_CANDIDATE_WORKSPACE.search(command_text))
 
@@ -241,7 +242,7 @@ def decide(payload: dict[str, Any]) -> dict[str, Any]:
                 ),
             }
 
-    return {"permissionDecision": "allow"}
+    return {"continue": True}
 
 
 def main() -> int:
@@ -252,11 +253,11 @@ def main() -> int:
         print(f"guard_pretooluse: invalid JSON payload: {exc}", file=sys.stderr)
         return 2
     decision = decide(payload)
-    # This guard narrows authority; it never grants it. An explicit "allow"
-    # would bypass VS Code's deliberately small terminal auto-approval list.
-    # Empty output falls through to each runtime's normal permission policy.
-    if decision["permissionDecision"] == "allow":
-        print("{}")
+    # This guard narrows authority; it never grants it. The documented common
+    # output keeps hook processing active without making a PreToolUse
+    # permission decision, so the runtime's normal approval policy still wins.
+    if decision == {"continue": True}:
+        print(json.dumps(decision))
         return 0
     if payload.get("hook_event_name") == "PreToolUse":
         hook_output = {
