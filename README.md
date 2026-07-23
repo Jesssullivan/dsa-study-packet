@@ -14,17 +14,17 @@ belongs in private downstream overlays; see the
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
 
-When the editor opens, use Copilot Chat to choose a comment format:
+When the editor opens, enter `/comments` in Copilot Chat. It starts ordinary
+reasoning comments with no required labels or prefixes.
 
 ```text
-/reacto
-/clarp
-/umpire
 /comments
 ```
 
 No topic is required. The command draws the next due problem. To choose one,
-append its topic and name, for example `/reacto arrays two_sum`.
+append its topic and name, for example `/comments arrays two_sum`. If named
+vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start the same
+loop with those optional labels.
 
 The rep opens two gitignored files under `.challenges/workspace/`: your source
 file and your test file. The committed implementation under `src/algo/` stays
@@ -37,10 +37,10 @@ unchanged.
 5. Run `just practice-test`, then close with `just practice-finish "one fix"`.
 
 The interviewer never writes your code, tests, or gate. Copilot is optional;
-the same flow starts from a terminal with `just practice-start reacto`.
+the same flow starts from a terminal with `just practice-start comments`.
 
-The four starter formats are vocabulary choices, not different grading
-systems. Keep their labels, replace them, or write ordinary Python comments.
+The named frameworks are vocabulary choices, not grading systems. Keep their
+labels, replace them, or use natural Python comments in your own words.
 `/continue` checks that saved reasoning comments are present before and during
 the code, then returns one next action. It does not grade their wording; tests
 remain the correctness signal.

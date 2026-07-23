@@ -45,14 +45,16 @@ comments, implement a solution, write focused tests, and keep one correction.
 
 ## Your first rep
 
-Open Copilot Chat in Codespaces and enter `/reacto`, `/clarp`, `/umpire`, or
-`/comments`. With no arguments, the command draws the next due problem. Add a
-topic and problem to choose one, such as `/reacto arrays two_sum`.
+Open Copilot Chat in Codespaces and enter `/comments`. It uses ordinary
+reasoning comments with no required labels or prefixes. With no arguments, the
+command draws the next due problem. Add a topic and problem to choose one, such
+as `/comments arrays two_sum`. If named vocabulary helps you think, `/reacto`,
+`/clarp`, and `/umpire` start the same loop with optional labels.
 
 Your source and test file open under `.challenges/workspace/`. Fill the
 reasoning comments, save, then delete the `THINKING GATE` yourself. Implement,
 add focused tests, and enter `/continue` for the next instruction. Copilot is
-optional; `just practice-start reacto` starts the same loop.
+optional; `just practice-start comments` starts the same loop.
 
 ```bash
 just practice-next
