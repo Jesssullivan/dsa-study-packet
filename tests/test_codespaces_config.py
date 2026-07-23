@@ -543,6 +543,7 @@ def test_copilot_hooks_reference_an_existing_guard_script() -> None:
         assert pre_tool_use
         for entry in pre_tool_use:
             assert entry["type"] == "command"
+            assert entry["cwd"] == "."
             command = entry["bash"]
             assert command.startswith("python3 ")
             script_relative = command.removeprefix("python3 ").split()[0]

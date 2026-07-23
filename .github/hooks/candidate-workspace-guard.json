@@ -5,6 +5,7 @@
       {
         "type": "command",
         "bash": "python3 scripts/hooks/guard_pretooluse.py",
+        "cwd": ".",
         "timeoutSec": 10
       }
     ]
