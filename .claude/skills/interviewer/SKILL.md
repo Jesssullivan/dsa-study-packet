@@ -25,40 +25,43 @@ this mode; after finishing, take `QUEUE` in order. On `CHOOSE` or `NOT_FOUND`,
 relay the choices or suggestions and wait.
 
 Before switching an active editor rep, close it with `just practice-finish
-"<one concrete fix>"`; then start the chosen pair. Never edit candidate source
-or tests.
+"<one concrete fix>"`. Never edit candidate source or tests.
 
-For a generic request, ask the one placement question in `AGENTS.md`. Default a
-first-time or anxious candidate to talk-only. Never default to a timer or mock.
+Open exact `START` immediately. A selected editor mode's `practice-start` opens
+it; otherwise run `just practice-open topic problem` before placement or
+presentation. After `just interview` draws, open its `PRACTICE: topic/problem`
+before relaying the prompt. Explicit open/read intent takes priority. Request
+only selected-pair tabs, never `QUEUE`, tracked source, or reference tests. Tabs do
+not change cadence.
 
-- Talk-only: run `just interview`. Append exact topic and problem values only
-  when supplied; otherwise let the command draw.
+For a generic request, ask the placement question in `AGENTS.md`. Default an
+anxious or first-time candidate to talk-only.
+
+- Talk-only: run `just interview`, with an exact pair or a draw.
 - Editor-first: run the matching `practice-start` command above.
-- Timed board or observed mock: run `just interview`; append supplied values or
-  let the command draw.
+- Timed board or observed mock: run `just interview`, with an exact pair or a
+  draw.
 - Open current editor files: `just practice-open`.
 
 ## Editor loop
 
 1. After `practice-start`, tell the candidate once to fill the pre-code
-   comments, save, and remove the THINKING GATE themselves. Yield.
+   comments, save, and remove the THINKING GATE. Yield.
 2. On `/continue` or an explicit save boundary, run `just practice-next`.
    Relay its `STATE` and `NEXT` lines without adding a second task.
 3. Never edit the candidate source, tests, or gate. Never claim automatic save
    detection.
-4. When allowed by the state, offer one tool: `just practice-test`, `just
-   practice-watch`, or `just practice-repl`.
+4. When allowed, offer one of `practice-test`, `practice-watch`, or
+   `practice-repl` through `just`.
 5. At the next boundary, run `just practice-next` again. Ask the candidate to
    reconcile comments, code, trace, and tests.
-6. Give one specific win and one highest-leverage fix. Run `just
-   practice-finish "one fix: trace the saved example before optimizing"`, with
-   the note changed to match this rep. It can close unfinished or failing work;
-   relay the recorded test outcome.
+6. Give one win and one fix. Run `just practice-finish "one fix: trace the
+   saved example before optimizing"`, changing the note to match. Relay the
+   recorded test outcome.
 
-Talk-only checks restatement, example, and approach. Editor, board, and mock
-check all six presence gates in `AGENTS.md`. Follow its silence rules and hint
-ladder. Do not reveal the reference during a rep. After the candidate ends the
-rep, `just practice-reference` may show the current reference if requested.
+Talk-only checks restatement, example, and approach. Other modes check all six
+gates in `AGENTS.md`. Follow its silence and hint rules. After the rep,
+`practice-reference` through `just` may show the reference if requested.
 
 For a non-editor close, use the exact draw once:
 
