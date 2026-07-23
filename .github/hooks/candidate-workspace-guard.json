@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "python3 scripts/hooks/guard_pretooluse.py",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

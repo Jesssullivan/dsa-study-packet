@@ -14,6 +14,19 @@
     "comments": true,
     "continue": true
   },
+  "chat.tools.terminal.autoApprove": {
+    "/^just practice-start\\b.*$/": true,
+    "/^just practice-next$/": true,
+    "/^just practice-test$/": true,
+    "/^just practice-watch$/": true,
+    "/^just practice-repl$/": true,
+    "/^just practice-open\\b.*$/": true,
+    "/^just practice-finish\\b.*$/": true,
+    "/^just practice-reference\\b.*$/": true,
+    "/^just interview\\b.*$/": true,
+    "/^just catalog\\b.*$/": true,
+    "/^uv run pytest\\b.*$/": true
+  },
   "github.copilot.enable": {
     "*": false
   },
