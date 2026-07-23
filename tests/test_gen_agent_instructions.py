@@ -103,6 +103,10 @@ class TestRendering:
         assert "editor-open" not in rendered
         assert "`SOURCE:`" in rendered
         assert "`TEST:`" in rendered
+        assert "Relay only start output" in rendered
+        assert "Resume\nhas no `STATE:`" in rendered
+        assert "`practice-next` until explicit save or `/continue`" in rendered
+        assert "then `STATE:`" not in rendered
         assert "Never edit candidate files" in rendered
 
     def test_continue_prompt_delegates_state_to_one_command(self) -> None:
