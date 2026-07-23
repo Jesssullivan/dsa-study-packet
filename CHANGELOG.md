@@ -65,6 +65,12 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 - Cache-compatible `just remote-*` front doors now generate `booklet.tex`
   before Bazel, so compile and test targets work from a clean checkout.
 
+### Fixed
+
+- Small Codespaces models now resolve named problems through the catalog first
+  and ground `/continue` feedback in candidate-authored source comments or
+  docstrings without inventing pattern names.
+
 ## [v2026.7.0] - 2026-07-09
 
 First tagged release: the packet as a one-click, agent-conducted practice
