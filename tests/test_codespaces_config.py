@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -375,6 +376,15 @@ def test_workspace_recommends_prompts_but_disables_inline_completion() -> None:
     assert "chat.disableAIFeatures" not in settings
 
 
+def test_workspace_uses_the_managed_uv_environment_without_preview_prompts() -> None:
+    settings = _json(".vscode/settings.json")
+    assert isinstance(settings, dict)
+    assert settings["python.defaultInterpreterPath"] == (
+        "${workspaceFolder}/.venv/bin/python"
+    )
+    assert settings["python.useEnvironmentsExtension"] is False
+
+
 def test_workspace_autoapprove_allowlist_is_narrow() -> None:
     settings = _json(".vscode/settings.json")
     assert isinstance(settings, dict)
@@ -391,7 +401,7 @@ def test_workspace_autoapprove_allowlist_is_narrow() -> None:
         r"/^just practice-open( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": True,
         r"""/^just practice-finish "[A-Za-z0-9 .,;:!?()'_-]{1,500}"$/""": True,
         r"/^just interview( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": True,
-        r"""/^just catalog "[A-Za-z0-9 _-]{1,120}"$/""": True,
+        r"""/^just catalog "[A-Za-z0-9 ,_-]{1,120}"$/""": True,
     }
     assert all(value is True for value in auto_approve.values())
     assert "*" not in auto_approve
@@ -400,6 +410,19 @@ def test_workspace_autoapprove_allowlist_is_narrow() -> None:
     # workspace scope; see .github/hooks/README.md and the sandbox research
     # notes carried in the change that added this test.
     assert not any(key.startswith("chat.agent.sandbox") for key in settings)
+
+
+def test_catalog_autoapprove_accepts_documented_lists_but_not_shell_syntax() -> None:
+    settings = _json(".vscode/settings.json")
+    assert isinstance(settings, dict)
+    auto_approve = settings["chat.tools.terminal.autoApprove"]
+    encoded = next(key for key in auto_approve if key.startswith("/^just catalog "))
+    pattern = re.compile(encoded[1:-1])
+
+    assert pattern.fullmatch('just catalog "anagram, 2 sum and prime"')
+    assert not pattern.fullmatch('just catalog "$(touch /tmp/pwned)"')
+    assert not pattern.fullmatch('just catalog "`touch /tmp/pwned`"')
+    assert not pattern.fullmatch('just catalog "two sum"; touch /tmp/pwned')
 
 
 def test_workspace_tasks_are_explicit_and_never_run_on_folder_open() -> None:

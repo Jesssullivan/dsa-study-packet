@@ -3451,6 +3451,46 @@ def test_start_cli_reports_editor_launch_failure_before_presenting_state(
     assert practice.current_metadata(practice_repo)["topic"] == "arrays"
 
 
+@pytest.mark.parametrize("paradigm", tuple(practice.PARADIGMS))
+def test_start_cli_opens_before_presenting_for_every_editor_paradigm(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    paradigm: str,
+) -> None:
+    events: list[str] = []
+
+    def open_tabs(_root: Path, _metadata: dict[str, Any]) -> bool:
+        events.append("open")
+        return True
+
+    def print_start(
+        _root: Path,
+        _metadata: dict[str, Any],
+        _action: str,
+        _archived: Path | None,
+    ) -> None:
+        events.append("present")
+
+    monkeypatch.delenv("PRACTICE_NO_OPEN", raising=False)
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", open_tabs)
+    monkeypatch.setattr(practice, "_print_start", print_start)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "practice_workspace.py",
+            "start",
+            paradigm,
+            "arrays",
+            "first",
+        ],
+    )
+
+    assert practice.main() == 0
+    assert events == ["open", "present"]
+
+
 def test_resumed_start_does_not_present_candidate_docstring_or_derive_state(
     practice_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
