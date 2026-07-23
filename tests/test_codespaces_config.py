@@ -549,7 +549,7 @@ def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
     assert "automatic save detection" in continuation_text
     assert "candidate-authored idea from source comments/docstrings" in continuation_text
     assert "unchanged scaffold" in continuation_text
-    assert "never invent pattern names" in continuation_text
+    assert "never invent pattern names" in continuation_text.casefold()
 
 
 def test_interviewer_agent_has_no_direct_edit_tool() -> None:
