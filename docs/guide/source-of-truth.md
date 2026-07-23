@@ -10,6 +10,9 @@ material. Generated docs and PDFs must be reproducible from those inputs, and
 employer-specific interview prep must never enter this tree. This page is the
 whole contract.
 
+The runnable interview track is currently Python. Cross-language comparisons
+in reference material are context, not runnable practice tracks.
+
 ## Authored Material
 
 | Path | Purpose |
@@ -27,7 +30,15 @@ whole contract.
 |--------|---------|
 | `booklet.tex` / `booklet.pdf` / `docs/assets/booklet.pdf` | `just packet` |
 | `reference-sheets/pdf/*.pdf` | `just pdf-all` |
-| `site/` | `just docs-build` |
+| local MkDocs output in `site/` | `just docs-build` |
+
+Production reading pages use a separate static site repository. Its
+`scripts/sync-content.mjs` reads a public packet checkout at `HEAD`, records
+the packet commit and source paths in `src/content/.manifest.json`, and
+prerenders [dsa-woodshed.space](https://dsa-woodshed.space). This repository
+owns the content; the site repository owns the shell, navigation, and
+rendering. The local `site/` output is a development artifact, not the
+production deployment.
 
 ## Three Layers
 
