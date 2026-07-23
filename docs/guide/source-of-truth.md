@@ -1,5 +1,6 @@
 ---
 title: Source of Truth
+description: See which files own algorithms, practice methods, generated artifacts, private state, and the public reading surface.
 ---
 
 # Source of Truth

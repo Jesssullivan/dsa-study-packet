@@ -9,6 +9,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from check_clarity import (  # type: ignore[import-not-found]
+    DESCRIPTION_MAX_CHARS,
+    DESCRIPTION_SURFACES,
     EM_DASH,
     PRACTICE_DAY_SKILL,
     SURFACE_BUDGETS,
@@ -30,6 +32,17 @@ def make_valid_surfaces(root: Path) -> None:
             )
         else:
             path.write_text("Compact instructions.\n")
+
+    for relative in DESCRIPTION_SURFACES:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "---\n"
+            "title: Practice surface\n"
+            "description: Calm editor practice with comments, code, and tests.\n"
+            "---\n\n"
+            "Compact instructions.\n"
+        )
 
 
 def test_valid_surfaces_pass(tmp_path: Path) -> None:
@@ -93,6 +106,33 @@ def test_practice_day_rejects_generic_trigger_in_description(tmp_path: Path) -> 
 
     assert len(failures) == 1
     assert "description claims generic" in failures[0]
+
+
+def test_public_surface_requires_frontmatter_description(tmp_path: Path) -> None:
+    make_valid_surfaces(tmp_path)
+    relative = DESCRIPTION_SURFACES[0]
+    (tmp_path / relative).write_text(
+        "---\ntitle: Practice surface\n---\n\nCompact instructions.\n"
+    )
+
+    assert check(tmp_path) == [
+        f"{relative}: add a concise frontmatter description for cards and metadata"
+    ]
+
+
+def test_public_surface_description_has_length_limit(tmp_path: Path) -> None:
+    make_valid_surfaces(tmp_path)
+    relative = DESCRIPTION_SURFACES[0]
+    description = "x" * (DESCRIPTION_MAX_CHARS + 1)
+    (tmp_path / relative).write_text(
+        f"---\ntitle: Practice surface\ndescription: {description}\n"
+        "---\n\nCompact instructions.\n"
+    )
+
+    assert check(tmp_path) == [
+        f"{relative}: frontmatter description is {len(description)} characters; "
+        f"keep it at or below {DESCRIPTION_MAX_CHARS}"
+    ]
 
 
 def test_generic_phrase_outside_description_does_not_trigger(tmp_path: Path) -> None:

@@ -1,5 +1,6 @@
 ---
 title: When to Use What
+description: Map a new interview problem to a likely algorithmic pattern with a concise decision tree and complexity cues.
 ---
 
 # When to Use What -- Decision Tree
@@ -216,4 +217,3 @@ Need sorted insert+search  --> bisect / SortedList
 Need merge/find groups?    --> Union-Find
 Need nearest in 2D/3D?     --> KD-tree or geohash
 ```
-

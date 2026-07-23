@@ -1,7 +1,7 @@
 name: ci
 
-# The main CI gate. Repo is private (Actions minutes are metered), so this is
-# deliberately a single lean job rather than a matrix.
+# The main CI gate stays as one lean job so local and hosted checks remain easy
+# to compare.
 
 on:
   pull_request:

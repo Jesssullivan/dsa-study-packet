@@ -1,5 +1,6 @@
 ---
 title: Learning Paths
+description: Follow curated drill sequences that build pattern recognition through the same comments, code, tests, and reflection loop.
 ---
 
 # Learning Paths

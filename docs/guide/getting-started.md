@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+description: Start an editor-first interview rep with natural comments, candidate-owned code, focused tests, and one concrete correction.
 ---
 
 # Getting Started
@@ -10,8 +11,8 @@ material. Practice first; read when a rep exposes a gap. Nothing in the
 practice workspace is committed.
 
 !!! tip "The loop"
-    Choose a comment format, fill the comments, delete your gate, implement and
-    test, then keep one correction.
+    Start with ordinary comments or choose a named framework. Fill the comments,
+    delete your gate, implement and test, then keep one correction.
 
 ## 1. Start a rep
 
@@ -20,34 +21,35 @@ practice workspace is committed.
 Open Copilot Chat and enter one command:
 
 ```text
+/comments
 /reacto
 /clarp
 /umpire
-/comments
 ```
 
 With no arguments, the command draws the next due problem. To choose one,
 append its topic and name:
 
 ```text
-/reacto arrays two_sum
+/comments arrays two_sum
 ```
 
-Each format asks for the same interview signals with different headings.
+Each command asks for the same interview signals. Plain comments use natural
+language; the named frameworks add optional headings.
 
-| Command | Comment headings |
-|---------|------------------|
+| Command | Scaffolding |
+|---------|-------------|
+| `/comments` | Ordinary comments in your own words, with no required labels or prefixes |
 | `/reacto` | Repeat, Examples, Approach, Code, Test, Optimize |
 | `/clarp` | Clarify, Lay out, Attack, Run, Polish |
 | `/umpire` | Understand, Match, Plan, Implement, Review, Evaluate |
-| `/comments` | Restate, Example, Invariant, Approach, Tests, Complexity |
 
 Copilot needs no repository API key. It conducts the rep, while portable
 `just` commands create the workspace and run tests. Without Copilot, start
 from a terminal:
 
 ```bash
-just practice-start reacto
+just practice-start comments
 just practice-start clarp arrays two_sum
 ```
 

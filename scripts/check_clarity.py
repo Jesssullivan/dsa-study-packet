@@ -39,6 +39,31 @@ SURFACE_BUDGETS: dict[str, int] = {
     "reference-sheets/11-14-day-whiteboard-ramp.md": 1000,
 }
 
+DESCRIPTION_MAX_CHARS = 160
+DESCRIPTION_SURFACES: tuple[str, ...] = (
+    "docs/guide/getting-started.md",
+    "docs/challenges/index.md",
+    "docs/practice/index.md",
+    "docs/printables.md",
+    "docs/guide/source-of-truth.md",
+    "docs/guide/local-practice.md",
+    "docs/guide/learning-paths.md",
+    "docs/guide/when-to-use-what.md",
+    "docs/guide/interview-practice-evidence.md",
+    "docs/reference/index.md",
+    "docs/reference/01-python-stdlib.md",
+    "docs/reference/02-data-structures.md",
+    "docs/reference/03-algorithm-templates.md",
+    "docs/reference/04-big-o-complexity.md",
+    "docs/reference/05-common-patterns.md",
+    "docs/reference/06-system-design.md",
+    "docs/reference/07-interview-day-guide.md",
+    "docs/reference/08-cross-reference-guide.md",
+    "docs/reference/09-python-314-and-modern-patterns.md",
+    "docs/reference/10-whiteboard-performance-protocol.md",
+    "docs/reference/11-14-day-whiteboard-ramp.md",
+)
+
 EM_DASH = "\u2014"
 PRACTICE_DAY_SKILL = ".claude/skills/practice-day/SKILL.md"
 UNRESOLVED_STRINGS: dict[str, str] = {
@@ -103,6 +128,24 @@ def check(root: Path) -> list[str]:
                     "reserve this skill for an explicit practice day or full block"
                 )
 
+    for relative in DESCRIPTION_SURFACES:
+        path = root / relative
+        if not path.is_file():
+            if relative not in SURFACE_BUDGETS:
+                failures.append(f"{relative}: missing clarity-guarded surface")
+            continue
+
+        description = frontmatter_description(path.read_text())
+        if not description:
+            failures.append(
+                f"{relative}: add a concise frontmatter description for cards and metadata"
+            )
+        elif len(description) > DESCRIPTION_MAX_CHARS:
+            failures.append(
+                f"{relative}: frontmatter description is {len(description)} characters; "
+                f"keep it at or below {DESCRIPTION_MAX_CHARS}"
+            )
+
     return failures
 
 
@@ -120,7 +163,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     print(
         f"Clarity guard passed; {len(SURFACE_BUDGETS)} surfaces are within "
-        "their word budgets and contain no ambiguous control text."
+        "their word budgets, required descriptions are present, and control "
+        "text is unambiguous."
     )
     return 0
 

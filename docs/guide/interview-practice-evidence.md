@@ -1,5 +1,6 @@
 ---
 title: Interview Practice Evidence
+description: See the rationale for cold editor reps, think-aloud reasoning, focused tests, and optional observed work.
 ---
 
 # Interview Practice Evidence
