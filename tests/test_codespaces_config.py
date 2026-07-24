@@ -182,7 +182,10 @@ def test_devcontainer_uses_native_copilot_without_external_cli_provisioning() ->
 def test_devcontainer_provides_sshd_for_headless_verification() -> None:
     """The sshd feature lets gh codespace ssh drive acceptance checks headlessly."""
     config = _json(".devcontainer/devcontainer.json")
-    assert "ghcr.io/devcontainers/features/sshd:1" in config["features"]
+    assert isinstance(config, dict)
+    features = config["features"]
+    assert isinstance(features, dict)
+    assert "ghcr.io/devcontainers/features/sshd:1" in features
 
 
 def test_devcontainer_disables_global_navigator_for_copilot_chat() -> None:
