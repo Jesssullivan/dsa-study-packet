@@ -75,6 +75,40 @@ fmt-check:
     uv run ruff format --check src/ tests/
 
 # ──────────────────────────────────────────────
+# Agent skills (standalone; not wired into lint)
+# ──────────────────────────────────────────────
+
+# List each .claude skill's frontmatter name and description
+skills-list:
+    @for s in .claude/skills/*/SKILL.md; do \
+      name=$(awk '/^name:/ {print $2; exit}' "$s"); \
+      desc=$(awk '/^description:/ {sub(/^description:[[:space:]]*/, ""); print; exit}' "$s"); \
+      printf "%-16s %s\n" "$name" "$desc" | cut -c1-200; \
+    done
+
+# Fail if any .claude skill is missing a name or description frontmatter field
+skills-validate:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+    for s in .claude/skills/*/SKILL.md; do
+        name=$(awk '/^name:/ {print $2; exit}' "$s")
+        desc=$(awk '/^description:/ {print $0; exit}' "$s")
+        if [ -z "$name" ]; then
+            printf 'FAIL %s: missing frontmatter name\n' "$s"
+            fail=1
+        fi
+        if [ -z "$desc" ]; then
+            printf 'FAIL %s: missing frontmatter description\n' "$s"
+            fail=1
+        fi
+    done
+    if [ "$fail" -ne 0 ]; then
+        exit 1
+    fi
+    echo "skills-validate passed"
+
+# ──────────────────────────────────────────────
 # Scaffolding
 # ──────────────────────────────────────────────
 
