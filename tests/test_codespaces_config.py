@@ -204,7 +204,9 @@ def test_devcontainer_disables_global_navigator_for_copilot_chat() -> None:
     # listed for "Any" property, unlike ${containerEnv:VAR} which is
     # restricted to remoteEnv), so this stays correct even if the repo is
     # forked or renamed away from the Codespaces default clone path.
-    assert "${containerWorkspaceFolder}/.devcontainer/kill-navigator.cjs" in node_options
+    assert (
+        "${containerWorkspaceFolder}/.devcontainer/kill-navigator.cjs" in node_options
+    )
 
     preload = ROOT / ".devcontainer/kill-navigator.cjs"
     assert preload.is_file()
@@ -461,14 +463,16 @@ def test_workspace_autoapprove_allowlist_is_narrow() -> None:
             r"/^just practice-start (reacto|clarp|umpire|comments)"
             r"( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/"
         ): True,
+        r"/^just practice-start-tests [a-z][a-z0-9_]* [a-z][a-z0-9_]*$/": True,
         r"/^just practice-next$/": True,
         r"/^just practice-test$/": True,
         r"/^just practice-watch$/": True,
         r"/^just practice-repl$/": True,
         r"/^just practice-open( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": True,
+        r"/^just practice-study [a-z][a-z0-9_]* [a-z][a-z0-9_]*$/": True,
         r"""/^just practice-finish "[A-Za-z0-9 .,;:!?()'_-]{1,500}"$/""": True,
         r"/^just interview( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": True,
-        r"""/^just catalog "[A-Za-z0-9 ,_-]{1,120}"$/""": True,
+        r"""/^just catalog "[A-Za-z0-9 ,.?!'_-]{1,120}"$/""": True,
     }
     assert all(value is True for value in auto_approve.values())
     assert "*" not in auto_approve
@@ -477,8 +481,7 @@ def test_workspace_autoapprove_allowlist_is_narrow() -> None:
     # boundary, narrow allowlist, and pre-tool guard remain in force.
     assert settings["chat.agent.sandbox.enabled"] == "off"
     assert not any(
-        key.startswith("chat.agent.sandbox")
-        and key != "chat.agent.sandbox.enabled"
+        key.startswith("chat.agent.sandbox") and key != "chat.agent.sandbox.enabled"
         for key in settings
     )
 
@@ -491,8 +494,12 @@ def test_catalog_autoapprove_accepts_documented_lists_but_not_shell_syntax() -> 
     pattern = re.compile(encoded[1:-1])
 
     assert pattern.fullmatch('just catalog "anagram, 2 sum and prime"')
+    assert pattern.fullmatch(
+        'just catalog "Hey there! lets focus on untimed iteration and practice on LRU cache"'
+    )
     assert not pattern.fullmatch('just catalog "$(touch /tmp/pwned)"')
     assert not pattern.fullmatch('just catalog "`touch /tmp/pwned`"')
+    assert not pattern.fullmatch('just catalog "lru\'; touch /tmp/pwned"')
     assert not pattern.fullmatch('just catalog "two sum"; touch /tmp/pwned')
 
 
@@ -559,6 +566,61 @@ def test_practice_open_recipe_forwards_exact_pairs_and_guides_partial_names(
     assert 'NEXT: just catalog "lru_cache"' in partial.stdout
 
 
+def test_practice_study_requires_and_forwards_one_exact_pair() -> None:
+    exact = subprocess.run(
+        ["just", "--dry-run", "practice-study", "linked_lists", "lru_cache"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert exact.returncode == 0, exact.stderr
+    output = exact.stdout + exact.stderr
+    assert "topic='linked_lists'" in output
+    assert "problem='lru_cache'" in output
+    assert 'practice_workspace.py study "$topic" "$problem"' in output
+
+    missing = subprocess.run(
+        ["just", "practice-study"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert missing.returncode == 2
+    assert "requires one exact topic/problem pair" in missing.stdout
+    assert "NEXT: just catalog" in missing.stdout
+
+    partial = subprocess.run(
+        ["just", "practice-study", "lru_cache"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert partial.returncode == 2
+    assert "requires one exact topic/problem pair" in partial.stdout
+    assert "omit both for a draw" not in partial.stdout
+    assert 'NEXT: just catalog "lru_cache"' in partial.stdout
+
+
+def test_practice_start_tests_activates_exact_pair_with_test_focus() -> None:
+    exact = subprocess.run(
+        ["just", "--dry-run", "practice-start-tests", "linked_lists", "lru_cache"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert exact.returncode == 0, exact.stderr
+    output = exact.stdout + exact.stderr
+    assert "practice_workspace.py start comments" in output
+    assert "linked_lists" in output
+    assert "lru_cache" in output
+    assert "--focus test" in output
+
+
 def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
     for relative in (
         "AGENTS.md",
@@ -570,10 +632,21 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
         folded = text.casefold()
         assert "just interview topic problem" in text
         assert "practice-open" in text
-        assert "reference tests" in text
+        assert "just practice-study topic problem" in text
+        assert "just practice-start-tests topic problem" in text
+        assert '"untimed iteration"' in text
+        assert "STUDY_SOURCE" in text
+        assert "STUDY_TEST" in text
+        assert "STATE: STUDY" in text
+        assert "REVISION" in text
+        assert "IMPLEMENT" in text
+        assert "TESTS_FIRST" in text
+        assert "active work review/check" in folded
+        assert "just practice-next" in text
+        assert "FOCUS" in text
         assert "OPENED" in text
         assert "OPEN_FAILED" in text
-        assert "`QUEUE`" in text
+        assert "QUEUE" in text
         assert any(
             phrase in folded
             for phrase in (
@@ -583,11 +656,16 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
                 "request no `queue`",
             )
         )
-        assert "atomic" in folded
-        assert "open/read" in folded
-        assert "without presentation" in folded
         assert "reopen" in text
-        assert "never start directly" in folded
+        assert "never open tracked" in folded
+        assert any(
+            phrase in folded
+            for phrase in (
+                "never auto-test",
+                "never open tracked source/tests or auto-test",
+                "do not run tests yet",
+            )
+        )
         assert "candidate-authored comment/docstring idea" in folded
         assert "candidate-written terms" in folded
         assert (

@@ -3,7 +3,7 @@
 Company-neutral technical interview practice in a real editor. Each rep asks
 you to explain the problem in comments, implement a solution, write focused
 tests, and make one useful correction. Complete implementations, reference
-sheets, and a printable packet remain available after the rep.
+sheets, and a printable packet remain available for explicit study.
 
 The same material is published at
 **[dsa-woodshed.space](https://dsa-woodshed.space)**. Employer-specific prep
@@ -30,15 +30,30 @@ append its topic and name, for example `/comments arrays two_sum`. If named
 vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start the same
 loop with those optional labels.
 
-The rep opens two gitignored files under `.challenges/workspace/`: your source
-file and your test file. The committed implementation under `src/algo/` stays
-unchanged.
+When you are ready to implement, the rep opens two gitignored files under
+`.challenges/workspace/`: your source file and your test file. The committed
+implementation under `src/algo/` stays unchanged.
 
 1. Write reasoning in ordinary source comments or docstrings.
 2. Save, then enter `/continue` or run `just practice-next`.
 3. Implement the solution and add focused tests.
 4. Save and continue again when you want the next instruction.
 5. Run `just practice-test`, then close with `just practice-finish "one fix"`.
+
+To study before starting that candidate rep, ask to read or review one named
+problem:
+
+```bash
+just practice-study linked_lists lru_cache
+```
+
+The interviewer opens read-only committed source and test snapshots, then
+waits. Only when you are ready does it run one emitted transition:
+
+```bash
+just practice-start comments linked_lists lru_cache
+just practice-start-tests linked_lists lru_cache
+```
 
 Write comments in the source file, not the Chat composer. There is no required
 prefix, comment count, or gate deletion. The interviewer never writes your
@@ -58,6 +73,8 @@ just practice-test       # this problem's reference tests plus your tests
 just practice-watch      # rerun the focused tests on changes
 just practice-repl       # explore your implementation interactively
 just practice-open       # reopen the source and test files
+just practice-study linked_lists lru_cache
+just practice-start-tests linked_lists lru_cache
 just practice-finish "one fix"
 ```
 

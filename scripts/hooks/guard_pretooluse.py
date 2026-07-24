@@ -1,14 +1,13 @@
-"""Copilot ``preToolUse`` hook: enforce "the agent never edits candidate-owned
-files" (see AGENTS.md).
+"""Copilot ``preToolUse`` hook: protect private practice state (see AGENTS.md).
 
 Denies file-edit/write tool calls that target ``.challenges/**`` (the
-candidate's own workspace), shell commands that directly reference that
-workspace, and clearly destructive shell patterns (``rm -rf`` outside this
-workspace, ``git push --force``). Every deny carries a reason telling the
+candidate's workspace or generated study snapshots), shell commands that
+directly reference that state, and clearly destructive shell patterns
+(``rm -rf`` outside this workspace, ``git push --force``). Every deny carries a reason telling the
 calling agent what to do instead. File-edit tools inspect only path-shaped
 argument fields, so maintenance edits that merely mention the workspace in
 file content receive the neutral continuation output. Schema and doc source:
-.github/hooks/README.md.
+``.github/hooks/README.md``.
 
 Run as a hook (stdin -> stdout, exit 0 unless the payload itself is
 unreadable, in which case exit 2 so the caller's own fail-closed default
@@ -26,6 +25,7 @@ from collections.abc import Iterator
 from typing import Any
 
 _CANDIDATE_WORKSPACE = re.compile(r"(?<![\w-])\.challenges(?:[/\\]|$)")
+_STUDY_SNAPSHOT = re.compile(r"(?<![\w-])\.challenges[/\\]study(?:[/\\]|$)")
 
 # Tool-name substrings (case-insensitive) that mark a file-mutating tool
 # across the runtimes that read this hook: Copilot CLI/cloud agent, and
@@ -132,6 +132,14 @@ def _targets_candidate_workspace(tool_args: Any) -> bool:
     )
 
 
+def _targets_study_snapshot(tool_args: Any) -> bool:
+    if isinstance(tool_args, str):
+        return bool(_STUDY_SNAPSHOT.search(tool_args))
+    return any(
+        _STUDY_SNAPSHOT.search(text) for text in _iter_path_strings(tool_args)
+    )
+
+
 def _shell_references_candidate_workspace(command_text: str) -> bool:
     """Return whether a shell command directly names candidate-owned state.
 
@@ -204,6 +212,15 @@ def decide(payload: dict[str, Any]) -> dict[str, Any]:
     if _matches_any_hint(
         tool_name, EDIT_TOOL_NAME_HINTS
     ) and _targets_candidate_workspace(tool_args):
+        if _targets_study_snapshot(tool_args):
+            return {
+                "permissionDecision": "deny",
+                "permissionDecisionReason": (
+                    "generated read-only study snapshot under .challenges/study/; "
+                    "do not edit it; rerun the exact just practice-study front "
+                    "door to regenerate it"
+                ),
+            }
         return {
             "permissionDecision": "deny",
             "permissionDecisionReason": (
@@ -215,6 +232,16 @@ def decide(payload: dict[str, Any]) -> dict[str, Any]:
     if _matches_any_hint(tool_name, SHELL_TOOL_NAME_HINTS):
         command_text = _shell_command_text(tool_args)
         if _shell_references_candidate_workspace(command_text):
+            if _STUDY_SNAPSHOT.search(command_text):
+                return {
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": (
+                        "shell command directly references a generated read-only "
+                        "study snapshot; use the file-read tool with the exact "
+                        "STUDY_SOURCE or STUDY_TEST path emitted by "
+                        "just practice-study"
+                    ),
+                }
             return {
                 "permissionDecision": "deny",
                 "permissionDecisionReason": (

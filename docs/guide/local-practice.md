@@ -55,6 +55,19 @@ just practice-start comments
 just practice-start comments arrays two_sum
 ```
 
+To study one exact pair without starting a rep, open its committed snapshot:
+
+```bash
+just practice-study linked_lists lru_cache
+```
+
+When ready, start a candidate pair with source or test focus.
+
+```bash
+just practice-start comments linked_lists lru_cache
+just practice-start-tests linked_lists lru_cache
+```
+
 Your source and test file open under `.challenges/workspace/`. Write ordinary
 source comments or docstrings in your own words, save, then enter `/continue`
 or run `just practice-next`. The comments belong in the file, not Chat, and
@@ -76,10 +89,10 @@ just practice-finish "one fix"
 The committed solution under `src/algo/` remains unchanged, and your workspace
 stays gitignored. Run `just doctor` when the toolchain looks wrong.
 
-Candidate tests are trusted local Python, not a sandbox. The runner bounds test
-time and cleans the pytest process group, but candidate tests must not launch
-detached or background daemons. Test receipts detect ordinary staleness and
-incomplete runs; they are workflow evidence, not a tamper-resistant boundary.
+Candidate tests are not sandboxed. The runner bounds test time and cleans the
+pytest process group. Do not launch background daemons. Receipts detect
+ordinary staleness and incomplete runs; they are workflow evidence, not a
+tamper-resistant boundary.
 
 Claude Code, Codex, and other external agents are optional. Install,
 authenticate, and launch the one you already use; the repository does not

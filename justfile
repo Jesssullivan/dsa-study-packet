@@ -357,6 +357,10 @@ practice-start paradigm topic="" problem="":
     fi
     exec uv run python scripts/practice_workspace.py start "$paradigm" "$topic" "$problem"
 
+# Start a normal comments rep with the candidate test tab focused.
+practice-start-tests topic problem:
+    @uv run python scripts/practice_workspace.py start comments {{ quote(topic) }} {{ quote(problem) }} --focus test
+
 # Start a fresh rep and archive any current workspace.
 practice-new paradigm topic="" problem="":
     #!/usr/bin/env bash
@@ -413,6 +417,26 @@ practice-open topic="" problem="":
         exec uv run python scripts/practice_workspace.py open
     fi
     exec uv run python scripts/practice_workspace.py open "$topic" "$problem"
+
+# Open immutable committed source and test snapshots without starting a rep.
+practice-study topic="" problem="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    topic={{ quote(topic) }}
+    problem={{ quote(problem) }}
+    if { [ -n "$topic" ] && [ -z "$problem" ]; } || { [ -z "$topic" ] && [ -n "$problem" ]; }; then
+        supplied=${topic:-$problem}
+        printf 'practice: practice-study requires one exact topic/problem pair\n'
+        printf 'MATCH: one natural name, %s, is not an exact pair\n' "$supplied"
+        printf 'NEXT: just catalog "%s"\n' "$supplied"
+        exit 2
+    fi
+    if [ -z "$topic" ] && [ -z "$problem" ]; then
+        printf 'practice: practice-study requires one exact topic/problem pair\n'
+        printf 'NEXT: just catalog\n'
+        exit 2
+    fi
+    exec uv run python scripts/practice_workspace.py study "$topic" "$problem"
 
 # Print the current rep metadata (agent/tooling interface).
 practice-current:

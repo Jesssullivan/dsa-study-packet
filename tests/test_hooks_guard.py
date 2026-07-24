@@ -229,6 +229,58 @@ def test_continues_repo_practice_front_door_without_private_path() -> None:
     assert decision == {"continue": True}
 
 
+def test_continues_study_front_door_without_private_path() -> None:
+    decision = decide(
+        {
+            "toolName": "execute",
+            "toolArgs": {"command": "just practice-study linked_lists lru_cache"},
+        }
+    )
+    assert decision == {"continue": True}
+
+
+def test_denies_edit_targeting_generated_study_snapshot() -> None:
+    decision = decide(
+        {
+            "toolName": "Edit",
+            "toolArgs": {
+                "file_path": (
+                    ".challenges/study/linked_lists/lru_cache/revision/lru_cache.py"
+                )
+            },
+        }
+    )
+    assert decision["permissionDecision"] == "deny"
+    reason = decision["permissionDecisionReason"]
+    assert "generated read-only study snapshot" in reason
+    assert "just practice-study" in reason
+    assert "regenerate" in reason
+    assert "ask the candidate to make this edit" not in reason
+
+
+def test_denies_shell_access_to_study_snapshot_without_outsourcing_the_edit() -> None:
+    decision = decide(
+        {
+            "toolName": "execute",
+            "toolArgs": {
+                "command": (
+                    "sed -n '1,20p' "
+                    ".challenges/study/linked_lists/lru_cache/revision/lru_cache.py"
+                )
+            },
+        }
+    )
+
+    assert decision["permissionDecision"] == "deny"
+    reason = decision["permissionDecisionReason"]
+    assert "generated read-only study snapshot" in reason
+    assert "file-read tool" in reason
+    assert "STUDY_SOURCE or STUDY_TEST" in reason
+    assert "just practice-study" in reason
+    assert "regenerate" not in reason
+    assert "ask the candidate" not in reason
+
+
 def test_shell_explanation_can_mention_candidate_workspace() -> None:
     decision = decide(
         {

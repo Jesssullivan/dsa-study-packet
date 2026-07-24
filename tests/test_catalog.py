@@ -72,6 +72,32 @@ def test_multi_query_preserves_request_order_and_every_ambiguous_meaning() -> No
     assert rendered.count("STATE: CHOOSE") == 1
 
 
+@pytest.mark.parametrize(
+    "query",
+    [
+        "review merge sort and count inversions",
+        "read get and put LRU cache",
+    ],
+)
+def test_synonymous_phrases_never_queue_the_same_rep_twice(query: str) -> None:
+    rendered = catalog.render_query(query)
+
+    assert "STATE: READY" in rendered
+    assert rendered.count("START:") == 1
+    assert "QUEUE:" not in rendered
+    assert rendered.count("QUERY:") == 2
+
+
+def test_ready_selection_deduplication_preserves_distinct_queue_order() -> None:
+    rendered = catalog.render_query(
+        "review merge sort and count inversions and two sum"
+    )
+
+    assert "START: sorting/merge_sort_inversions" in rendered
+    assert rendered.splitlines().count("QUEUE: arrays/two_sum") == 1
+    assert rendered.count("QUEUE:") == 1
+
+
 def test_conversational_request_prefix_does_not_become_a_fake_problem() -> None:
     groups = catalog.search_catalog(
         "lets work on some basics, anagram, 2 sum and prime"
@@ -102,6 +128,115 @@ def test_ready_guidance_preserves_the_already_selected_mode() -> None:
     assert "START: arrays/two_sum" in rendered
     assert "QUEUE:" not in rendered
     assert "start START with the selected mode" in rendered
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "Hey there! lets focus on untimed iteration and practice on LRU cache",
+        (
+            "Hey there, lets work on LRU cache, no timer to begin, "
+            "first lets read the code"
+        ),
+        (
+            "Hey there, lets work on LRU cache, no timeer to begin, "
+            "first lets read the code"
+        ),
+        "study LRU solution",
+        "untimed solution iteration on LRU cache",
+    ],
+)
+def test_study_request_words_resolve_one_lru_pair(query: str) -> None:
+    rendered = catalog.render_query(query)
+
+    assert "STATE: READY" in rendered
+    assert "START: linked_lists/lru_cache" in rendered
+    assert rendered.count("QUERY:") == 1
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "no LRU cache",
+        "not the LRU cache please",
+        "I do not want to study LRU cache",
+        "I don't want to study LRU cache",
+        "no tests for LRU cache",
+    ],
+)
+def test_negated_problem_requests_never_become_ready(query: str) -> None:
+    rendered = catalog.render_query(query)
+
+    assert "STATE: NOT_FOUND" in rendered
+    assert "START:" not in rendered
+    assert _slugs(query) == []
+
+
+def test_negative_clause_does_not_hide_a_later_positive_request() -> None:
+    rendered = catalog.render_query("do not study, implement LRU cache")
+
+    assert "STATE: READY" in rendered
+    assert "START: linked_lists/lru_cache" in rendered
+    assert rendered.count("QUERY:") == 1
+
+
+@pytest.mark.parametrize("verb", ["skip", "avoid", "exclude"])
+def test_negative_imperatives_never_queue_a_declined_problem(verb: str) -> None:
+    rendered = catalog.render_query(f"{verb} LRU cache and do two sum")
+
+    assert "STATE: NOT_FOUND" in rendered
+    assert "START:" not in rendered
+    assert "QUEUE:" not in rendered
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "write tests first for LRU cache",
+        "tests-first LRU cache",
+        "implement LRU solution with comments",
+        "write LRU code",
+        "study an LRU cache implementation",
+        "can we study the LRU cache",
+        "could we study LRU cache",
+        "I would like to study LRU cache",
+        "let's take a look at LRU cache",
+        "walk me through LRU cache",
+        "open LRU cache",
+        "show me LRU cache",
+        "study the implementation of LRU cache",
+        "please let me read LRU cache",
+        "I am ready to implement LRU cache",
+        "we'll study LRU cache",
+        "I wanna study LRU cache",
+        "I am looking to study LRU cache",
+        "go over LRU cache",
+        "check out LRU cache",
+        "try LRU cache",
+        "help me study LRU cache",
+        "bring up LRU cache",
+        "pull up LRU cache",
+        "I feel ready for LRU cache",
+        "board LRU cache",
+        "observed mock LRU cache",
+        "reason through LRU cache with no clock",
+        "reason through LRU cache without a timer",
+        "not timed LRU cache",
+    ],
+)
+def test_mode_request_words_resolve_one_lru_pair(query: str) -> None:
+    rendered = catalog.render_query(query)
+
+    assert "STATE: READY" in rendered
+    assert "START: linked_lists/lru_cache" in rendered
+    assert rendered.count("QUERY:") == 1
+
+
+def test_span_recovery_never_discards_another_canonical_problem_word() -> None:
+    rendered = catalog.render_query("binary search tree")
+
+    assert "STATE: NOT_FOUND" in rendered
+    assert "START:" not in rendered
 
 
 def test_query_is_ready_only_when_every_phrase_is_an_exact_match() -> None:

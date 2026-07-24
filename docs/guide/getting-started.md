@@ -5,10 +5,9 @@ description: Start an editor-first interview rep with source comments or docstri
 
 # Getting Started
 
-The Woodshed has two parts. The practice workspace holds your comments, code,
-and tests. The site and printable packet hold complete solutions and reference
-material. Practice first; read when a rep exposes a gap. Nothing in the
-practice workspace is committed.
+The practice workspace holds your comments, code, and tests. The site and
+packet hold solutions and references. Default reps are cold; explicit study
+opens a committed solution first. Practice work is never committed.
 
 !!! tip "The loop"
     Start with ordinary source comments or docstrings, or choose a named
@@ -22,13 +21,12 @@ practice workspace is committed.
 2. Ask Copilot Chat for a first practice rep. One placement question comes
    back: "Where do you want to work today: reason and code in the editor,
    talk a problem through with no clock, or do a timed board-style rep?"
-3. There is no menu, and no clock unless you ask for one. A nervous first
-   session starts as a conversation.
+3. There is no clock unless you ask. A nervous first session starts as a
+   conversation.
 4. Stop clean: one thing that worked, one fix, done. The next draw is queued
    for tomorrow.
 
-What a first session can sound like (illustrative; the interviewer adapts to
-you):
+One first-session example:
 
 > **Interviewer:** Two Sum, no code required. Tell me what the problem asks
 > in your own words.
@@ -82,6 +80,16 @@ terminal:
 ```bash
 just practice-start comments
 just practice-start clarp arrays two_sum
+```
+
+To study first, open read-only source and test snapshots. Start a candidate
+pair only when ready to implement or write tests. Snapshot tests are reading
+material, not the focused runner.
+
+```bash
+just practice-study linked_lists lru_cache
+just practice-start comments linked_lists lru_cache
+just practice-start-tests linked_lists lru_cache
 ```
 
 ## 2. Write before code
@@ -172,6 +180,7 @@ See [Local VS Code](local-practice.md) for setup details.
 | Goal | Surface |
 |------|---------|
 | Reason, code, and test | editor rep |
+| Read a complete implementation and its tests | explicit study snapshot |
 | Form a plan without editor pressure | untimed conversation |
 | Practice narration under a clock | timed board or observed mock |
 | Select a pattern | [decision tree](when-to-use-what.md) |

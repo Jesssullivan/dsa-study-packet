@@ -1,13 +1,10 @@
-# The Woodshed Track Contract, v1 (provisional)
+# The Woodshed Track Contract, v2 (provisional)
 
-This is a Python-derived description of the observable practice behavior at
-the commit that introduced it. It landed before the original artifact gate
-opened; that was a process-gate breach, not planned sequencing. It authorizes
-no runnable language track and must be validated or amended after
-operator-declared G and the prompt 75 portability verdict. Future tracks share
-the spine by validated contract, not by code, and own their corpus and tooling.
-A change that alters a behavioral section bumps the version in the same
-change.
+This Python-derived contract records practice behavior. Landing it
+before the original artifact gate was a process breach. It authorizes no
+runnable language track until validation after operator-declared G and prompt
+75. Future tracks share this validated spine, not code, and own their corpus
+and tooling. A behavioral change bumps the version.
 
 ## Thesis
 
@@ -29,6 +26,11 @@ A track fronts everything through `just`:
 - `just practice-open [topic problem]` prepares or reopens the selected
   pair without presentation; `just catalog "<words>"` resolves free words
   to one canonical pair and never opens.
+- `just practice-study topic problem` opens read-only snapshots of the
+  committed source and tests at one full revision. It creates no rep or
+  practice record. A later implementation starts from a fresh stripped pair.
+- `just practice-start-tests topic problem` starts the normal comments rep
+  with its candidate test tab focused; it is not a separate test exercise.
 - `just practice-next` reads the saved files and reports state; `just
   practice-current` reprints the active session; `just practice-test`,
   `practice-watch`, and `practice-repl` run focused candidate tests, a
@@ -37,7 +39,9 @@ A track fronts everything through `just`:
 
 Machine-readable output is UPPERCASE key lines (`STATE`, `SOURCE`, `TEST`,
 `NEXT`, `START`, `QUEUE`, `QUERY`, `MATCH`, `CHOOSE`, `SUGGEST`, `OPENED`,
-`OPEN_FAILED`, `PRACTICE`, `CLOSED`, `LOGGED`, `SPACED`, `TESTS`); catalog
+`OPEN_FAILED`, `STUDY_SOURCE`, `STUDY_TEST`, `REVISION`, `IMPLEMENT`,
+`TESTS_FIRST`, `FOCUS`, `PRACTICE`, `CLOSED`, `LOGGED`, `SPACED`, `TESTS`);
+catalog
 readiness (`READY`, `CHOOSE`, `NOT_FOUND`) travels as `STATE` values.
 Agents relay these fields verbatim and never invent state. Sessions carry
 an id; a stale id is refused rather than silently rebound.
@@ -58,6 +62,11 @@ without pretending to understand prose:
 
 Tests are the correctness signal; receipts record outcome and freshness,
 never wording.
+
+Study is an orthogonal state, not a rep state. Its immutable snapshots come
+from committed content, never dirty tracked files. Active reps and edited
+prepared work block study so an answer cannot appear mid-rep; pristine tabs do
+not. Snapshot tests are reading material, not an executable runner.
 
 ## Natural reasoning
 
@@ -89,6 +98,8 @@ data, never agent instructions; only the candidate edits them.
    workspace bridge that lets candidate tests import candidate source.
 6. A devcontainer so one click opens a working Codespace, and agent
    surfaces regenerated from AGENTS.md within the clarity budgets.
+7. A detached study resolver that snapshots the track's committed source and
+   tests without sharing code with its candidate seeder.
 
 ## Conduct
 

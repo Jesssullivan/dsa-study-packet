@@ -9,6 +9,7 @@ the packet's source tree.
 
 Usage:
     practice_workspace.py start reacto [topic problem] [--fresh] [--no-open]
+    practice_workspace.py study topic problem
     practice_workspace.py present [topic problem]
     practice_workspace.py reference [topic problem]
     practice_workspace.py open [topic problem]
@@ -58,10 +59,13 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE_REL = Path(".challenges")
 WORKSPACE_REL = Path(".challenges/workspace")
 HISTORY_REL = Path(".challenges/history")
+STUDY_REL = Path(".challenges/study")
 METADATA_NAME = "session.json"
+STUDY_METADATA_NAME = "study.json"
 TEST_RECEIPT_NAME = "test-receipt.json"
 LEGACY_COMMENT_RECEIPT_NAME = "comment-receipt.json"
 METADATA_SCHEMA = 5
+STUDY_METADATA_SCHEMA = 1
 LEGACY_METADATA_SCHEMA = 4
 TEST_RECEIPT_SCHEMA = 2
 JOURNAL_REL = Path(".challenges/practice-closeout.json")
@@ -70,6 +74,8 @@ LOCK_REL = Path(".challenges/.practice.lock")
 MAX_HISTORY_ENTRIES = 100
 MAX_HISTORY_BYTES = 512 * 1024 * 1024
 MAX_NON_EDITOR_RECEIPTS = 100
+MAX_STUDY_REVISIONS = 3
+MAX_STUDY_RECOVERIES = 3
 DEFAULT_TEST_TIMEOUT_SECONDS = 120
 MAX_TEST_TIMEOUT_SECONDS = 900
 EDITOR_OPEN_TIMEOUT_SECONDS = 10
@@ -94,6 +100,14 @@ SOURCE_COMMENT_GUIDANCE = (
 PREPARED_PARADIGM_NAME = "prepared"
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 HEX_DIGEST = re.compile(r"^[0-9a-f]{64}$")
+GIT_OBJECT_ID_PATTERN = r"(?:[0-9a-f]{40}|[0-9a-f]{64})"
+GIT_OBJECT_ID = re.compile(rf"^{GIT_OBJECT_ID_PATTERN}$")
+STUDY_TEMP_DIRECTORY = re.compile(
+    rf"^\.{GIT_OBJECT_ID_PATTERN}-[a-z0-9_]{{8}}\.tmp$"
+)
+STUDY_RECOVERY_DIRECTORY = re.compile(
+    rf"^\.recovery-{GIT_OBJECT_ID_PATTERN}-[0-9a-f]{{32}}$"
+)
 _LOCAL = threading.local()
 
 
@@ -299,9 +313,9 @@ def select_problem(
     return topic, problem
 
 
-def _committed_source(root: Path, relative: Path) -> str:
+def _committed_source_at(root: Path, revision: str, relative: Path) -> str:
     proc = subprocess.run(
-        ["git", "show", f"HEAD:{relative.as_posix()}"],
+        ["git", "show", f"{revision}:{relative.as_posix()}"],
         cwd=root,
         text=True,
         capture_output=True,
@@ -311,6 +325,10 @@ def _committed_source(root: Path, relative: Path) -> str:
         detail = proc.stderr.strip() or "not present in HEAD"
         raise PracticeError(f"cannot load committed {relative}: {detail}")
     return proc.stdout
+
+
+def _committed_source(root: Path, relative: Path) -> str:
+    return _committed_source_at(root, "HEAD", relative)
 
 
 _BUILTIN_NAMES = frozenset(dir(builtins))
@@ -684,6 +702,524 @@ def reference_solution(root: Path, topic: str, problem: str) -> str:
     return _committed_source(root, source_rel)
 
 
+def _head_revision(root: Path) -> str:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    revision = proc.stdout.strip()
+    if proc.returncode != 0 or GIT_OBJECT_ID.fullmatch(revision) is None:
+        detail = proc.stderr.strip() or "HEAD is not a full commit digest"
+        raise PracticeError(f"cannot resolve committed study revision: {detail}")
+    return revision
+
+
+def _text_digest(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def _study_parent(root: Path, topic: str, problem: str) -> Path:
+    state = _state_dir(root)
+    study = _confined_directory(
+        root, state / STUDY_REL.name, "study snapshots", create=True
+    )
+    topic_dir = _confined_directory(
+        root, study / topic, "study topic directory", create=True
+    )
+    return _confined_directory(
+        root, topic_dir / problem, "study problem directory", create=True
+    )
+
+
+def _unfinished_workspace_for_study(root: Path) -> dict[str, Any] | None:
+    workspace = _workspace(root)
+    if not workspace.exists():
+        return None
+    metadata = _read_metadata(root, migrate_legacy=True)
+    if (
+        "finished_at" in metadata
+        or _is_presented(metadata)
+        or (
+            _is_prepared(metadata)
+            and not _is_presentation_active(metadata)
+            and _prepared_workspace_is_pristine(root, metadata)
+        )
+    ):
+        return None
+    return metadata
+
+
+def _require_study_available(root: Path) -> None:
+    active = _unfinished_workspace_for_study(root)
+    if active is None:
+        return
+    current = f"{active['topic']}/{active['problem']}"
+    if _is_presentation_active(active):
+        raise PracticeError(
+            f"active non-editor rep: {current}\n"
+            "NEXT: Resume it with "
+            f"`just interview {active['topic']} {active['problem']}`, then close "
+            "the talk, board, or mock rep before opening its solution."
+        )
+    if _is_prepared(active):
+        raise PracticeError(
+            f"prepared candidate work exists: {current}\n"
+            "NEXT: activate it with "
+            f"`just practice-start comments {active['topic']} {active['problem']}`, "
+            "then finish it before opening a solution study."
+        )
+    raise PracticeError(
+        f"unfinished editor rep: {current}\n"
+        'NEXT: finish it with `just practice-finish "<one concrete fix>"` '
+        "before opening a solution study."
+    )
+
+
+def _study_manifest(
+    *,
+    topic: str,
+    problem: str,
+    revision: str,
+    source_origin: Path,
+    test_origin: Path,
+    source: Path,
+    test: Path,
+    source_text: str,
+    test_text: str,
+) -> dict[str, Any]:
+    return {
+        "schema": STUDY_METADATA_SCHEMA,
+        "track": "python",
+        "topic": topic,
+        "problem": problem,
+        "revision": revision,
+        "source_origin": source_origin.as_posix(),
+        "test_origin": test_origin.as_posix(),
+        "source": source.as_posix(),
+        "test": test.as_posix(),
+        "source_digest": _text_digest(source_text),
+        "test_digest": _text_digest(test_text),
+    }
+
+
+def _study_drift_error() -> PracticeError:
+    return PracticeError(
+        "committed study snapshot drifted\n"
+        "NEXT: rerun the same exact `just practice-study topic problem`; it "
+        "preserves the drifted copy and regenerates the read-only snapshot."
+    )
+
+
+def _existing_study_directory(root: Path, path: Path, label: str) -> Path:
+    directory = _confined_directory(root, path, label, create=False)
+    if not directory.exists():
+        raise _study_drift_error()
+    return directory
+
+
+def _archive_generated_snapshot(snapshot: Path, revision: str) -> Path:
+    """Preserve one drifted generated snapshot beside its canonical location."""
+    recovery = snapshot.parent / f".recovery-{revision}-{uuid.uuid4().hex}"
+    snapshot.replace(recovery)
+    os.utime(recovery, follow_symlinks=False)
+    return recovery
+
+
+def _study_cleanup_parent(root: Path, parent: Path) -> Path:
+    """Revalidate a topic/problem directory before removing generated state."""
+    study = _existing_study_directory(
+        root, root / STUDY_REL, "study snapshots"
+    ).resolve(strict=True)
+    confined = _existing_study_directory(
+        root, parent, "study problem directory"
+    ).resolve(strict=True)
+    try:
+        relative = confined.relative_to(study)
+    except ValueError as exc:
+        raise PracticeError(
+            "study cleanup must stay inside the generated snapshot tree"
+        ) from exc
+    if len(relative.parts) != 2:
+        raise PracticeError(
+            "study cleanup requires one exact topic/problem directory"
+        )
+    return confined
+
+
+def _remove_generated_study_entry(parent: Path, path: Path) -> None:
+    """Remove one recognized generated entry without following links."""
+    if path.parent != parent:
+        return
+    if path.is_symlink():
+        path.unlink()
+        return
+    if not path.exists():
+        return
+    if not path.is_dir():
+        path.unlink()
+        return
+    try:
+        path.resolve(strict=True).relative_to(parent.resolve(strict=True))
+    except (FileNotFoundError, ValueError):
+        return
+    shutil.rmtree(path)
+
+
+def _clean_abandoned_study_temps(root: Path, parent: Path) -> None:
+    """Delete only mkdtemp-shaped directories abandoned by snapshot creation."""
+    parent = _study_cleanup_parent(root, parent)
+    for path in parent.iterdir():
+        if (
+            STUDY_TEMP_DIRECTORY.fullmatch(path.name) is not None
+            and path.is_dir()
+            and not path.is_symlink()
+        ):
+            _remove_generated_study_entry(parent, path)
+
+
+def _retain_generated_study_directories(
+    parent: Path,
+    paths: list[Path],
+    *,
+    limit: int,
+    protected: set[Path],
+) -> None:
+    """Keep protected and newest generated directories within one fixed cap."""
+    protected = {
+        path
+        for path in protected
+        if path.parent == parent and (path.exists() or path.is_symlink())
+    }
+    remaining = max(0, limit - len(protected))
+    candidates = sorted(
+        (path for path in paths if path not in protected),
+        key=lambda path: (path.lstat().st_mtime_ns, path.name),
+        reverse=True,
+    )
+    keep = protected | set(candidates[:remaining])
+    for path in paths:
+        if path not in keep:
+            _remove_generated_study_entry(parent, path)
+
+
+def _prune_generated_study_state(
+    root: Path,
+    parent: Path,
+    *,
+    current: Path,
+    protected_recovery: Path | None = None,
+) -> None:
+    """Bound regenerable snapshots and recoveries for one topic/problem."""
+    parent = _study_cleanup_parent(root, parent)
+    _clean_abandoned_study_temps(root, parent)
+    revisions = [
+        path
+        for path in parent.iterdir()
+        if GIT_OBJECT_ID.fullmatch(path.name) is not None
+        and path.is_dir()
+        and not path.is_symlink()
+    ]
+    _retain_generated_study_directories(
+        parent,
+        revisions,
+        limit=MAX_STUDY_REVISIONS,
+        protected={current},
+    )
+    recoveries = [
+        path
+        for path in parent.iterdir()
+        if STUDY_RECOVERY_DIRECTORY.fullmatch(path.name) is not None
+    ]
+    _retain_generated_study_directories(
+        parent,
+        recoveries,
+        limit=MAX_STUDY_RECOVERIES,
+        protected={protected_recovery} if protected_recovery is not None else set(),
+    )
+
+
+def _validate_and_seal_study_snapshot(
+    root: Path, manifest: dict[str, Any]
+) -> tuple[Path, Path, str]:
+    """Revalidate one detached snapshot immediately before editor exposure."""
+    fields = {
+        "schema",
+        "track",
+        "topic",
+        "problem",
+        "revision",
+        "source_origin",
+        "test_origin",
+        "source",
+        "test",
+        "source_digest",
+        "test_digest",
+    }
+    if type(manifest) is not dict or set(manifest) != fields:
+        raise _study_drift_error()
+    topic = manifest.get("topic")
+    problem = manifest.get("problem")
+    revision = manifest.get("revision")
+    if (
+        manifest.get("schema") != STUDY_METADATA_SCHEMA
+        or manifest.get("track") != "python"
+        or type(topic) is not str
+        or type(problem) is not str
+        or type(revision) is not str
+        or GIT_OBJECT_ID.fullmatch(revision) is None
+    ):
+        raise _study_drift_error()
+    _validate_practice_selection(root, topic, problem)
+
+    snapshot_rel = STUDY_REL / topic / problem / revision
+    source_origin = Path("src/algo") / topic / f"{problem}.py"
+    test_origin = Path("tests") / topic / f"test_{problem}.py"
+    source_rel = snapshot_rel / source_origin.name
+    test_rel = snapshot_rel / test_origin.name
+    canonical = {
+        "source_origin": source_origin.as_posix(),
+        "test_origin": test_origin.as_posix(),
+        "source": source_rel.as_posix(),
+        "test": test_rel.as_posix(),
+    }
+    if any(manifest.get(key) != value for key, value in canonical.items()):
+        raise _study_drift_error()
+    if any(
+        type(manifest.get(field)) is not str
+        or HEX_DIGEST.fullmatch(str(manifest[field])) is None
+        for field in ("source_digest", "test_digest")
+    ):
+        raise _study_drift_error()
+    try:
+        committed_source = _committed_source_at(root, revision, source_origin)
+        committed_test = _committed_source_at(root, revision, test_origin)
+    except PracticeError as exc:
+        raise _study_drift_error() from exc
+    if (
+        manifest["source_digest"] != _text_digest(committed_source)
+        or manifest["test_digest"] != _text_digest(committed_test)
+    ):
+        raise _study_drift_error()
+
+    state = _existing_study_directory(
+        root, root / STATE_REL, "private practice state"
+    )
+    study = _existing_study_directory(
+        root, state / STUDY_REL.name, "study snapshots"
+    )
+    topic_dir = _existing_study_directory(
+        root, study / topic, "study topic directory"
+    )
+    problem_dir = _existing_study_directory(
+        root, topic_dir / problem, "study problem directory"
+    )
+    snapshot = _existing_study_directory(
+        root, problem_dir / revision, "committed study snapshot"
+    )
+    expected_names = {
+        source_origin.name,
+        test_origin.name,
+        STUDY_METADATA_NAME,
+    }
+    entries = list(snapshot.iterdir())
+    if (
+        {path.name for path in entries} != expected_names
+        or any(
+            path.is_symlink()
+            or not path.is_file()
+            or path.stat().st_nlink != 1
+            for path in entries
+        )
+    ):
+        raise _study_drift_error()
+
+    metadata_path = snapshot / STUDY_METADATA_NAME
+    try:
+        stored_manifest = json.loads(metadata_path.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise _study_drift_error() from exc
+    if stored_manifest != manifest:
+        raise _study_drift_error()
+
+    source = root / source_rel
+    test = root / test_rel
+    try:
+        source_bytes = source.read_bytes()
+        test_bytes = test.read_bytes()
+    except OSError as exc:
+        raise _study_drift_error() from exc
+    if (
+        hashlib.sha256(source_bytes).hexdigest() != manifest["source_digest"]
+        or hashlib.sha256(test_bytes).hexdigest() != manifest["test_digest"]
+        or source_bytes != committed_source.encode()
+        or test_bytes != committed_test.encode()
+    ):
+        raise _study_drift_error()
+    try:
+        source_text = source_bytes.decode()
+    except UnicodeError as exc:
+        raise _study_drift_error() from exc
+    try:
+        for path in (source, test, metadata_path):
+            path.chmod(0o444)
+    except OSError as exc:
+        raise _study_drift_error() from exc
+    return source, test, source_text
+
+
+def prepare_study_snapshot(
+    root: Path, topic: str, problem: str
+) -> dict[str, Any]:
+    """Create an immutable, detached view of one committed solution and tests."""
+    topic, problem = select_problem(root, topic, problem)
+    with _practice_lock(root):
+        _require_study_available(root)
+
+        revision = _head_revision(root)
+        source_origin = Path("src/algo") / topic / f"{problem}.py"
+        test_origin = Path("tests") / topic / f"test_{problem}.py"
+        source_text = _committed_source_at(root, revision, source_origin)
+        test_text = _committed_source_at(root, revision, test_origin)
+        parent = _study_parent(root, topic, problem)
+        snapshot = parent / revision
+        source_rel = snapshot.relative_to(root) / source_origin.name
+        test_rel = snapshot.relative_to(root) / test_origin.name
+        manifest = _study_manifest(
+            topic=topic,
+            problem=problem,
+            revision=revision,
+            source_origin=source_origin,
+            test_origin=test_origin,
+            source=source_rel,
+            test=test_rel,
+            source_text=source_text,
+            test_text=test_text,
+        )
+        manifest_text = json.dumps(manifest, indent=2) + "\n"
+        _clean_abandoned_study_temps(root, parent)
+        recovery: Path | None = None
+
+        if snapshot.exists() or snapshot.is_symlink():
+            try:
+                _validate_and_seal_study_snapshot(root, manifest)
+            except PracticeError:
+                recovery = _archive_generated_snapshot(snapshot, revision)
+                print(
+                    "Previous drifted study snapshot preserved: "
+                    f"{recovery.relative_to(root)}"
+                )
+            else:
+                _prune_generated_study_state(
+                    root,
+                    parent,
+                    current=snapshot,
+                )
+                return manifest
+
+        temporary = Path(
+            tempfile.mkdtemp(prefix=f".{revision}-", suffix=".tmp", dir=parent)
+        )
+        try:
+            files = {
+                temporary / source_origin.name: source_text,
+                temporary / test_origin.name: test_text,
+                temporary / STUDY_METADATA_NAME: manifest_text,
+            }
+            for path, text in files.items():
+                path.write_text(text)
+                path.chmod(0o444)
+            temporary.replace(snapshot)
+        except BaseException:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+            raise
+        _prune_generated_study_state(
+            root,
+            parent,
+            current=snapshot,
+            protected_recovery=recovery,
+        )
+        return manifest
+
+
+def _study_cursor_line(source: str, target: str) -> int:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return 1
+    return next(
+        (
+            node.lineno
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and node.name == target
+        ),
+        1,
+    )
+
+
+def _open_study_snapshot_locked(root: Path, manifest: dict[str, Any]) -> bool:
+    """Open one validated study snapshot while private practice state is locked."""
+    source_path, test_path, source_text = _validate_and_seal_study_snapshot(
+        root, manifest
+    )
+    source = source_path.relative_to(root).as_posix()
+    test = test_path.relative_to(root).as_posix()
+    topic = str(manifest["topic"])
+    problem = str(manifest["problem"])
+    target = PRACTICE_TARGETS[(topic, problem)]
+    line = _study_cursor_line(source_text, target)
+
+    def print_transitions() -> None:
+        print(f"IMPLEMENT: just practice-start comments {topic} {problem}")
+        print(f"TESTS_FIRST: just practice-start-tests {topic} {problem}")
+
+    def failed(reason: str) -> bool:
+        print(f"OPEN_FAILED: {reason}")
+        print(
+            "NEXT: Restore the code CLI, then run "
+            f"just practice-study {topic} {problem}."
+        )
+        return False
+
+    code = shutil.which("code")
+    if code is None:
+        return failed("code CLI is unavailable")
+    try:
+        proc = subprocess.run(
+            [code, "--reuse-window", test, "--goto", f"{source}:{line}"],
+            cwd=root,
+            check=False,
+            timeout=EDITOR_OPEN_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return failed("code CLI timed out")
+    if proc.returncode != 0:
+        return failed(f"code CLI exited {proc.returncode}")
+    print(f"OPENED: {source}:{line}")
+    print("STATE: STUDY")
+    print(f"STUDY_SOURCE: {source}")
+    print(f"STUDY_TEST: {test}")
+    print(f"REVISION: {manifest['revision']}")
+    print("FOCUS: SOURCE")
+    print_transitions()
+    print(
+        "NEXT: The committed implementation and tests are open. Tell me when "
+        "you want to implement it or write tests first."
+    )
+    return True
+
+
+def open_study_snapshot(root: Path, manifest: dict[str, Any]) -> bool:
+    """Open read-only committed study copies without racing an active rep."""
+    with _practice_lock(root):
+        _require_study_available(root)
+        return _open_study_snapshot_locked(root, manifest)
+
+
 def _public_symbols(source: str) -> list[str]:
     tree = ast.parse(source)
     return [
@@ -1000,7 +1536,11 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
         "test_inputs_before",
         "test_inputs_after",
     }
-    prepared_fields = {"prepared_only", "presented_at"}
+    prepared_fields = {
+        "prepared_only",
+        "presentation_started_at",
+        "presented_at",
+    }
     keys = set(value)
     if not required <= keys or keys - required - finished_fields - prepared_fields:
         missing = sorted(required - keys)
@@ -1024,6 +1564,16 @@ def _validate_metadata(root: Path, value: object) -> dict[str, Any]:
                 "invalid current-rep metadata: only prepared tabs can be presented"
             )
         _parse_timestamp(value["presented_at"], "presented_at")
+    if "presentation_started_at" in value:
+        if not is_prepared:
+            raise PracticeError(
+                "invalid current-rep metadata: only prepared tabs can start "
+                "a presentation"
+            )
+        _parse_timestamp(
+            value["presentation_started_at"],
+            "presentation_started_at",
+        )
     if has_finished and not finished_fields <= keys:
         missing = sorted(finished_fields - keys)
         raise PracticeError(
@@ -1583,6 +2133,14 @@ def _is_presented(metadata: dict[str, Any]) -> bool:
     return _is_prepared(metadata) and "presented_at" in metadata
 
 
+def _is_presentation_active(metadata: dict[str, Any]) -> bool:
+    return (
+        _is_prepared(metadata)
+        and "presentation_started_at" in metadata
+        and not _is_presented(metadata)
+    )
+
+
 def _prepared_workspace_is_pristine(root: Path, metadata: dict[str, Any]) -> bool:
     """Return whether prepared candidate-owned files still match their seed."""
     if not _is_prepared(metadata):
@@ -1687,6 +2245,7 @@ def prepare_session(
                         activated["paradigm"] = paradigm_name
                         activated["paradigm_title"] = paradigm.title
                         activated.pop("prepared_only")
+                        activated.pop("presentation_started_at", None)
                         activated.pop("presented_at", None)
                         _replace_file(
                             _metadata_path(root), json.dumps(activated, indent=2) + "\n"
@@ -1792,6 +2351,26 @@ def prepare_open_target(
     return metadata
 
 
+def mark_presentation_started(
+    root: Path, metadata: dict[str, Any]
+) -> dict[str, Any]:
+    """Mark one prepared pair active before exposing it in the editor."""
+    with _practice_lock(root):
+        current = _read_metadata(root, migrate_legacy=True)
+        if current["session_id"] != metadata["session_id"] or not _is_prepared(
+            current
+        ):
+            raise PracticeError("prepared presentation changed before it started")
+        current = dict(current)
+        current["presentation_started_at"] = datetime.now(UTC).isoformat()
+        current.pop("presented_at", None)
+        _replace_file(
+            _metadata_path(root),
+            json.dumps(current, indent=2) + "\n",
+        )
+        return current
+
+
 def _cursor_line(root: Path, metadata: dict[str, Any]) -> int:
     path = root / str(metadata["source"])
     candidates = [SOURCE_COMMENT_GUIDANCE]
@@ -1805,25 +2384,46 @@ def _cursor_line(root: Path, metadata: dict[str, Any]) -> int:
     return 1
 
 
-def open_session(root: Path, metadata: dict[str, Any]) -> bool:
-    """Open candidate source at its first comment and the candidate test tab."""
+def open_session(
+    root: Path, metadata: dict[str, Any], *, focus: str = "source"
+) -> bool:
+    """Open both candidate tabs and focus source reasoning or candidate tests."""
+    if focus not in {"source", "test"}:
+        raise PracticeError(f"unknown editor focus: {focus}")
     code = shutil.which("code")
     source = str(metadata["source"])
     candidate_test = str(metadata["candidate_test"])
     line = _cursor_line(root, metadata)
+    focused = source if focus == "source" else candidate_test
+    focused_line = line if focus == "source" else 1
+    other = candidate_test if focus == "source" else source
 
     def failed(reason: str) -> bool:
         print(f"OPEN_FAILED: {reason}")
         print(f"SOURCE: {source}")
         print(f"TEST: {candidate_test}")
-        print("NEXT: Restore the code CLI, then run just practice-open.")
+        if _is_presentation_active(metadata):
+            retry = f"just interview {metadata['topic']} {metadata['problem']}"
+        elif focus == "test":
+            retry = (
+                f"just practice-start-tests {metadata['topic']} {metadata['problem']}"
+            )
+        else:
+            retry = "just practice-open"
+        print(f"NEXT: Restore the code CLI, then run {retry}.")
         return False
 
     if code is None:
         return failed("code CLI is unavailable")
     try:
         proc = subprocess.run(
-            [code, "--reuse-window", candidate_test, "--goto", f"{source}:{line}"],
+            [
+                code,
+                "--reuse-window",
+                other,
+                "--goto",
+                f"{focused}:{focused_line}",
+            ],
             cwd=root,
             check=False,
             timeout=EDITOR_OPEN_TIMEOUT_SECONDS,
@@ -1832,9 +2432,10 @@ def open_session(root: Path, metadata: dict[str, Any]) -> bool:
         return failed("code CLI timed out")
     if proc.returncode != 0:
         return failed(f"code CLI exited {proc.returncode}")
-    print(f"OPENED: {source}:{line}")
+    print(f"OPENED: {focused}:{focused_line}")
     print(f"SOURCE: {source}")
     print(f"TEST: {candidate_test}")
+    print(f"FOCUS: {focus.upper()}")
     return True
 
 
@@ -1843,6 +2444,8 @@ def _print_start(
     metadata: dict[str, Any],
     action: str,
     archived: Path | None,
+    *,
+    focus: str = "source",
 ) -> None:
     print(
         present_problem(
@@ -1861,9 +2464,24 @@ def _print_start(
     if action == "resumed":
         print(f"SOURCE: {metadata['source']}")
         print(f"TEST: {metadata['candidate_test']}")
+        if focus == "test":
+            print(
+                "NEXT: Continue in the candidate test tab. After an explicit "
+                "save, run /continue."
+            )
+        else:
+            print(
+                "NEXT: Continue in the open candidate files. After an explicit "
+                "save, run /continue."
+            )
+        return
+    if focus == "test":
+        print(f"SOURCE: {metadata['source']}")
+        print(f"TEST: {metadata['candidate_test']}")
+        print("STATE: THINK")
         print(
-            "NEXT: Continue in the open candidate files. After an explicit save, "
-            "run /continue."
+            "NEXT: Start in TEST with one focused candidate test. Save, then "
+            "run /continue; do not implement yet."
         )
         return
     show_next(root, metadata)
@@ -3346,6 +3964,12 @@ def _parser() -> argparse.ArgumentParser:
     start.add_argument("problem", nargs="?")
     start.add_argument("--fresh", action="store_true")
     start.add_argument("--no-open", action="store_true")
+    start.add_argument("--focus", choices=("source", "test"), default="source")
+    study = commands.add_parser(
+        "study", help="open immutable committed source and test snapshots"
+    )
+    study.add_argument("topic")
+    study.add_argument("problem")
     present = commands.add_parser(
         "present", help="open one safe candidate pair, then print its cold statement"
     )
@@ -3384,14 +4008,19 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     try:
+        if args.command == "study":
+            manifest = prepare_study_snapshot(ROOT, args.topic, args.problem)
+            return 0 if open_study_snapshot(ROOT, manifest) else 1
         if args.command == "present":
-            metadata = prepare_open_target(ROOT, args.topic, args.problem)
-            topic = str(metadata["topic"])
-            problem = str(metadata["problem"])
-            if not os.environ.get("PRACTICE_NO_OPEN") and not open_session(
-                ROOT, metadata
-            ):
-                return 1
+            with _practice_lock(ROOT):
+                metadata = prepare_open_target(ROOT, args.topic, args.problem)
+                metadata = mark_presentation_started(ROOT, metadata)
+                topic = str(metadata["topic"])
+                problem = str(metadata["problem"])
+                if not os.environ.get("PRACTICE_NO_OPEN") and not open_session(
+                    ROOT, metadata
+                ):
+                    return 1
             print(present_problem(ROOT, topic, problem).rstrip())
             print()
             print(f"PRACTICE: {topic}/{problem}")
@@ -3407,20 +4036,27 @@ def main() -> int:
             print(reference_solution(ROOT, topic, problem).rstrip())
             return 0
         if args.command == "start":
-            metadata, action, archived = prepare_session(
-                ROOT,
-                args.paradigm,
-                args.topic,
-                args.problem,
-                fresh=args.fresh,
-            )
-            if (
-                not args.no_open
-                and not os.environ.get("PRACTICE_NO_OPEN")
-                and not open_session(ROOT, metadata)
-            ):
-                return 1
-            _print_start(ROOT, metadata, action, archived)
+            with _practice_lock(ROOT):
+                metadata, action, archived = prepare_session(
+                    ROOT,
+                    args.paradigm,
+                    args.topic,
+                    args.problem,
+                    fresh=args.fresh,
+                )
+                opened = True
+                if not args.no_open and not os.environ.get("PRACTICE_NO_OPEN"):
+                    opened = (
+                        open_session(ROOT, metadata)
+                        if args.focus == "source"
+                        else open_session(ROOT, metadata, focus="test")
+                    )
+                if not opened:
+                    return 1
+                if args.focus == "source":
+                    _print_start(ROOT, metadata, action, archived)
+                else:
+                    _print_start(ROOT, metadata, action, archived, focus="test")
             return 0
         if args.command == "log":
             return log_rep(ROOT, args.line)
@@ -3440,8 +4076,11 @@ def main() -> int:
         if _is_prepared(metadata) and args.command not in {"open", "current"}:
             raise PracticeError(
                 "candidate tabs are prepared, but no editor rep is active\n"
-                "NEXT: run `just practice-start <paradigm> "
-                f"{metadata['topic']} {metadata['problem']}` or keep talking."
+                "IMPLEMENT: just practice-start comments "
+                f"{metadata['topic']} {metadata['problem']}\n"
+                "TESTS_FIRST: just practice-start-tests "
+                f"{metadata['topic']} {metadata['problem']}\n"
+                "NEXT: run one emitted transition when ready, or keep talking."
             )
         if args.command == "next":
             return show_next(ROOT, metadata)

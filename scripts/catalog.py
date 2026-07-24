@@ -20,28 +20,111 @@ from core42 import CORE_42, PRACTICE_TARGETS
 ROOT = Path(__file__).resolve().parent.parent
 _SEPARATOR = re.compile(r"\s*(?:[,;]|\band\b)\s*", re.IGNORECASE)
 _REQUEST_WORDS = {
+    "a",
+    "an",
+    "am",
+    "answer",
+    "answers",
+    "avoid",
+    "at",
+    "board",
+    "begin",
+    "can",
+    "code",
+    "coding",
+    "clock",
+    "comment",
+    "comments",
+    "could",
+    "d",
+    "discuss",
+    "editor",
+    "exclude",
+    "first",
+    "focus",
+    "for",
+    "hey",
+    "implement",
+    "implementation",
+    "inspect",
+    "iterate",
+    "iteration",
+    "like",
     "basic",
     "basics",
     "do",
     "i",
     "let",
     "lets",
+    "look",
+    "me",
+    "mock",
+    "my",
+    "no",
+    "not",
+    "observed",
+    "of",
     "on",
+    "open",
     "please",
     "practice",
     "problem",
     "problems",
+    "read",
+    "ready",
+    "reason",
+    "reasoning",
+    "rep",
+    "review",
     "s",
+    "show",
+    "skip",
     "some",
+    "solution",
+    "solutions",
     "start",
+    "style",
+    "study",
+    "studying",
+    "talk",
+    "take",
+    "test",
+    "testing",
+    "tests",
     "the",
+    "there",
+    "through",
+    "timed",
+    "timeer",
+    "timer",
     "to",
+    "untimed",
     "us",
     "want",
+    "walk",
     "we",
     "with",
+    "without",
     "work",
+    "would",
+    "write",
+    "writing",
 }
+
+_NEGATION = re.compile(
+    r"\b(?:"
+    r"no|not|never|without|avoid|exclude|skip|cannot|cant|couldnt|didnt|dont|"
+    r"doesnt|shouldnt|wont|wouldnt"
+    r")\b"
+    r"|\b(?:can|couldn|didn|don|doesn|shouldn|won|wouldn)\s+t\b"
+)
+_MODE_NEGATION = re.compile(
+    r"\b(?:"
+    r"no\s+(?:clock|timeer|timer)"
+    r"|not\s+(?:a\s+)?timed"
+    r"|without\s+(?:a\s+)?(?:clock|timeer|timer)"
+    r")\b"
+)
 
 
 @dataclass(frozen=True)
@@ -188,6 +271,7 @@ _EXACT_ALIASES: dict[str, tuple[tuple[str, str], ...]] = {
     "check if a number is prime": (("math", "is_prime"),),
     "check if number is prime": (("math", "is_prime"),),
     "check whether a number is prime": (("math", "is_prime"),),
+    "check whether number is prime": (("math", "is_prime"),),
     "prime check": (("math", "is_prime"),),
     "primality": (("math", "is_prime"),),
     "sieve": (("math", "sieve_of_eratosthenes"),),
@@ -197,11 +281,12 @@ _EXACT_ALIASES: dict[str, tuple[tuple[str, str], ...]] = {
 }
 
 
-def matching_entries(query: str, root: Path = ROOT) -> tuple[CatalogEntry, ...]:
-    """Return every match for one phrase without resolving ambiguity."""
-    normalized = _normalized(query)
-    entries = catalog_entries(root)
-    by_key = {entry.key: entry for entry in entries}
+def _matching_entries_normalized(
+    normalized: str,
+    entries: tuple[CatalogEntry, ...],
+    by_key: dict[tuple[str, str], CatalogEntry],
+) -> tuple[CatalogEntry, ...]:
+    """Match one already-normalized phrase without conversational recovery."""
     if normalized in _EXACT_ALIASES:
         return tuple(by_key[key] for key in _EXACT_ALIASES[normalized])
 
@@ -219,15 +304,57 @@ def matching_entries(query: str, root: Path = ROOT) -> tuple[CatalogEntry, ...]:
     return tuple(matches)
 
 
+def _has_substantive_negation(normalized: str) -> bool:
+    """Distinguish a declined problem from an untimed-mode qualifier."""
+    without_mode_qualifiers = _MODE_NEGATION.sub(" ", normalized)
+    return _NEGATION.search(without_mode_qualifiers) is not None
+
+
+def matching_entries(query: str, root: Path = ROOT) -> tuple[CatalogEntry, ...]:
+    """Return every match for one phrase without resolving ambiguity."""
+    normalized = _normalized(query)
+    if _has_substantive_negation(normalized):
+        return ()
+    entries = catalog_entries(root)
+    by_key = {entry.key: entry for entry in entries}
+    direct = _matching_entries_normalized(normalized, entries, by_key)
+    if direct or len(normalized.split()) < 2:
+        return direct
+
+    words = normalized.split()
+    name_vocabulary = {
+        word
+        for entry in entries
+        for word in _normalized(f"{entry.topic} {entry.problem}").split()
+    }
+    for width in range(len(words) - 1, 0, -1):
+        recovered: list[CatalogEntry] = []
+        for start in range(len(words) - width + 1):
+            omitted = words[:start] + words[start + width :]
+            if any(word in name_vocabulary for word in omitted):
+                continue
+            span = " ".join(words[start : start + width])
+            matches = _matching_entries_normalized(span, entries, by_key)
+            if len(matches) == 1:
+                recovered.append(matches[0])
+        if recovered:
+            keys = {entry.key for entry in recovered}
+            return (recovered[0],) if len(keys) == 1 else ()
+    return ()
+
+
 def _query_phrases(query: str) -> tuple[str, ...]:
     phrases = tuple(part.strip() for part in _SEPARATOR.split(query) if part.strip())
     cleaned = []
     for phrase in phrases:
+        normalized = _normalized(phrase)
         words = [
-            word for word in _normalized(phrase).split() if word not in _REQUEST_WORDS
+            word for word in normalized.split() if word not in _REQUEST_WORDS
         ]
         if words:
-            cleaned.append(" ".join(words))
+            cleaned.append(
+                normalized if _has_substantive_negation(normalized) else " ".join(words)
+            )
     return tuple(cleaned)
 
 
@@ -327,7 +454,7 @@ def render_query(query: str, root: Path = ROOT) -> str:
         )
 
     if ready:
-        selections = [group.matches[0].slug for group in groups]
+        selections = list(dict.fromkeys(group.matches[0].slug for group in groups))
         lines.append(f"START: {selections[0]}")
         lines.extend(f"QUEUE: {selection}" for selection in selections[1:])
 
