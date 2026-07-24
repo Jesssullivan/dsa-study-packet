@@ -1,13 +1,11 @@
 # dsa-study-packet
 
-> Company-neutral technical interview practice packet: source of truth for
-> the practice product. Practice code, tests, notes, and generated print
-> material live here; the reading site syncs content from this repo.
+> Company-neutral interview-practice source for code, tests, notes, print
+> material, and the reading site's synced content.
 
 ## Read Order
 
-1. `AGENTS.md`: agent conduct, resident interviewer persona, practice entry
-   points, public boundary
+1. `AGENTS.md`: agent conduct, practice entry points, public boundary
 2. `TRACK-CONTRACT.md`: the versioned practice-flow contract this and future
    language tracks implement
 3. `docs/guide/getting-started.md`: first rep walkthrough
@@ -20,6 +18,10 @@
   problem]`, `just practice-next`, `just practice-test`, `just
   practice-watch`, `just practice-repl`, `just practice-open`, `just
   practice-finish "<one fix>"`
+- Study: `just practice-study topic problem` opens immutable committed source
+  and test snapshots without starting a rep.
+- Tests first: `just practice-start-tests topic problem` starts the normal rep
+  with its candidate test tab focused.
 - Talk-only or board: `just interview [topic problem]`, `just rep-finish
   topic problem "<line>"`
 - Lookup: `just catalog "<words>"`
@@ -30,16 +32,15 @@
 
 Practice commands emit UPPERCASE key lines: `STATE`, `SOURCE`, `TEST`,
 `NEXT`, `START`, `QUEUE`, `QUERY`, `MATCH`, `CHOOSE`, `SUGGEST`, `OPENED`,
-`OPEN_FAILED`, `PRACTICE`, `CLOSED`, `LOGGED`, `SPACED`, `TESTS`. Catalog
-readiness (`READY`, `CHOOSE`, `NOT_FOUND`) travels as a `STATE` value. Agents
-relay these fields verbatim and never invent state.
+`OPEN_FAILED`, `STUDY_SOURCE`, `STUDY_TEST`, `REVISION`, `IMPLEMENT`,
+`TESTS_FIRST`, `FOCUS`, `PRACTICE`, `CLOSED`, `LOGGED`, `SPACED`, `TESTS`.
+Agents relay fields verbatim. `READY`, `CHOOSE`, and `NOT_FOUND` are `STATE`
+values.
 
 ## Reading Site
 
-The published surface is [dsa-woodshed.space](https://dsa-woodshed.space), a
-separate static site that reads this repo at `HEAD` and renders reference
-sheets, algorithms, and docs. This repo owns the content; the site owns the
-shell.
+[dsa-woodshed.space](https://dsa-woodshed.space) renders this repo at `HEAD`.
+This repo owns content; the site owns the shell.
 
 ## Constraints
 
@@ -47,8 +48,7 @@ shell.
   interviewer notes, request numbers, clearance facts, tailored positioning,
   and personal rep logs never enter tracked files; see
   `docs/guide/source-of-truth.md`.
-- The candidate-owned practice workspace under `.challenges/` is private and
-  gitignored. The harness reads it only at an explicit save-and-continue
-  boundary and never scores it.
+- Candidate work is private and gitignored. Read it only at an explicit
+  save-and-continue boundary; study snapshots are read-only committed copies.
 - `just` is the only front door; never invoke raw Bazel directly.
 - Agents never write candidate source, tests, or private logs.

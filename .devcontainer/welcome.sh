@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Optional terminal banner used by the container smoke check and explicit
-# invocations. It is fast, offline, and has no side effects.
+# Optional offline terminal banner for smoke checks and explicit invocations.
 set -uo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -12,6 +11,7 @@ echo "======================================================="
 echo ""
 echo "  toolchain   uv [$(have uv)]  just [$(have just)]  watchexec [$(have watchexec)]"
 echo "  interviewer Copilot Chat [confirm sign-in and access in VS Code]"
+echo "  Preflight: just doctor · All commands: just --list"
 echo ""
 echo "  If Copilot Chat is available, select the Interviewer agent and choose a mode:"
 echo ""
@@ -25,7 +25,9 @@ echo "  source comments or docstrings in your own words, before and alongside co
 echo "  Write them in the file, not Chat. Save, then use /continue for one current"
 echo "  state and next action. No prefixes, comment counts, or gate deletion."
 echo ""
-echo "  Drive the same loop without Chat:"
+echo "  Drive the loop without Chat:"
+echo "      just practice-study linked_lists lru_cache"
+echo "      just practice-start-tests linked_lists lru_cache"
 echo "      just practice-start reacto arrays two_sum"
 echo "      just practice-next        # one current state and next action"
 echo "      just practice-test        # exact problem + candidate tests"
@@ -34,5 +36,4 @@ echo "      just practice-repl        # load the candidate module interactively"
 echo "      just practice-finish \"one fix\"  # log and schedule the next review"
 echo ""
 echo "  Method: reference-sheets/10 · Ramp: reference-sheets/11"
-echo "  Preflight: just doctor · All commands: just --list"
 echo ""

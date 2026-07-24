@@ -16,6 +16,8 @@
 - `just practice-watch`
 - `just practice-repl`
 - `just practice-open [topic problem]`
+- `just practice-study topic problem`
+- `just practice-start-tests topic problem`
 - `just practice-finish "<one fix>"`
 - `just interview [topic problem]`
 - `just rep-finish topic problem "<line>"`
@@ -30,8 +32,10 @@
 ## Machine Keys
 
 `STATE`, `SOURCE`, `TEST`, `NEXT`, `START`, `QUEUE`, `QUERY`, `MATCH`,
-`CHOOSE`, `SUGGEST`, `OPENED`, `OPEN_FAILED`, `PRACTICE`, `CLOSED`, `LOGGED`,
-`SPACED`, `TESTS`. Catalog readiness (`READY`, `CHOOSE`, `NOT_FOUND`) travels
+`CHOOSE`, `SUGGEST`, `OPENED`, `OPEN_FAILED`, `STUDY_SOURCE`, `STUDY_TEST`,
+`REVISION`, `IMPLEMENT`, `TESTS_FIRST`, `FOCUS`, `PRACTICE`, `CLOSED`,
+`LOGGED`, `SPACED`, `TESTS`. Catalog
+readiness (`READY`, `CHOOSE`, `NOT_FOUND`) travels
 as a `STATE` value.
 
 ## Skills
@@ -43,8 +47,8 @@ as a `STATE` value.
 
 - Never write candidate source, tests, or the practice gate; the candidate
   owns them.
-- Never read, score, or log private arrival writing or `.challenges/`
-  contents.
+- Never read, score, or log private arrival writing. Read only command-emitted
+  candidate paths at save boundaries or study snapshots on explicit request.
 - `just` is the only front door; never invoke raw Bazel directly.
 - Never write employer names, interviewer notes, clearance facts, or
   personal rep logs into tracked files.

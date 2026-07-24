@@ -63,6 +63,33 @@ def _support(values: list[int]) -> int:
     return sum(values)
 '''
 
+LRU_SOURCE = '''"""linked_lists / lru_cache
+
+Problem:
+    Keep the least recently used entry at the front.
+"""
+
+from collections import OrderedDict
+
+
+class LRUCache:
+    def __init__(self, capacity: int) -> None:
+        self.capacity = capacity
+        self.cache: OrderedDict[int, int] = OrderedDict()
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        self.cache.move_to_end(key)
+        return self.cache[key]
+
+    def put(self, key: int, value: int) -> None:
+        self.cache[key] = value
+        self.cache.move_to_end(key)
+        if len(self.cache) > self.capacity:
+            self.cache.popitem(last=False)
+'''
+
 
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -328,6 +355,9 @@ def test_candidate_renderer_hides_named_alternates_and_strategy_imports() -> Non
 def practice_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setitem(practice.PRACTICE_TARGETS, ("arrays", "first"), "solve")
     monkeypatch.setitem(practice.PRACTICE_TARGETS, ("arrays", "second"), "solve")
+    monkeypatch.setitem(
+        practice.PRACTICE_TARGETS, ("linked_lists", "lru_cache"), "LRUCache"
+    )
     _write(tmp_path / ".gitignore", ".challenges/\n")
     _write(tmp_path / "src/algo/__init__.py", "")
     _write(tmp_path / "src/algo/arrays/__init__.py", "")
@@ -346,6 +376,20 @@ def practice_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
                 "    assert alternate([1, 2, 3]) == 6\n"
             ),
         )
+    _write(tmp_path / "src/algo/linked_lists/__init__.py", "")
+    _write(tmp_path / "src/algo/linked_lists/lru_cache.py", LRU_SOURCE)
+    _write(
+        tmp_path / "tests/linked_lists/test_lru_cache.py",
+        (
+            "from algo.linked_lists.lru_cache import LRUCache\n\n\n"
+            "def test_evicts_the_least_recent_key() -> None:\n"
+            "    cache = LRUCache(1)\n"
+            "    cache.put(1, 10)\n"
+            "    cache.put(2, 20)\n"
+            "    assert cache.get(1) == -1\n"
+            "    assert cache.get(2) == 20\n"
+        ),
+    )
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
     subprocess.run(
@@ -798,6 +842,804 @@ def test_reference_reads_committed_solution_without_restoring_tracked_file(
     assert "secret = _support(values)" in reference
     assert "Candidate work in progress" not in reference
     assert tracked.read_text() == '"""Candidate work in progress."""\n'
+
+
+def test_study_snapshot_uses_committed_source_and_tests_without_starting_rep(
+    practice_repo: Path,
+) -> None:
+    tracked_source = practice_repo / "src/algo/arrays/first.py"
+    tracked_test = practice_repo / "tests/arrays/test_first.py"
+    tracked_source.write_text('"""Dirty source must not leak."""\n')
+    tracked_test.write_text("# Dirty tests must not leak.\n")
+
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    source = practice_repo / str(manifest["source"])
+    test = practice_repo / str(manifest["test"])
+    metadata = source.parent / practice.STUDY_METADATA_NAME
+    assert "secret = _support(values)" in source.read_text()
+    assert "Dirty source" not in source.read_text()
+    assert "test_committed_alternate" in test.read_text()
+    assert "Dirty tests" not in test.read_text()
+    assert manifest["source_origin"] == "src/algo/arrays/first.py"
+    assert manifest["test_origin"] == "tests/arrays/test_first.py"
+    assert manifest["source_digest"] == hashlib.sha256(source.read_bytes()).hexdigest()
+    assert manifest["test_digest"] == hashlib.sha256(test.read_bytes()).hexdigest()
+    assert json.loads(metadata.read_text()) == manifest
+    assert source.stat().st_mode & 0o222 == 0
+    assert test.stat().st_mode & 0o222 == 0
+    assert metadata.stat().st_mode & 0o222 == 0
+    assert not (practice_repo / practice.WORKSPACE_REL).exists()
+    state_names = {path.name for path in (practice_repo / practice.STATE_REL).iterdir()}
+    assert state_names == {practice.LOCK_REL.name, practice.STUDY_REL.name}
+
+
+def test_study_snapshot_is_idempotent_for_one_revision(
+    practice_repo: Path,
+) -> None:
+    first = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    snapshot = (practice_repo / str(first["source"])).parent
+    before = _workspace_snapshot(snapshot)
+    for path in snapshot.iterdir():
+        path.chmod(0o644)
+
+    second = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert second == first
+    assert _workspace_snapshot(snapshot) == before
+    assert all(path.stat().st_mode & 0o222 == 0 for path in snapshot.iterdir())
+    revision_dirs = list(
+        (practice_repo / practice.STUDY_REL / "arrays" / "first").iterdir()
+    )
+    assert revision_dirs == [snapshot]
+
+
+def test_study_snapshots_for_different_problems_coexist(
+    practice_repo: Path,
+) -> None:
+    first = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    lru = practice.prepare_study_snapshot(practice_repo, "linked_lists", "lru_cache")
+
+    first_source = practice_repo / str(first["source"])
+    lru_source = practice_repo / str(lru["source"])
+    assert first_source.is_file()
+    assert lru_source.is_file()
+    assert first_source.parent != lru_source.parent
+
+
+@pytest.mark.parametrize("drift", ["contents", "extra", "missing", "symlink"])
+def test_practice_study_regenerates_drifted_generated_snapshot(
+    practice_repo: Path,
+    drift: str,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    snapshot = (practice_repo / str(manifest["source"])).parent
+    source = practice_repo / str(manifest["source"])
+
+    if drift == "contents":
+        source.chmod(0o644)
+        source.write_text("# changed\n")
+    elif drift == "extra":
+        (snapshot / "notes.txt").write_text("not part of the snapshot\n")
+    elif drift == "missing":
+        source.unlink()
+    else:
+        source.unlink()
+        source.symlink_to(practice_repo / "src/algo/arrays/first.py")
+
+    repaired = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    repaired_source = practice_repo / str(repaired["source"])
+    repaired_snapshot = repaired_source.parent
+    assert repaired == manifest
+    assert "secret = _support(values)" in repaired_source.read_text()
+    assert {path.name for path in repaired_snapshot.iterdir()} == {
+        "first.py",
+        "test_first.py",
+        practice.STUDY_METADATA_NAME,
+    }
+    assert all(path.stat().st_mode & 0o222 == 0 for path in repaired_snapshot.iterdir())
+    recoveries = list(repaired_snapshot.parent.glob(".recovery-*"))
+    assert len(recoveries) == 1
+    if drift == "extra":
+        assert (recoveries[0] / "notes.txt").read_text() == (
+            "not part of the snapshot\n"
+        )
+
+
+def test_study_open_revalidates_snapshot_after_prepare(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    source = practice_repo / str(manifest["source"])
+    source.unlink()
+    source.symlink_to(practice_repo / "src/algo/arrays/first.py")
+    real_run = practice.subprocess.run
+
+    def reject_code(
+        argv: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        if argv and argv[0] == "code":
+            pytest.fail("must not invoke code")
+        return cast("subprocess.CompletedProcess[str]", real_run(argv, **kwargs))
+
+    monkeypatch.setattr(
+        practice.subprocess,
+        "run",
+        reject_code,
+    )
+
+    with pytest.raises(practice.PracticeError, match="snapshot drifted"):
+        practice.open_study_snapshot(practice_repo, manifest)
+
+    repaired = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    assert not (practice_repo / str(repaired["source"])).is_symlink()
+    assert (
+        "secret = _support(values)"
+        in (practice_repo / str(repaired["source"])).read_text()
+    )
+
+
+def test_study_rejects_self_consistent_manifest_and_source_tampering(
+    practice_repo: Path,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    source = practice_repo / str(manifest["source"])
+    metadata_path = source.parent / practice.STUDY_METADATA_NAME
+    false_source = "# internally consistent, but not committed\n"
+    source.chmod(0o644)
+    source.write_text(false_source)
+    tampered = dict(manifest)
+    tampered["source_digest"] = hashlib.sha256(false_source.encode()).hexdigest()
+    metadata_path.chmod(0o644)
+    metadata_path.write_text(json.dumps(tampered, indent=2) + "\n")
+
+    with pytest.raises(practice.PracticeError, match="snapshot drifted"):
+        practice.open_study_snapshot(practice_repo, tampered)
+
+    repaired = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    assert (
+        "secret = _support(values)"
+        in (practice_repo / str(repaired["source"])).read_text()
+    )
+    assert repaired == manifest
+
+
+def test_study_open_rejects_hardlinks_without_chmodding_tracked_source(
+    practice_repo: Path,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    snapshot_source = practice_repo / str(manifest["source"])
+    tracked_source = practice_repo / "src/algo/arrays/first.py"
+    tracked_mode = tracked_source.stat().st_mode
+    snapshot_source.unlink()
+    os.link(tracked_source, snapshot_source)
+
+    with pytest.raises(practice.PracticeError, match="snapshot drifted"):
+        practice.open_study_snapshot(practice_repo, manifest)
+
+    assert tracked_source.stat().st_mode == tracked_mode
+    repaired = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    assert (practice_repo / str(repaired["source"])).stat().st_nlink == 1
+
+
+def test_new_head_creates_a_new_study_snapshot_without_replacing_old_one(
+    practice_repo: Path,
+) -> None:
+    first = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    first_source = practice_repo / str(first["source"])
+    first_bytes = first_source.read_bytes()
+    tracked = practice_repo / "src/algo/arrays/first.py"
+    tracked.write_text(
+        tracked.read_text().replace("return secret", "return secret + 0")
+    )
+    subprocess.run(
+        ["git", "add", str(tracked.relative_to(practice_repo))],
+        cwd=practice_repo,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgSign=false",
+            "commit",
+            "-qm",
+            "new reference revision",
+        ],
+        cwd=practice_repo,
+        check=True,
+    )
+
+    second = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert second["revision"] != first["revision"]
+    assert second["source"] != first["source"]
+    assert "return secret + 0" in (practice_repo / str(second["source"])).read_text()
+    assert first_source.read_bytes() == first_bytes
+
+
+def test_study_snapshot_retains_only_three_newest_committed_revisions(
+    practice_repo: Path,
+) -> None:
+    manifests = [practice.prepare_study_snapshot(practice_repo, "arrays", "first")]
+    tracked = practice_repo / "src/algo/arrays/first.py"
+    for revision in range(1, 5):
+        tracked.write_text(tracked.read_text() + f"\n# revision {revision}\n")
+        subprocess.run(["git", "add", "."], cwd=practice_repo, check=True)
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgSign=false",
+                "commit",
+                "-qm",
+                f"study revision {revision}",
+            ],
+            cwd=practice_repo,
+            check=True,
+        )
+        manifests.append(
+            practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+        )
+
+    parent = practice_repo / practice.STUDY_REL / "arrays" / "first"
+    retained = {
+        path.name
+        for path in parent.iterdir()
+        if practice.GIT_OBJECT_ID.fullmatch(path.name)
+    }
+    assert retained == {str(manifest["revision"]) for manifest in manifests[-3:]}
+    current = manifests[-1]
+    assert (practice_repo / str(current["source"])).is_file()
+    assert "# revision 4" in (practice_repo / str(current["source"])).read_text()
+    assert not (practice_repo / str(manifests[0]["source"])).exists()
+
+
+def test_study_snapshot_cleans_only_abandoned_generated_temp_directories(
+    practice_repo: Path,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    parent = (practice_repo / str(manifest["source"])).parent.parent
+    abandoned = parent / f".{manifest['revision']}-deadbeef.tmp"
+    human_named = parent / f".{manifest['revision']}-human-notes.tmp"
+    unrelated = parent / ".keep-me.tmp"
+    abandoned.mkdir()
+    (abandoned / "partial").write_text("generated")
+    human_named.mkdir()
+    (human_named / "note").write_text("not a tempfile name")
+    unrelated.mkdir()
+    (unrelated / "note").write_text("not a generated snapshot")
+
+    resumed = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert resumed == manifest
+    assert not abandoned.exists()
+    assert (human_named / "note").read_text() == "not a tempfile name"
+    assert (unrelated / "note").read_text() == "not a generated snapshot"
+    assert (practice_repo / str(resumed["source"])).is_file()
+
+
+def test_study_snapshot_retains_three_newest_drift_recoveries(
+    practice_repo: Path,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    source = practice_repo / str(manifest["source"])
+    parent = source.parent.parent
+    previous: set[Path] = set()
+    for number in range(1, 5):
+        source.chmod(0o644)
+        source.write_text(f"# drift {number}\n")
+        practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+        recoveries = set(parent.glob(".recovery-*"))
+        created = recoveries - previous
+        assert len(created) == 1
+        newest = created.pop()
+        os.utime(newest, ns=(number, number))
+        previous = recoveries
+
+    recovery_paths = list(parent.glob(".recovery-*"))
+    recovered_text = {
+        (recovery / "first.py").read_text() for recovery in recovery_paths
+    }
+    assert len(recovery_paths) == practice.MAX_STUDY_RECOVERIES
+    assert "# drift 4\n" in recovered_text
+    assert "# drift 1\n" not in recovered_text
+    assert "secret = _support(values)" in source.read_text()
+
+
+def test_study_snapshot_reports_a_missing_committed_reference_test(
+    practice_repo: Path,
+) -> None:
+    reference_test = practice_repo / "tests/arrays/test_first.py"
+    reference_test.unlink()
+    subprocess.run(["git", "add", "."], cwd=practice_repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgSign=false",
+            "commit",
+            "-qm",
+            "remove reference test",
+        ],
+        cwd=practice_repo,
+        check=True,
+    )
+
+    with pytest.raises(
+        practice.PracticeError,
+        match=r"cannot load committed tests/arrays/test_first\.py",
+    ):
+        practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert not (practice_repo / practice.STUDY_REL).exists()
+
+
+def test_study_snapshot_reads_source_and_tests_from_one_captured_revision(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = practice._committed_source_at
+    calls = 0
+
+    def advance_head_after_source(root: Path, revision: str, relative: Path) -> str:
+        nonlocal calls
+        calls += 1
+        text = cast("str", original(root, revision, relative))
+        if calls == 1:
+            tracked_test = root / "tests/arrays/test_first.py"
+            tracked_test.write_text(tracked_test.read_text() + "\n# newer HEAD\n")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "core.hooksPath=/dev/null",
+                    "-c",
+                    "user.name=Fixture",
+                    "-c",
+                    "user.email=fixture@example.invalid",
+                    "-c",
+                    "commit.gpgSign=false",
+                    "commit",
+                    "-qm",
+                    "advance during snapshot",
+                ],
+                cwd=root,
+                check=True,
+            )
+        return text
+
+    old_revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=practice_repo,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+    monkeypatch.setattr(practice, "_committed_source_at", advance_head_after_source)
+
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert calls == 2
+    assert manifest["revision"] == old_revision
+    assert "# newer HEAD" not in (practice_repo / str(manifest["test"])).read_text()
+
+
+def test_study_snapshot_opens_only_detached_read_only_paths(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    calls: list[tuple[list[str], Path, bool, int]] = []
+    real_run = practice.subprocess.run
+
+    def fake_run(args: list[str], **kwargs: Any) -> Any:
+        if args[0] == "git":
+            return real_run(args, **kwargs)
+        cwd = cast("Path", kwargs["cwd"])
+        check = cast("bool", kwargs["check"])
+        timeout = cast("int", kwargs["timeout"])
+        calls.append((args, cwd, check, timeout))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(practice.shutil, "which", lambda _name: "/mock/code")
+    monkeypatch.setattr(practice.subprocess, "run", fake_run)
+
+    assert practice.open_study_snapshot(practice_repo, manifest)
+
+    source = str(manifest["source"])
+    test = str(manifest["test"])
+    source_text = (practice_repo / source).read_text()
+    expected_line = practice._study_cursor_line(
+        source_text, practice.PRACTICE_TARGETS[("arrays", "first")]
+    )
+    assert calls == [
+        (
+            [
+                "/mock/code",
+                "--reuse-window",
+                test,
+                "--goto",
+                f"{source}:{expected_line}",
+            ],
+            practice_repo,
+            False,
+            practice.EDITOR_OPEN_TIMEOUT_SECONDS,
+        )
+    ]
+    args = calls[0][0]
+    assert all("src/algo/" not in arg for arg in args)
+    assert all("tests/arrays/" not in arg for arg in args)
+    assert source.startswith(".challenges/study/")
+    assert test.startswith(".challenges/study/")
+    output = capsys.readouterr().out
+    assert f"OPENED: {source}:{expected_line}" in output
+    assert "STATE: STUDY" in output
+    assert f"STUDY_SOURCE: {source}" in output
+    assert f"STUDY_TEST: {test}" in output
+    assert "FOCUS: SOURCE" in output
+    assert "IMPLEMENT: just practice-start comments arrays first" in output
+    assert "TESTS_FIRST: just practice-start-tests arrays first" in output
+    assert "implement it or write tests first" in output
+
+
+def test_study_snapshot_opens_a_class_target_at_its_definition(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = practice.prepare_study_snapshot(
+        practice_repo, "linked_lists", "lru_cache"
+    )
+    calls: list[list[str]] = []
+    real_run = practice.subprocess.run
+
+    def fake_run(args: list[str], **kwargs: Any) -> Any:
+        if args[0] == "git":
+            return real_run(args, **kwargs)
+        calls.append(args)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(practice.shutil, "which", lambda _name: "/mock/code")
+    monkeypatch.setattr(practice.subprocess, "run", fake_run)
+
+    assert practice.open_study_snapshot(practice_repo, manifest)
+
+    source = practice_repo / str(manifest["source"])
+    expected_line = next(
+        number
+        for number, line in enumerate(source.read_text().splitlines(), start=1)
+        if line == "class LRUCache:"
+    )
+    assert "OrderedDict" in source.read_text()
+    assert (
+        "test_evicts_the_least_recent_key"
+        in (practice_repo / str(manifest["test"])).read_text()
+    )
+    assert calls[0][-1] == f"{manifest['source']}:{expected_line}"
+
+
+@pytest.mark.parametrize("failure", ["missing", "timeout", "nonzero"])
+def test_study_open_failures_emit_the_complete_safe_state(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failure: str,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    real_run = practice.subprocess.run
+    monkeypatch.setattr(
+        practice.shutil,
+        "which",
+        lambda _name: None if failure == "missing" else "/mock/code",
+    )
+
+    def fail_run(args: list[str], **kwargs: Any) -> Any:
+        if args[0] == "git":
+            return real_run(args, **kwargs)
+        timeout = cast("int", kwargs["timeout"])
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired("code", timeout)
+        return SimpleNamespace(returncode=7)
+
+    monkeypatch.setattr(practice.subprocess, "run", fail_run)
+
+    assert not practice.open_study_snapshot(practice_repo, manifest)
+
+    output = capsys.readouterr().out
+    assert "OPEN_FAILED:" in output
+    assert "STATE: STUDY" not in output
+    assert "STUDY_SOURCE:" not in output
+    assert "STUDY_TEST:" not in output
+    assert "REVISION:" not in output
+    assert "FOCUS:" not in output
+    assert "IMPLEMENT:" not in output
+    assert "TESTS_FIRST:" not in output
+    assert "NEXT: Restore the code CLI, then run just practice-study arrays first." in (
+        output
+    )
+    assert "src/algo/" not in output
+    assert "tests/arrays/" not in output
+
+
+def test_study_then_implementation_starts_from_a_cold_candidate(
+    practice_repo: Path,
+) -> None:
+    study = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    study_source = practice_repo / str(study["source"])
+    study_before = study_source.read_bytes()
+
+    metadata, action, archived = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+
+    candidate = practice_repo / str(metadata["source"])
+    assert action == "created"
+    assert archived is None
+    assert "raise NotImplementedError" in candidate.read_text()
+    assert "secret = _support(values)" not in candidate.read_text()
+    assert "def alternate" not in candidate.read_text()
+    assert study_source.read_bytes() == study_before
+
+
+def test_lru_study_then_implementation_hides_ordered_dict_bodies(
+    practice_repo: Path,
+) -> None:
+    study = practice.prepare_study_snapshot(practice_repo, "linked_lists", "lru_cache")
+    metadata, action, _ = practice.prepare_session(
+        practice_repo,
+        "comments",
+        "linked_lists",
+        "lru_cache",
+    )
+
+    studied = (practice_repo / str(study["source"])).read_text()
+    candidate = (practice_repo / str(metadata["source"])).read_text()
+    assert action == "created"
+    assert "OrderedDict" in studied
+    assert "class LRUCache" in candidate
+    assert "OrderedDict" not in candidate
+    assert candidate.count("raise NotImplementedError") == 3
+
+
+def test_study_to_candidate_iteration_runs_next_and_focused_tests(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    metadata, action, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        candidate.read_text()
+        .replace(
+            practice.SOURCE_COMMENT_GUIDANCE,
+            "# Add every input value; an empty input should return zero.",
+        )
+        .replace("raise NotImplementedError", "return sum(values)")
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "from algo.arrays.first import solve\n\n\n"
+        "def test_candidate_empty_input() -> None:\n"
+        "    assert solve([]) == 0\n"
+    )
+
+    assert action == "created"
+    assert not practice._is_prepared(metadata)
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(sys, "argv", ["practice_workspace.py", "next"])
+    assert practice.main() == 0
+    assert "STATE: REFLECT" in capsys.readouterr().out
+
+    monkeypatch.setattr(sys, "argv", ["practice_workspace.py", "test"])
+    assert practice.main() == 0
+
+
+def test_issue_99_prepared_lru_study_activation_runs_candidate_tests(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "linked_lists", "lru_cache")
+    practice.prepare_study_snapshot(practice_repo, "linked_lists", "lru_cache")
+
+    metadata, action, archived = practice.prepare_session(
+        practice_repo,
+        "comments",
+        "linked_lists",
+        "lru_cache",
+    )
+
+    assert practice._is_prepared(prepared)
+    assert action == "resumed"
+    assert archived is None
+    assert not practice._is_prepared(metadata)
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(
+        '"""Candidate-owned LRU implementation."""\n\n'
+        "from collections import OrderedDict\n\n\n"
+        "class LRUCache:\n"
+        "    def __init__(self, capacity: int) -> None:\n"
+        "        # Keep the least recent key at the front.\n"
+        "        self.capacity = capacity\n"
+        "        self.cache: OrderedDict[int, int] = OrderedDict()\n\n"
+        "    def get(self, key: int) -> int:\n"
+        "        if key not in self.cache:\n"
+        "            return -1\n"
+        "        self.cache.move_to_end(key)\n"
+        "        return self.cache[key]\n\n"
+        "    def put(self, key: int, value: int) -> None:\n"
+        "        self.cache[key] = value\n"
+        "        self.cache.move_to_end(key)\n"
+        "        if len(self.cache) > self.capacity:\n"
+        "            self.cache.popitem(last=False)\n"
+    )
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "from algo.linked_lists.lru_cache import LRUCache\n\n\n"
+        "def test_candidate_refreshes_a_read() -> None:\n"
+        "    cache = LRUCache(2)\n"
+        "    cache.put(1, 10)\n"
+        "    cache.put(2, 20)\n"
+        "    assert cache.get(1) == 10\n"
+        "    cache.put(3, 30)\n"
+        "    assert cache.get(2) == -1\n"
+    )
+
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(sys, "argv", ["practice_workspace.py", "test"])
+    assert practice.main() == 0
+    assert practice._test_receipt_status(practice_repo, metadata) == "passed"
+
+
+def test_study_refuses_to_expose_solution_during_an_unfinished_rep(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(candidate.read_text() + "\n# Preserve this work.\n")
+
+    with pytest.raises(practice.PracticeError, match="unfinished editor rep"):
+        practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert "Preserve this work" in candidate.read_text()
+    assert not (practice_repo / practice.STUDY_REL).exists()
+
+
+def test_study_open_rechecks_for_a_rep_started_after_snapshot_creation(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+    practice.prepare_session(practice_repo, "comments", "arrays", "first")
+    monkeypatch.setattr(
+        practice,
+        "_open_study_snapshot_locked",
+        lambda _root, _manifest: pytest.fail("must not expose the snapshot"),
+    )
+
+    with pytest.raises(practice.PracticeError, match="unfinished editor rep"):
+        practice.open_study_snapshot(practice_repo, manifest)
+
+
+def test_study_opens_a_detached_view_beside_issue_99s_pristine_prepared_tabs(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert practice._is_prepared(prepared)
+    assert (
+        "raise NotImplementedError"
+        in (practice_repo / str(prepared["source"])).read_text()
+    )
+    assert (
+        "secret = _support(values)"
+        in (practice_repo / str(manifest["source"])).read_text()
+    )
+
+
+def test_study_blocks_an_active_talk_or_board_presentation(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    active = practice.mark_presentation_started(practice_repo, prepared)
+
+    with pytest.raises(
+        practice.PracticeError,
+        match="active non-editor rep",
+    ) as exc_info:
+        practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert "just interview arrays first" in str(exc_info.value)
+    assert practice._is_presentation_active(active)
+    assert not (practice_repo / practice.STUDY_REL).exists()
+
+
+def test_study_blocks_edited_prepared_candidate_work_with_an_activation_path(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    candidate = practice_repo / str(prepared["source"])
+    candidate.write_text(candidate.read_text() + "\n# Work I want to keep.\n")
+
+    with pytest.raises(
+        practice.PracticeError,
+        match="prepared candidate work exists",
+    ) as error:
+        practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert "just practice-start comments arrays first" in str(error.value)
+    assert "Work I want to keep" in candidate.read_text()
+
+
+def test_study_allows_a_completed_non_editor_presentation(
+    practice_repo: Path,
+) -> None:
+    practice.prepare_open_target(practice_repo, "arrays", "first")
+    assert (
+        practice.finish_non_editor(
+            practice_repo,
+            "arrays",
+            "first",
+            "talk arrays/first C2 L2 A1 R1 P1 h0 trace before optimizing",
+        )
+        == 0
+    )
+
+    manifest = practice.prepare_study_snapshot(practice_repo, "arrays", "first")
+
+    assert manifest["topic"] == "arrays"
+    assert manifest["problem"] == "first"
+
+
+def test_representing_a_completed_pair_blocks_study_until_the_new_close(
+    practice_repo: Path,
+) -> None:
+    prepared = practice.prepare_open_target(practice_repo, "arrays", "first")
+    practice.mark_presentation_started(practice_repo, prepared)
+    assert (
+        practice.finish_non_editor(
+            practice_repo,
+            "arrays",
+            "first",
+            "talk arrays/first C2 L2 A1 R1 P1 h0 trace before optimizing",
+        )
+        == 0
+    )
+    completed = practice.current_metadata(practice_repo)
+    assert practice._is_presented(completed)
+
+    reopened = practice.prepare_open_target(practice_repo, "arrays", "first")
+    active = practice.mark_presentation_started(practice_repo, reopened)
+
+    assert practice._is_presentation_active(active)
+    with pytest.raises(practice.PracticeError, match="active non-editor rep"):
+        practice.prepare_study_snapshot(practice_repo, "arrays", "first")
 
 
 def test_same_session_resumes_without_overwriting_candidate_work(
@@ -2115,9 +2957,7 @@ def test_candidate_tests_must_really_pass(
     )
     candidate = practice_repo / str(metadata["source"])
     candidate.write_text(
-        candidate.read_text().replace(
-            "raise NotImplementedError", "return sum(values)"
-        )
+        candidate.read_text().replace("raise NotImplementedError", "return sum(values)")
     )
     (practice_repo / str(metadata["candidate_test"])).write_text(
         "import pytest\n\n"
@@ -2176,8 +3016,7 @@ def test_zero_exit_before_pytest_completion_is_not_a_pass(
     )
     if exit_surface == "sitecustomize":
         candidate.write_text(
-            candidate.read_text()
-            .replace("import os\nos._exit(0)\n", "")
+            candidate.read_text().replace("import os\nos._exit(0)\n", "")
         )
         workspace = practice_repo / practice.WORKSPACE_REL
         (workspace / "sitecustomize.py").write_text("import os\nos._exit(0)\n")
@@ -2275,6 +3114,76 @@ def test_open_session_targets_reasoning_line_and_candidate_test(
     opened_args = calls[0][0]
     assert str(metadata["reference_test"]) not in opened_args
     assert not any(argument.startswith("src/algo/") for argument in opened_args)
+
+
+def test_open_session_can_focus_candidate_tests_first(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        args: list[str], *, cwd: Path, check: bool, timeout: int
+    ) -> SimpleNamespace:
+        del cwd, check, timeout
+        calls.append(args)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(practice.shutil, "which", lambda _name: "/mock/code")
+    monkeypatch.setattr(practice.subprocess, "run", fake_run)
+
+    assert practice.open_session(practice_repo, metadata, focus="test")
+
+    assert calls == [
+        [
+            "/mock/code",
+            "--reuse-window",
+            str(metadata["source"]),
+            "--goto",
+            f"{metadata['candidate_test']}:1",
+        ]
+    ]
+    output = capsys.readouterr().out
+    assert f"OPENED: {metadata['candidate_test']}:1" in output
+    assert "FOCUS: TEST" in output
+
+
+@pytest.mark.parametrize("failure", ["missing", "timeout", "nonzero"])
+def test_tests_first_open_failure_preserves_the_tests_first_retry(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failure: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    monkeypatch.setattr(
+        practice.shutil,
+        "which",
+        lambda _name: None if failure == "missing" else "/mock/code",
+    )
+
+    def fail_run(
+        _args: list[str], *, cwd: Path, check: bool, timeout: int
+    ) -> SimpleNamespace:
+        del cwd, check
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired("code", timeout)
+        return SimpleNamespace(returncode=9)
+
+    monkeypatch.setattr(practice.subprocess, "run", fail_run)
+
+    assert not practice.open_session(practice_repo, metadata, focus="test")
+
+    output = capsys.readouterr().out
+    assert "FOCUS:" not in output
+    assert "NEXT: Restore the code CLI, then run " in output
+    assert "just practice-start-tests arrays first" in output
 
 
 def test_open_session_without_code_prints_only_safe_candidate_paths(
@@ -3316,6 +4225,7 @@ def test_present_cli_prepares_and_opens_exact_tabs_before_printing_prompt(
     events: list[str] = []
     real_select = practice.select_problem
     real_prepare = practice.prepare_open_target
+    real_mark = practice.mark_presentation_started
     real_present = practice.present_problem
 
     def select_once(
@@ -3331,7 +4241,12 @@ def test_present_cli_prepares_and_opens_exact_tabs_before_printing_prompt(
     def open_tabs(_root: Path, metadata: dict[str, Any]) -> bool:
         events.append("open")
         assert metadata["paradigm"] == "prepared"
+        assert practice._is_presentation_active(metadata)
         return True
+
+    def mark(root: Path, metadata: dict[str, Any]) -> dict[str, Any]:
+        events.append("mark")
+        return cast("dict[str, Any]", real_mark(root, metadata))
 
     def present(root: Path, topic: str, problem: str) -> str:
         events.append("present")
@@ -3341,6 +4256,7 @@ def test_present_cli_prepares_and_opens_exact_tabs_before_printing_prompt(
     monkeypatch.setattr(practice, "ROOT", practice_repo)
     monkeypatch.setattr(practice, "select_problem", select_once)
     monkeypatch.setattr(practice, "prepare_open_target", prepare)
+    monkeypatch.setattr(practice, "mark_presentation_started", mark)
     monkeypatch.setattr(practice, "open_session", open_tabs)
     monkeypatch.setattr(practice, "present_problem", present)
     monkeypatch.setattr(
@@ -3350,8 +4266,9 @@ def test_present_cli_prepares_and_opens_exact_tabs_before_printing_prompt(
     )
 
     assert practice.main() == 0
-    assert events == ["prepare", "select", "open", "present"]
+    assert events == ["prepare", "select", "mark", "open", "present"]
     assert "PRACTICE: arrays/first" in capsys.readouterr().out
+    assert practice._is_presentation_active(practice.current_metadata(practice_repo))
 
 
 def test_present_cli_does_not_print_a_cold_prompt_when_editor_open_fails(
@@ -3361,9 +4278,6 @@ def test_present_cli_does_not_print_a_cold_prompt_when_editor_open_fails(
 ) -> None:
     presented = False
 
-    def reject_open(_root: Path, _metadata: dict[str, Any]) -> bool:
-        return False
-
     def unexpected_present(_root: Path, _topic: str, _problem: str) -> str:
         nonlocal presented
         presented = True
@@ -3371,7 +4285,7 @@ def test_present_cli_does_not_print_a_cold_prompt_when_editor_open_fails(
 
     monkeypatch.delenv("PRACTICE_NO_OPEN", raising=False)
     monkeypatch.setattr(practice, "ROOT", practice_repo)
-    monkeypatch.setattr(practice, "open_session", reject_open)
+    monkeypatch.setattr(practice.shutil, "which", lambda _name: None)
     monkeypatch.setattr(practice, "present_problem", unexpected_present)
     monkeypatch.setattr(
         sys,
@@ -3381,7 +4295,12 @@ def test_present_cli_does_not_print_a_cold_prompt_when_editor_open_fails(
 
     assert practice.main() == 1
     assert not presented
-    assert "PRACTICE:" not in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "PRACTICE:" not in output
+    assert "NEXT: Restore the code CLI, then run just interview arrays first." in output
+    assert practice._is_presentation_active(practice.current_metadata(practice_repo))
+    with pytest.raises(practice.PracticeError, match="active non-editor rep"):
+        practice.prepare_study_snapshot(practice_repo, "arrays", "first")
 
 
 def test_open_cli_forwards_an_exact_pair_to_the_safe_workspace(
@@ -3426,6 +4345,61 @@ def test_open_cli_reports_editor_launch_failure(
     assert practice.main() == 1
 
 
+def test_study_cli_prepares_before_opening_and_forwards_the_exact_pair(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[object] = []
+    manifest = {"topic": "arrays", "problem": "first"}
+
+    def prepare(root: Path, topic: str, problem: str) -> dict[str, Any]:
+        events.append(("prepare", root, topic, problem))
+        return manifest
+
+    def open_snapshot(root: Path, value: dict[str, Any]) -> bool:
+        events.append(("open", root, value))
+        return True
+
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "prepare_study_snapshot", prepare)
+    monkeypatch.setattr(practice, "open_study_snapshot", open_snapshot)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["practice_workspace.py", "study", "arrays", "first"],
+    )
+
+    assert practice.main() == 0
+    assert events == [
+        ("prepare", practice_repo, "arrays", "first"),
+        ("open", practice_repo, manifest),
+    ]
+
+
+def test_study_cli_returns_failure_when_editor_open_fails(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(
+        practice,
+        "prepare_study_snapshot",
+        lambda _root, _topic, _problem: {},
+    )
+    monkeypatch.setattr(
+        practice,
+        "open_study_snapshot",
+        lambda _root, _manifest: False,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["practice_workspace.py", "study", "arrays", "first"],
+    )
+
+    assert practice.main() == 1
+
+
 def test_start_cli_reports_editor_launch_failure_before_presenting_state(
     practice_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -3449,6 +4423,129 @@ def test_start_cli_reports_editor_launch_failure_before_presenting_state(
     assert practice.main() == 1
     assert "STATE:" not in capsys.readouterr().out
     assert practice.current_metadata(practice_repo)["topic"] == "arrays"
+
+
+def test_open_session_rejects_an_unknown_focus(practice_repo: Path) -> None:
+    metadata = practice.prepare_open_target(practice_repo, "arrays", "first")
+
+    with pytest.raises(practice.PracticeError, match="unknown editor focus: other"):
+        practice.open_session(practice_repo, metadata, focus="other")
+
+
+def test_start_cli_forwards_tests_first_focus(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    focused: list[str] = []
+
+    def open_tabs(
+        _root: Path, _metadata: dict[str, Any], *, focus: str = "source"
+    ) -> bool:
+        focused.append(focus)
+        return True
+
+    monkeypatch.delenv("PRACTICE_NO_OPEN", raising=False)
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "open_session", open_tabs)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "practice_workspace.py",
+            "start",
+            "comments",
+            "arrays",
+            "first",
+            "--focus",
+            "test",
+        ],
+    )
+
+    assert practice.main() == 0
+    assert focused == ["test"]
+    output = capsys.readouterr().out
+    assert "STATE: THINK" in output
+    assert "NEXT: Start in TEST with one focused candidate test." in output
+    assert "do not implement yet" in output
+
+
+def test_tests_first_start_holds_lock_through_exact_tab_open(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_prepare = practice.prepare_session
+    replacement_started = Event()
+    replacement_finished = Event()
+    replacement: list[Any] = []
+
+    def replace_workspace() -> tuple[dict[str, Any], str, Path | None]:
+        replacement_started.set()
+        try:
+            return cast(
+                "tuple[dict[str, Any], str, Path | None]",
+                real_prepare(
+                    practice_repo,
+                    "comments",
+                    "arrays",
+                    "second",
+                    fresh=True,
+                ),
+            )
+        finally:
+            replacement_finished.set()
+
+    def prepare(
+        root: Path,
+        paradigm: str,
+        topic: str | None,
+        problem: str | None,
+        *,
+        fresh: bool = False,
+    ) -> tuple[dict[str, Any], str, Path | None]:
+        result = cast(
+            "tuple[dict[str, Any], str, Path | None]",
+            real_prepare(root, paradigm, topic, problem, fresh=fresh),
+        )
+        replacement.append(executor.submit(replace_workspace))
+        assert replacement_started.wait(timeout=1)
+        assert not replacement_finished.wait(timeout=0.2)
+        return result
+
+    def open_tabs(
+        root: Path,
+        metadata: dict[str, Any],
+        *,
+        focus: str = "source",
+    ) -> bool:
+        assert focus == "test"
+        assert not replacement_finished.is_set()
+        assert practice.current_metadata(root)["session_id"] == metadata["session_id"]
+        return True
+
+    monkeypatch.delenv("PRACTICE_NO_OPEN", raising=False)
+    monkeypatch.setattr(practice, "ROOT", practice_repo)
+    monkeypatch.setattr(practice, "prepare_session", prepare)
+    monkeypatch.setattr(practice, "open_session", open_tabs)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "practice_workspace.py",
+            "start",
+            "comments",
+            "arrays",
+            "first",
+            "--focus",
+            "test",
+        ],
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        assert practice.main() == 0
+
+    assert replacement_finished.is_set()
+    assert replacement[0].result()[0]["problem"] == "second"
 
 
 @pytest.mark.parametrize("paradigm", tuple(practice.PARADIGMS))
@@ -3543,19 +4640,24 @@ def test_resumed_start_does_not_present_candidate_docstring_or_derive_state(
     assert _workspace_snapshot(workspace) == before
 
 
-def test_prepared_tabs_refuse_editor_commands_until_a_mode_starts(
+@pytest.mark.parametrize("command", ["next", "test"])
+def test_prepared_tabs_emit_exact_activation_commands_until_a_mode_starts(
     practice_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    command: str,
 ) -> None:
     practice.prepare_open_target(practice_repo, "arrays", "first")
     monkeypatch.setattr(practice, "ROOT", practice_repo)
-    monkeypatch.setattr(sys, "argv", ["practice_workspace.py", "next"])
+    monkeypatch.setattr(sys, "argv", ["practice_workspace.py", command])
 
     assert practice.main() == 2
     error = capsys.readouterr().err
     assert "no editor rep is active" in error
-    assert "just practice-start <paradigm> arrays first" in error
+    assert "IMPLEMENT: just practice-start comments arrays first" in error
+    assert "TESTS_FIRST: just practice-start-tests arrays first" in error
+    assert "NEXT: run one emitted transition when ready" in error
+    assert "<paradigm>" not in error
 
 
 def test_open_cli_without_args_preserves_current_reopen_behavior(

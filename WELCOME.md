@@ -12,6 +12,10 @@ Start in the editor. Open Copilot Chat and choose one practice mode:
 The command draws the next due problem. Add a topic and problem when you want
 one directly, such as `/reacto arrays two_sum`.
 
+Ask to study a named problem to open read-only committed source and test
+snapshots first. The interviewer waits until you choose implementation or
+tests-first practice, then runs the emitted transition.
+
 Two gitignored files open under `.challenges/workspace/`: your source and your
 test file. Write ordinary source comments or docstrings in your own words,
 before and alongside the code. The comments belong in the file, not the Chat
@@ -42,12 +46,9 @@ terminal. Codespaces needs no repository API key and starts no external agent.
 Claude Code, Codex, and other CLIs are optional tools you launch and
 authenticate yourself.
 
-On the first terminal action, choose **Enable Auto Approve** from the Allow
-menu and accept once. Keep **Default approvals**; this repository adds rules
-only for its listed Woodshed commands. Your VS Code defaults and user settings
-remain separate. Terminal sandboxing is off because VS Code's preview
-Bubblewrap sandbox cannot nest here. The Codespace boundary, command allowlist,
-and pre-tool guard still apply.
+On the first terminal action, enable auto approve once and keep default
+approvals. Terminal sandboxing is off because preview Bubblewrap cannot nest
+here; the Codespace boundary, narrow allowlist, and pre-tool guard remain.
 
 For a slower surface, ask for an untimed conversational rep. Use timed
 board-style practice only when narration under a clock is today's target.

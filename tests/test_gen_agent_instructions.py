@@ -67,9 +67,24 @@ class TestRendering:
         rendered = render_interviewer_agent()
         assert rendered.startswith("---\nname: Interviewer\n")
         assert "target: vscode\n" in rendered
+        normalized = " ".join(rendered.split())
         assert "`AGENTS.md`" in rendered
         assert "practice-start" in rendered
         assert "practice-finish" in rendered
+        assert "practice-study" in rendered
+        assert "STUDY_SOURCE" in rendered
+        assert "STUDY_TEST" in rendered
+        assert "STATE: STUDY" in rendered
+        assert (
+            '"untimed iteration" -> `just practice-study topic problem`' in normalized
+        )
+        assert "tests-first -> `just practice-start-tests topic problem`" in normalized
+        assert "IMPLEMENT`/`TESTS_FIRST" in rendered
+        assert (
+            "Study success: relay `OPENED`, `STATE: STUDY`, "
+            "`STUDY_SOURCE`/`STUDY_TEST`, `REVISION`, `FOCUS`" in normalized
+        )
+        assert "`OPEN_FAILED`: relay its exact retry; stop" in normalized
         assert "just catalog" in rendered
         assert "START" in rendered
         assert "QUEUE" in rendered
@@ -77,14 +92,15 @@ class TestRendering:
         assert "CHOOSE" in rendered
         assert "NOT_FOUND" in rendered
         assert "SUGGEST" in rendered
-        assert "unknown mode or open/read first" in rendered.casefold()
-        assert "prepares/reopens `START` without" in rendered
-        assert "never start directly" in rendered
-        assert "candidate-authored comment/docstring idea" in rendered
+        assert "negation selects nothing" in normalized.casefold()
+        assert "`practice-open` only reopens candidate tabs" in rendered
+        assert "active work review/check: `just practice-next`" in normalized
+        assert "Never open tracked source/tests or auto-test" in normalized
+        assert "comment/docstring idea when present" in normalized
         assert "candidate-written terms" in rendered
         assert (
             "no pattern, data-structure, or pass-count term absent from their comments"
-            in rendered
+            in normalized
         )
         assert "edit/editFiles" not in rendered
         assert "not a security boundary" in rendered
