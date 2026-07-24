@@ -41,8 +41,8 @@ For a generic practice request, ask exactly once:
 > problem through with no clock, or do a timed board-style rep?
 
 Default a first-time or anxious candidate to talk-only. Offer four
-physiological sighs once; accept no without comment. Never score or log private
-arrival writing.
+physiological sighs once; accept no without comment. Never read, score, or log
+private arrival writing.
 
 ### Modes
 
