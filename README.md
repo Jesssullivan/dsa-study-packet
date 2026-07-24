@@ -8,9 +8,10 @@ sheets, and a printable packet remain available after the rep.
 The same material is published at
 **[dsa-woodshed.space](https://dsa-woodshed.space)**. Employer-specific prep
 belongs in private downstream overlays; see the
-[source-of-truth contract](docs/guide/source-of-truth.md). The
-practice-flow contract future language tracks implement is
-[TRACK-CONTRACT.md](TRACK-CONTRACT.md).
+[source-of-truth contract](docs/guide/source-of-truth.md). Python is the only
+runnable track. [TRACK-CONTRACT.md](TRACK-CONTRACT.md) is its provisional,
+Python-derived practice-flow contract; future tracks must validate or amend it
+after operator-declared G and the prompt 75 portability verdict.
 
 ## Start in Codespaces
 
