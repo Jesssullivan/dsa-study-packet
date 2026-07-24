@@ -50,8 +50,8 @@ your changes will be silently overwritten and the drift guard will still fail.
 
 Acceptance evidence must come from a newly created workspace at the current
 `main`, not a resumed Codespace. Open
-`https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1`, create the
-Codespace, and record:
+`https://codespaces.new/Jesssullivan/dsa-study-packet`, create the Codespace,
+and record:
 
 ```bash
 git rev-parse HEAD
