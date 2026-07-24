@@ -1,11 +1,13 @@
-# The Woodshed Track Contract, v1
+# The Woodshed Track Contract, v1 (provisional)
 
-This is the versioned, descriptive contract every Woodshed language track
-implements. It records what the Python track does at the commit that
-introduces this file; nothing here is aspirational. The spine is shared by
-contract, not by code: tracks own their corpus and tooling and preserve
-these behaviors. A change that alters any section bumps the version in the
-same change.
+This is a Python-derived description of the observable practice behavior at
+the commit that introduced it. It landed before the original artifact gate
+opened; that was a process-gate breach, not planned sequencing. It authorizes
+no runnable language track and must be validated or amended after
+operator-declared G and the prompt 75 portability verdict. Future tracks share
+the spine by validated contract, not by code, and own their corpus and tooling.
+A change that alters a behavioral section bumps the version in the same
+change.
 
 ## Thesis
 
