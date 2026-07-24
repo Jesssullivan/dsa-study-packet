@@ -3,7 +3,7 @@ title: When to Use What
 description: Map a new interview problem to a likely algorithmic pattern with a concise decision tree and complexity cues.
 ---
 
-# When to Use What -- Decision Tree
+# When to Use What
 
 Use this page when you see a new problem and need to identify the right pattern. Start at the top of the decision tree and follow the branches.
 
@@ -12,7 +12,7 @@ Use this page when you see a new problem and need to identify the right pattern.
 ## Master Decision Tree
 
 ```mermaid
-graph TD
+graph LR
     START["What does the problem ask for?"]
 
     START --> FIND["Find / search for something"]
