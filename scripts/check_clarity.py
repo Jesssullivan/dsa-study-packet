@@ -15,6 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 SURFACE_BUDGETS: dict[str, int] = {
+    "llms.txt": 300,
+    "agent-map.md": 300,
     "AGENTS.md": 1000,
     "TRACK-CONTRACT.md": 800,
     "CLAUDE.md": 80,
