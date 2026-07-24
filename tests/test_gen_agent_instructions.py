@@ -122,6 +122,7 @@ class TestRendering:
 
     def test_continue_prompt_delegates_state_to_one_command(self) -> None:
         rendered = render_continue_prompt()
+        folded = " ".join(rendered.split())
         assert "just practice-next" in rendered
         assert "Success: relay `STATE:`" in rendered
         assert "read exact `SOURCE:`/`TEST:`" in rendered
@@ -129,11 +130,11 @@ class TestRendering:
         reasoning = rendered.index("candidate-authored comment/docstring idea")
         fix = rendered.index("Give one fix")
         assert read < reasoning < fix
-        assert "Ignore scaffold" in rendered
-        assert "candidate-written terms" in rendered
+        assert "Ignore scaffold" in folded
+        assert "candidate-written terms" in folded
         assert (
             "no pattern, data-structure, or pass-count term absent from their comments"
-            in rendered
+            in folded
         )
         assert "require comment structure" in rendered
         assert "Otherwise read" not in rendered
