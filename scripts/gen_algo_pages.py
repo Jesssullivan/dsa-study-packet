@@ -349,7 +349,7 @@ def _gen_problem_page(
         "        Fill in the bodies below from the signatures and docstrings, then",
         "        check yourself against the **Reveal Solution** tab.",
         "",
-        f"        Drilling locally? `just practice-start comments {topic} {problem}`"
+        f"        Practicing locally? `just practice-start comments {topic} {problem}`"
         " opens an isolated starter file and focused test tab.",
         "",
         f'    ```python title="{problem}.py: your task"',
@@ -438,9 +438,8 @@ def _gen_summary(
         "    * [Getting Started](guide/getting-started.md)",
         "    * [Local VS Code](guide/local-practice.md)",
         "* Practice",
-        "    * [Practice Drills](challenges/index.md)",
+        "    * [Practice Problems](challenges/index.md)",
         "    * [Learning Paths](guide/learning-paths.md)",
-        "    * [Advanced Exercises](practice/index.md)",
         "    * [Progress](challenges/progress.md)",
         "* Library",
         "    * Algorithms",

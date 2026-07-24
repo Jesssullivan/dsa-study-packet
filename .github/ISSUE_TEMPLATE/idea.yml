@@ -1,5 +1,5 @@
 name: Idea
-description: Suggest a new drill, sheet, or improvement to the practice loop.
+description: Suggest a new problem, sheet, or improvement to the practice loop.
 title: "idea: "
 labels: ["idea"]
 body:
@@ -7,6 +7,6 @@ body:
     id: problem
     attributes:
       label: The problem it solves
-      description: What gap in practice, drills, or docs does this address?
+      description: What gap in practice, problems, or docs does this address?
     validations:
       required: true

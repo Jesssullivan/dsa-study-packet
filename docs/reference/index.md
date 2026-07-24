@@ -27,4 +27,4 @@ just packet  # generate printable PDF packet
 | 08 | [Cross-Reference Guide](08-cross-reference-guide.md) | Master lookup: problem description to implementation, decision tree, keyword cheat sheet |
 | 09 | [Python 3.14 & Modern Patterns](09-python-314-and-modern-patterns.md) | PEP 750 t-strings, PEP 649 lazy annotations, PEP 695 type syntax, Hypothesis, typing |
 | 10 | [Whiteboard Performance & Panic Protocol](10-whiteboard-performance-protocol.md) | What's actually scored, the CLARP loop, panic first-aid, collaboration scripts, on-camera practice + a 2-week ramp |
-| 11 | [14-Day Interview Practice Ramp](11-14-day-whiteboard-ramp.md) | Editor-first daily drills, review work, rest, and optional observed practice |
+| 11 | [14-Day Interview Practice Ramp](11-14-day-whiteboard-ramp.md) | Editor-first daily reps, review work, rest, and optional observed practice |

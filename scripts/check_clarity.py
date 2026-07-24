@@ -32,11 +32,10 @@ SURFACE_BUDGETS: dict[str, int] = {
     "WELCOME.md": 300,
     "docs/index.md": 400,
     "docs/guide/getting-started.md": 850,
-    "docs/challenges/index.md": 550,
+    "docs/challenges/index.md": 900,
     "docs/guide/local-practice.md": 500,
     "docs/guide/learning-paths.md": 1500,
     "docs/guide/source-of-truth.md": 1500,
-    "docs/practice/index.md": 450,
     "reference-sheets/11-14-day-whiteboard-ramp.md": 1000,
 }
 
@@ -44,7 +43,6 @@ DESCRIPTION_MAX_CHARS = 160
 DESCRIPTION_SURFACES: tuple[str, ...] = (
     "docs/guide/getting-started.md",
     "docs/challenges/index.md",
-    "docs/practice/index.md",
     "docs/printables.md",
     "docs/guide/source-of-truth.md",
     "docs/guide/local-practice.md",

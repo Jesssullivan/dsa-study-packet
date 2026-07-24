@@ -16,7 +16,7 @@ just lint           # ruff + mypy + repo guards
 `just --list` shows every recipe. If you use the devcontainer / Codespaces,
 setup is automatic; see `README.md` for the one-click flow.
 
-## Add a drill
+## Add a problem
 
 1. Add the topic/problem pair to `CORE_42` in
    [`scripts/core42.py`](scripts/core42.py) — the single catalog SSOT shared
@@ -24,7 +24,7 @@ setup is automatic; see `README.md` for the one-click flow.
 2. Scaffold the files: `just new <topic> <problem>` (creates
    `src/algo/<topic>/<problem>.py` and its test).
 3. Implement the solution and tests until `just test` is green.
-4. Run `just lint`. Drill, implementation, concept, and reference-sheet counts
+4. Run `just lint`. Problem, implementation, concept, and reference-sheet counts
    are machine-guarded (`scripts/check_doc_counts.py`) against `core42.py` —
    do not hand-edit a count in prose anywhere; if a doc states one, it must
    already match the SSOT or the guard fails the build.
@@ -50,7 +50,7 @@ your changes will be silently overwritten and the drift guard will still fail.
 
 Acceptance evidence must come from a newly created workspace at the current
 `main`, not a resumed Codespace. Open
-`https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main`, create the
+`https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1`, create the
 Codespace, and record:
 
 ```bash

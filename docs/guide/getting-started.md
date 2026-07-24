@@ -17,7 +17,7 @@ practice workspace is committed.
 
 ## 1. Start a rep
 
-[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main){ .md-button .md-button--primary }
+[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1){ .md-button .md-button--primary }
 
 Open Copilot Chat and enter one command:
 

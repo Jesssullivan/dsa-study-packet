@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in the packet, drills, or tooling is broken.
+description: Something in the packet, problems, or tooling is broken.
 title: "bug: "
 labels: ["bug"]
 body:

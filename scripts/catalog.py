@@ -292,7 +292,7 @@ def render_catalog(root: Path = ROOT) -> str:
     lines = [
         "# Study packet catalog",
         "",
-        f"- Core drill set: {core_count()} problems",
+        f"- Core set: {core_count()} problems",
         f"- Editor-practice targets: {practice_count()} problems",
         f"- Algorithm implementations: {implementation_count()}",
         f"- Concept modules: {concept_count()}",

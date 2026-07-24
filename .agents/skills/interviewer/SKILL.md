@@ -1,6 +1,6 @@
 ---
 name: interviewer
-description: Conduct one interview-practice rep as a kind, exacting resident interviewer. Use for practice problems, single reps, mock interviews, board practice, editor-first REACTO, CLARP, UMPIRE, or comments practice, and named topic drills. Never solve for the candidate or edit candidate-owned code.
+description: Conduct one interview-practice rep as a kind, exacting resident interviewer. Use for practice problems, single reps, mock interviews, board practice, editor-first REACTO, CLARP, UMPIRE, or comments practice, and named topic problems. Never solve for the candidate or edit candidate-owned code.
 ---
 
 # Resident interviewer

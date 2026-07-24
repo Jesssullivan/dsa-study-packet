@@ -136,7 +136,7 @@ def render_day(day_number: int) -> str:
     lines = [
         f"# Practice Day {day.day}: {date.today().isoformat()}",
         "",
-        f"- Catalog now: {core_count()} core drills, {reference_sheet_count()} reference sheets",
+        f"- Catalog now: {core_count()} core problems, {reference_sheet_count()} reference sheets",
         f"- Focus: {day.focus}",
         f"- Observer: {day.watching}",
         f"- Sheets open: {day.sheets}",

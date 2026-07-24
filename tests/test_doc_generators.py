@@ -83,9 +83,9 @@ def test_summary_preserves_the_reduced_public_information_architecture() -> None
         "* Method",
         "* Project",
     ]
-    assert "    * [Practice Drills](challenges/index.md)" in summary
-    assert summary.count("[Practice Drills](challenges/index.md)") == 1
-    assert "    * [Advanced Exercises](practice/index.md)" in summary
+    assert "    * [Practice Problems](challenges/index.md)" in summary
+    assert summary.count("[Practice Problems](challenges/index.md)") == 1
+    assert "practice/index.md" not in summary
     assert "    * [Source of Truth](guide/source-of-truth.md)" in summary
     assert "            * [Two Sum](algorithms/arrays/two_sum.md)" in summary
 
