@@ -45,8 +45,9 @@ authenticate yourself.
 On the first terminal action, choose **Enable Auto Approve** from the Allow
 menu and accept once. Keep **Default approvals**; this repository adds rules
 only for its listed Woodshed commands. Your VS Code defaults and user settings
-remain separate. If VS Code offers to repair Bubblewrap, turn off terminal
-sandboxing in the permission picker and retry.
+remain separate. Terminal sandboxing is off because VS Code's preview
+Bubblewrap sandbox cannot nest here. The Codespace boundary, command allowlist,
+and pre-tool guard still apply.
 
 For a slower surface, ask for an untimed conversational rep. Use timed
 board-style practice only when narration under a clock is today's target.

@@ -82,7 +82,8 @@ class TestRendering:
         assert "never start directly" in rendered
         assert "candidate-authored idea from source comments/docstrings" in rendered
         assert "unchanged scaffold" in rendered
-        assert "Never invent pattern names" in rendered
+        assert "reuse only their words" in rendered
+        assert "Never coin approach labels" in rendered
         assert "edit/editFiles" not in rendered
         assert "not a security boundary" in rendered
         assert rendered.endswith("\n")
@@ -128,9 +129,9 @@ class TestRendering:
         )
         fix = rendered.index("Give one fix")
         assert read < reasoning < fix
-        assert "Ignore only unchanged scaffold" in rendered
-        assert "use their terms" in rendered
-        assert "Never invent pattern names" in rendered
+        assert "Ignore unchanged scaffold" in rendered
+        assert "reuse only their words" in rendered
+        assert "Never coin approach labels" in rendered
         assert "require comment structure" in rendered
         assert "Otherwise read" not in rendered
         assert "practice-status" not in rendered
