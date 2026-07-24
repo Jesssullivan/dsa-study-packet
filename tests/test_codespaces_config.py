@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -167,6 +168,54 @@ def test_devcontainer_uses_native_copilot_without_external_cli_provisioning() ->
     assert "features" not in config
     assert "secrets" not in config
     assert "postAttachCommand" not in config
+
+
+def test_devcontainer_disables_global_navigator_for_copilot_chat() -> None:
+    # EXPERIMENT (vscode#312110): Node 22 defines a global `navigator`; the
+    # bundled Copilot Chat extension reads it at module top level in the
+    # remote extension host, tripping VS Code's PendingMigrationError guard.
+    # Remove this test and the wiring it checks once the upstream issue is
+    # confirmed fixed in Codespaces.
+    config = _json(".devcontainer/devcontainer.json")
+    assert isinstance(config, dict)
+    node_options = config["containerEnv"]["NODE_OPTIONS"]
+    assert "--require" in node_options
+    assert node_options.endswith(".devcontainer/kill-navigator.cjs")
+    # containerEnv is spec-documented to resolve ${containerWorkspaceFolder}
+    # (containers.dev "Variables in devcontainer.json": that variable is
+    # listed for "Any" property, unlike ${containerEnv:VAR} which is
+    # restricted to remoteEnv), so this stays correct even if the repo is
+    # forked or renamed away from the Codespaces default clone path.
+    assert "${containerWorkspaceFolder}/.devcontainer/kill-navigator.cjs" in node_options
+
+    preload = ROOT / ".devcontainer/kill-navigator.cjs"
+    assert preload.is_file()
+    text = preload.read_text()
+    assert "globalThis, 'navigator'" in text
+    assert "delete globalThis.navigator" in text
+    assert ".configurable" in text
+    assert "try" in text
+    assert "312110" in text
+    assert "EXPERIMENT" in text
+    assert "DEBUG_KILL_NAVIGATOR" in text
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_kill_navigator_preload_removes_the_global_under_local_node() -> None:
+    proc = subprocess.run(
+        [
+            "node",
+            "--require",
+            str(ROOT / ".devcontainer/kill-navigator.cjs"),
+            "-e",
+            "process.exit(typeof globalThis.navigator === 'undefined' ? 0 : 1)",
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
 
 
 def test_setup_verifies_declared_tool_versions() -> None:

@@ -6,7 +6,8 @@
 	"postCreateCommand": "bash .devcontainer/setup.sh --seed",
 	"waitFor": "updateContentCommand",
 	"containerEnv": {
-		"UV_PYTHON_PREFERENCE": "only-managed"
+		"UV_PYTHON_PREFERENCE": "only-managed",
+		"NODE_OPTIONS": "--require ${containerWorkspaceFolder}/.devcontainer/kill-navigator.cjs"
 	},
 	"remoteEnv": {
 		"PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
