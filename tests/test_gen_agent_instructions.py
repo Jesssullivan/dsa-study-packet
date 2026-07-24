@@ -136,7 +136,7 @@ class TestRendering:
             "no pattern, data-structure, or pass-count term absent from their comments"
             in folded
         )
-        assert "require comment structure" in rendered
+        assert "require comment structure" in folded
         assert "Otherwise read" not in rendered
         assert "practice-status" not in rendered
         assert "practice-current" not in rendered
