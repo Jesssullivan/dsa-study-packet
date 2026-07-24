@@ -165,9 +165,24 @@ def test_devcontainer_uses_native_copilot_without_external_cli_provisioning() ->
     extensions = set(vscode["extensions"])
     assert {"GitHub.copilot", "GitHub.copilot-chat"} <= extensions
     assert not any("anthropic" in extension.lower() for extension in extensions)
-    assert "features" not in config
+    features = config.get("features", {})
+    assert isinstance(features, dict)
+    # Infrastructure features only: sshd enables headless verification over
+    # `gh codespace ssh`. No feature may provision an AI CLI.
+    assert set(features) <= {"ghcr.io/devcontainers/features/sshd:1"}
+    assert not any(
+        term in feature.lower()
+        for feature in features
+        for term in ("copilot", "anthropic", "openai", "claude")
+    )
     assert "secrets" not in config
     assert "postAttachCommand" not in config
+
+
+def test_devcontainer_provides_sshd_for_headless_verification() -> None:
+    """The sshd feature lets gh codespace ssh drive acceptance checks headlessly."""
+    config = _json(".devcontainer/devcontainer.json")
+    assert "ghcr.io/devcontainers/features/sshd:1" in config["features"]
 
 
 def test_devcontainer_disables_global_navigator_for_copilot_chat() -> None:
