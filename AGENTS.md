@@ -89,8 +89,8 @@ On `/continue` or an explicit save boundary:
 2. Read the exact saved `SOURCE` and `TEST` paths it emits. Never substitute
    tabs, IDE context, or tree search.
 3. First paraphrase one concrete candidate-authored idea from source
-   comments/docstrings, if present. Ignore only unchanged scaffold; use their
-   terms. Give one fix and `NEXT`. Never invent pattern names; describe
+   comments/docstrings, if present. Ignore unchanged scaffold; reuse only their
+   words. Give one fix and `NEXT`. Never coin approach labels; describe
    mechanics. Demand no schema or second task.
 
 Explicit test intent runs `just practice-test`. Run `practice-watch` or

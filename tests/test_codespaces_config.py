@@ -405,11 +405,15 @@ def test_workspace_autoapprove_allowlist_is_narrow() -> None:
     }
     assert all(value is True for value in auto_approve.values())
     assert "*" not in auto_approve
-    # Sandbox settings (chat.agent.sandbox.*) stay out of a committed
-    # workspace file until a doc source confirms that family is settable at
-    # workspace scope; see .github/hooks/README.md and the sandbox research
-    # notes carried in the change that added this test.
-    assert not any(key.startswith("chat.agent.sandbox") for key in settings)
+    # VS Code's preview Bubblewrap sandbox cannot nest inside Codespaces.
+    # Keep it off without broadening container privileges; the Codespace
+    # boundary, narrow allowlist, and pre-tool guard remain in force.
+    assert settings["chat.agent.sandbox.enabled"] == "off"
+    assert not any(
+        key.startswith("chat.agent.sandbox")
+        and key != "chat.agent.sandbox.enabled"
+        for key in settings
+    )
 
 
 def test_catalog_autoapprove_accepts_documented_lists_but_not_shell_syntax() -> None:
@@ -423,6 +427,12 @@ def test_catalog_autoapprove_accepts_documented_lists_but_not_shell_syntax() -> 
     assert not pattern.fullmatch('just catalog "$(touch /tmp/pwned)"')
     assert not pattern.fullmatch('just catalog "`touch /tmp/pwned`"')
     assert not pattern.fullmatch('just catalog "two sum"; touch /tmp/pwned')
+
+
+def test_welcome_does_not_require_nested_sandbox_repair() -> None:
+    welcome = (ROOT / "WELCOME.md").read_text().casefold()
+    assert "terminal sandboxing is off" in welcome
+    assert "repair bubblewrap" not in welcome
 
 
 def test_workspace_tasks_are_explicit_and_never_run_on_folder_open() -> None:
@@ -513,7 +523,8 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
         assert "never start directly" in folded
         assert "candidate-authored idea from source comments/docstrings" in folded
         assert "unchanged scaffold" in folded
-        assert "never invent pattern names" in folded
+        assert "reuse only their words" in folded
+        assert "never coin approach labels" in folded
 
 
 def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
@@ -549,7 +560,8 @@ def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
     assert "automatic save detection" in continuation_text
     assert "candidate-authored idea from source comments/docstrings" in continuation_text
     assert "unchanged scaffold" in continuation_text
-    assert "never invent pattern names" in continuation_text.casefold()
+    assert "reuse only their words" in continuation_text.casefold()
+    assert "never coin approach labels" in continuation_text.casefold()
 
 
 def test_interviewer_agent_has_no_direct_edit_tool() -> None:
