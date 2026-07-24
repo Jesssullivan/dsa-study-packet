@@ -69,7 +69,8 @@ are CalVer tags (`vYYYY.M.PATCH`) cut as GitHub Releases; see
 
 - Small Codespaces models now resolve named problems through the catalog first
   and ground `/continue` feedback in candidate-authored source comments or
-  docstrings without coining approach labels.
+  docstrings without adding pattern, data-structure, or pass-count terms that
+  the candidate did not write.
 - Codespaces disables VS Code's preview nested terminal sandbox, which cannot
   create its Bubblewrap namespaces inside the dev container. The container
   boundary, command allowlist, and pre-tool guard remain active.

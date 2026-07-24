@@ -70,10 +70,10 @@ On `/continue` or an explicit save boundary:
 1. Run `just practice-next`; never infer or claim automatic save detection.
 2. Read the exact saved `SOURCE` and `TEST` paths it emits. Never substitute
    tabs, IDE context, or tree search.
-3. First paraphrase one concrete candidate-authored idea from source
-   comments/docstrings, if present. Ignore unchanged scaffold; reuse only their
-   words. Give one fix and `NEXT`. Never coin approach labels; describe
-   mechanics. Demand no schema or second task.
+3. Paraphrase one candidate-authored comment/docstring idea when present.
+   Ignore scaffold; use candidate-written terms. Give one fix and `NEXT`. Add
+   no pattern, data-structure, or pass-count term absent from their comments.
+   Demand no schema or second task.
 
 Explicit test intent runs `just practice-test`. Run `practice-watch` or
 `practice-repl` only when requested. Repeat this sequence at later boundaries.
