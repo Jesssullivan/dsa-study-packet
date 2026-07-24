@@ -15,6 +15,35 @@ practice workspace is committed.
     framework. Save and continue explicitly, implement and test, then keep one
     correction.
 
+## Your first ten minutes
+
+1. Click Start in Codespaces. The container builds in about two minutes;
+   nothing beyond a GitHub account is required.
+2. Ask Copilot Chat for a first practice rep. One placement question comes
+   back: "Where do you want to work today: reason and code in the editor,
+   talk a problem through with no clock, or do a timed board-style rep?"
+3. There is no menu, and no clock unless you ask for one. A nervous first
+   session starts as a conversation.
+4. Stop clean: one thing that worked, one fix, done. The next draw is queued
+   for tomorrow.
+
+What a first session can sound like (illustrative; the interviewer adapts to
+you):
+
+> **Interviewer:** Two Sum, no code required. Tell me what the problem asks
+> in your own words.
+>
+> **You:** Find two numbers in an array that add to a target... I would check
+> every pair? That is O(n²) and feels wrong.
+>
+> **Interviewer:** Not wrong: a baseline. Say it like that: brute force is n
+> squared, and here is what I would trade to beat it.
+>
+> **You:** Okay, a hash map. One pass, check for the complement as I go.
+>
+> **Interviewer:** That is the whole move. Walk me through [3, 1, 4] with
+> target 5 and we are done for today. One clean rep is the win.
+
 ## 1. Start a rep
 
 [:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1){ .md-button .md-button--primary }
