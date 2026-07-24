@@ -521,10 +521,12 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
         assert "without presentation" in folded
         assert "reopen" in text
         assert "never start directly" in folded
-        assert "candidate-authored idea from source comments/docstrings" in folded
-        assert "unchanged scaffold" in folded
-        assert "reuse only their words" in folded
-        assert "never coin approach labels" in folded
+        assert "candidate-authored comment/docstring idea" in folded
+        assert "candidate-written terms" in folded
+        assert (
+            "no pattern, data-structure, or pass-count term absent from their comments"
+            in folded
+        )
 
 
 def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
@@ -558,10 +560,12 @@ def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:
         assert field in continuation_text
     assert "edit candidate files" in continuation_text
     assert "automatic save detection" in continuation_text
-    assert "candidate-authored idea from source comments/docstrings" in continuation_text
-    assert "unchanged scaffold" in continuation_text
-    assert "reuse only their words" in continuation_text.casefold()
-    assert "never coin approach labels" in continuation_text.casefold()
+    assert "candidate-authored comment/docstring idea" in continuation_text
+    assert "candidate-written terms" in continuation_text
+    assert (
+        "no pattern, data-structure, or pass-count term absent from their comments"
+        in continuation_text.casefold()
+    )
 
 
 def test_interviewer_agent_has_no_direct_edit_tool() -> None:

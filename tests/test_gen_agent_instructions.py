@@ -80,10 +80,12 @@ class TestRendering:
         assert "unknown mode or open/read first" in rendered.casefold()
         assert "prepares/reopens `START` without" in rendered
         assert "never start directly" in rendered
-        assert "candidate-authored idea from source comments/docstrings" in rendered
-        assert "unchanged scaffold" in rendered
-        assert "reuse only their words" in rendered
-        assert "Never coin approach labels" in rendered
+        assert "candidate-authored comment/docstring idea" in rendered
+        assert "candidate-written terms" in rendered
+        assert (
+            "no pattern, data-structure, or pass-count term absent from their comments"
+            in rendered
+        )
         assert "edit/editFiles" not in rendered
         assert "not a security boundary" in rendered
         assert rendered.endswith("\n")
@@ -124,14 +126,15 @@ class TestRendering:
         assert "Success: relay `STATE:`" in rendered
         assert "read exact `SOURCE:`/`TEST:`" in rendered
         read = rendered.index("read exact `SOURCE:`/`TEST:`")
-        reasoning = rendered.index(
-            "candidate-authored idea from source comments/docstrings"
-        )
+        reasoning = rendered.index("candidate-authored comment/docstring idea")
         fix = rendered.index("Give one fix")
         assert read < reasoning < fix
-        assert "Ignore unchanged scaffold" in rendered
-        assert "reuse only their words" in rendered
-        assert "Never coin approach labels" in rendered
+        assert "Ignore scaffold" in rendered
+        assert "candidate-written terms" in rendered
+        assert (
+            "no pattern, data-structure, or pass-count term absent from their comments"
+            in rendered
+        )
         assert "require comment structure" in rendered
         assert "Otherwise read" not in rendered
         assert "practice-status" not in rendered
