@@ -1,6 +1,6 @@
 # Security Policy
 
-This is a study repository — algorithm drills, printable reference material,
+This is a study repository — algorithm problems, printable reference material,
 and practice tooling. It ships no runtime service, collects no data, and the
 site is static.
 

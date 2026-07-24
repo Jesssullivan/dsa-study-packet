@@ -43,7 +43,7 @@ in [sheet 10](10-whiteboard-performance-protocol.md).
 
 ## Week 1: build the editor reflex
 
-| Day | Focus | Drills | Sheets open | Observer |
+| Day | Focus | Problems | Sheets open | Observer |
 |-----|-------|---------------------------|-------------|----------|
 | **1** | Read sheet 10, then easy arrays | `arrays two_sum`, `arrays group_anagrams` | 10, 03, 01 | none |
 | **2** | Arrays + stacks/queues | `arrays product_except_self`, `stacks_queues valid_parentheses`, `stacks_queues daily_temperatures` | 03, 05, 01 | none |
@@ -55,7 +55,7 @@ in [sheet 10](10-whiteboard-performance-protocol.md).
 
 ## Week 2: breadth plus optional pressure
 
-| Day | Focus | Drills | Sheets open | Observer |
+| Day | Focus | Problems | Sheets open | Observer |
 |-----|-------|---------------------------|-------------|----------|
 | **8** | Graphs, the heaviest topic | `graphs dijkstra`, `graphs topological_sort`, `graphs bellman_ford` | 03, 06 | optional person |
 | **9** | Dynamic programming | `dp coin_change`, `dp edit_distance`, `dp knapsack`, `dp longest_increasing_subseq` | 03 | person interrupts |

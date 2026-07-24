@@ -1,11 +1,11 @@
 ---
 title: Learning Paths
-description: Follow curated drill sequences that build pattern recognition through the same comments, code, tests, and reflection loop.
+description: Follow curated problem sequences that build pattern recognition through the same comments, code, tests, and reflection loop.
 ---
 
 # Learning Paths
 
-These four sequences order existing drills so each problem reuses an idea from
+These four sequences order existing problems so each one reuses an idea from
 the previous one. The [decision tree](when-to-use-what.md) helps you identify a
 pattern; this page tells you what to learn next.
 
@@ -27,7 +27,7 @@ loop.
 
 ## Choose a path
 
-| Path | What you build | Prerequisites | Core drills |
+| Path | What you build | Prerequisites | Core problems |
 |------|----------------|---------------|-------------|
 | **1: Foundations** | Scanning a sequence with auxiliary state | Python fluency, [Big-O basics](../reference/04-big-o-complexity.md) | 11 |
 | **2: Graphs & Trees** | Traversal, ordering, weighted and heuristic search | Path 1, [data-structure sheet](../reference/02-data-structures.md) | 16 |

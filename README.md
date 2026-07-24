@@ -14,7 +14,7 @@ practice-flow contract future language tracks implement is
 
 ## Start in Codespaces
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
 
 When the editor opens, confirm Copilot Chat is signed in and available, then
 enter `/comments`. The command starts a rep; the reasoning itself belongs in
@@ -60,7 +60,7 @@ just practice-open       # reopen the source and test files
 just practice-finish "one fix"
 ```
 
-Use [Practice Drills](docs/challenges/index.md) to choose a problem and
+Use [Practice Problems](docs/challenges/index.md) to choose a problem and
 [Getting Started](docs/guide/getting-started.md) for the full loop. Untimed
 conversation and timed board-style practice remain available when those are
 the skills you intend to train.
@@ -87,10 +87,10 @@ reference-sheet PDFs; the reading site syncs that content separately.
 
 - `src/algo/`: tested reference implementations
 - `tests/`: reference tests
-- `docs/`: web reading surface
+- `docs/`: web docs
 - `reference-sheets/`: printable method and reference material
 - `.challenges/`: private, gitignored practice state
-- `scripts/core42.py`: core drill catalog (historical filename)
+- `scripts/core42.py`: core problem catalog (historical filename)
 
 Run `just catalog` for every exact practice pair, or search natural names with
 `just catalog "anagram, 2 sum and prime"`. Run `just --list` for all recipes.

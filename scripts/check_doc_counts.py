@@ -42,11 +42,11 @@ def ssot_counts() -> dict[str, int]:
 
 # (relative file, keyword anchoring the count, kind, ssot key)
 DIGIT_CHECKS = [
-    ("docs/index.md", "core drills", "drills"),
+    ("docs/index.md", "core problems", "drills"),
     ("docs/index.md", "core algorithms", "drills"),
     ("docs/index.md", "Concept Modules", "concepts"),
     ("docs/index.md", "Reference Sheets", "sheets"),
-    ("README.md", "core drills", "drills"),
+    ("README.md", "core problems", "drills"),
     ("README.md", "Reference Sheets", "sheets"),
 ]
 WORD_CHECKS = [

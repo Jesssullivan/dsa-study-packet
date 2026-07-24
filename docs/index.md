@@ -15,15 +15,15 @@ comments, implement a solution, write focused tests, and keep one correction.
 
     Open Codespaces and begin an editor rep.
 
-    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet/tree/main)
+    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
 
--   :material-code-braces:{ .lg .middle } **Practice Drills**
+-   :material-code-braces:{ .lg .middle } **Practice Problems**
 
     ---
 
-    Choose from 43 core drills and extended problems.
+    Choose from the 43 core problems and the extended set.
 
-    [:octicons-arrow-right-24: Choose a Drill](challenges/index.md)
+    [:octicons-arrow-right-24: Choose a Problem](challenges/index.md)
 
 -   :material-account-voice:{ .lg .middle } **Method**
 
