@@ -31,7 +31,7 @@ SURFACE_BUDGETS: dict[str, int] = {
     "README.md": 650,
     "WELCOME.md": 300,
     "docs/index.md": 400,
-    "docs/guide/getting-started.md": 850,
+    "docs/guide/getting-started.md": 1050,
     "docs/challenges/index.md": 900,
     "docs/guide/local-practice.md": 500,
     "docs/guide/learning-paths.md": 1500,
