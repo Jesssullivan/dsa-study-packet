@@ -83,10 +83,17 @@ TEST_PROCESS_POLL_SECONDS = 0.02
 TEST_PROCESS_TERM_GRACE_SECONDS = 0.25
 TEST_PROCESS_KILL_WAIT_SECONDS = 2
 TEST_ATTEST_WAIT_SECONDS = 0.25
+TEST_ATTEST_MAX_BYTES = 128
 LEGACY_TEST_INPUT_KEYS = ("source", "candidate_test", "reference_test", "plugin")
 TEST_INPUT_KEYS = (
     *LEGACY_TEST_INPUT_KEYS,
     "reference_source",
+    "runtime_sources",
+)
+CANDIDATE_COLLECTION_INPUT_KEYS = (
+    "source",
+    "candidate_test",
+    "plugin",
     "runtime_sources",
 )
 LEGACY_SCHEMA4_LOCK = (
@@ -124,6 +131,23 @@ class TestRun:
     after: dict[str, str]
     timed_out: bool = False
     completed: bool = False
+
+    @property
+    def fresh(self) -> bool:
+        return self.before == self.after
+
+
+@dataclass(frozen=True)
+class CandidateCollectionRun:
+    """One candidate-only collection result tied to its exact inputs."""
+
+    returncode: int
+    before: dict[str, str]
+    after: dict[str, str]
+    collected: int | None
+    timed_out: bool = False
+    stdout: str = ""
+    stderr: str = ""
 
     @property
     def fresh(self) -> bool:
@@ -1293,11 +1317,14 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE_REL = {source_rel.as_posix()!r}
 TARGET = {target!r}
 SUPPORT: tuple[str, ...] = ()
+CANDIDATE_COLLECTION = os.environ.get("PRACTICE_CANDIDATE_COLLECTION") == "1"
 _REFERENCE: types.ModuleType | None = None
 _CANDIDATE_MODULE: types.ModuleType | None = None
 _REFERENCE_TARGET: object | None = None
 _FOCUSED_NODEIDS: set[str] = set()
 _PASSED_FOCUSED_NODEIDS: set[str] = set()
+_CANDIDATE_COLLECTION_FINISHED = False
+_CANDIDATE_COLLECTION_COUNT = 0
 
 
 def _committed_reference() -> types.ModuleType:
@@ -1342,6 +1369,12 @@ def load_candidate() -> types.ModuleType:
 
 def pytest_configure() -> None:
     global _CANDIDATE_MODULE, _REFERENCE, _REFERENCE_TARGET
+    if CANDIDATE_COLLECTION:
+        candidate, parent, child_name = _load_candidate()
+        _CANDIDATE_MODULE = candidate
+        sys.modules[MODULE] = candidate
+        setattr(parent, child_name, candidate)
+        return
     reference = _committed_reference()
     candidate, parent, child_name = _load_candidate()
     for name, value in vars(candidate).items():
@@ -1358,6 +1391,8 @@ def pytest_configure() -> None:
 def pytest_collection_modifyitems(items: list[object]) -> None:
     """Repair direct aliases captured before the candidate facade was installed."""
     global _FOCUSED_NODEIDS
+    if CANDIDATE_COLLECTION:
+        return
     if _REFERENCE is None or _CANDIDATE_MODULE is None or _REFERENCE_TARGET is None:
         raise RuntimeError("practice plugin was not configured")
     candidate_target = getattr(_CANDIDATE_MODULE, TARGET)
@@ -1381,7 +1416,7 @@ def pytest_collection_modifyitems(items: list[object]) -> None:
     ]
     if not candidate_items:
         raise pytest.UsageError(
-            "candidate test file collected no tests; add a top-level test_ function"
+            "candidate test file collected no tests; add one collectable candidate test"
         )
     _FOCUSED_NODEIDS = {{
         str(getattr(item, "nodeid", "")) for item in items
@@ -1400,10 +1435,29 @@ def pytest_runtest_logreport(report: object) -> None:
         _PASSED_FOCUSED_NODEIDS.add(nodeid)
 
 
+@pytest.hookimpl(wrapper=True)
+def pytest_collection(session: object) -> object:
+    """Attest only when candidate collection returns normally."""
+    global _CANDIDATE_COLLECTION_COUNT, _CANDIDATE_COLLECTION_FINISHED
+    result = yield
+    if CANDIDATE_COLLECTION:
+        _CANDIDATE_COLLECTION_COUNT = len(getattr(session, "items"))
+        _CANDIDATE_COLLECTION_FINISHED = True
+    return result
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session: object, exitstatus: int) -> None:
     """Enforce focused calls, then write the parent completion marker."""
     del exitstatus
+    descriptor = int(os.environ["PRACTICE_TEST_COMPLETION_FD"])
+    token = os.environ["PRACTICE_TEST_COMPLETION_TOKEN"].encode()
+    if CANDIDATE_COLLECTION:
+        if _CANDIDATE_COLLECTION_FINISHED:
+            marker = token + b":" + str(_CANDIDATE_COLLECTION_COUNT).encode()
+            os.write(descriptor, marker)
+        os.close(descriptor)
+        return
     missing = _FOCUSED_NODEIDS - _PASSED_FOCUSED_NODEIDS
     if missing:
         config = getattr(session, "config")
@@ -1414,8 +1468,6 @@ def pytest_sessionfinish(session: object, exitstatus: int) -> None:
                 red=True,
             )
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
-    descriptor = int(os.environ["PRACTICE_TEST_COMPLETION_FD"])
-    token = os.environ["PRACTICE_TEST_COMPLETION_TOKEN"].encode()
     os.write(descriptor, token)
     os.close(descriptor)
 '''
@@ -3138,19 +3190,10 @@ def _next_source_native_step(
             "Continue the implementation until the selected target has no cold "
             "stubs, save, then run /continue.",
         )
-    try:
-        candidate_test_count = _candidate_test_count(root, metadata)
-    except PracticeError:
-        return (
-            "BUILD",
-            "Fix the syntax error in your test file, save, then run /continue.",
-        )
-    if candidate_test_count == 0:
-        return (
-            "BUILD",
-            "Add at least one focused candidate test, save, then run /continue.",
-        )
 
+    # A fresh receipt is runtime proof that pytest collected the candidate's
+    # tests. Honor it before the conservative AST hint below, which cannot
+    # recognize every callable-preserving decorator.
     test_status = _test_receipt_status(root, metadata)
     if test_status == "passed":
         return (
@@ -3170,6 +3213,21 @@ def _next_source_native_step(
             "The focused run timed out. Check the implementation and edge cases, "
             "then rerun just practice-test.",
         )
+
+    try:
+        candidate_test_count = _candidate_test_count(root, metadata)
+    except PracticeError:
+        return (
+            "BUILD",
+            "Fix the syntax error in your test file, save, then run /continue.",
+        )
+    if candidate_test_count == 0:
+        return (
+            "BUILD",
+            "Review the candidate test file, then explicitly ask to run "
+            "just practice-test when ready.",
+        )
+
     if test_status == "stale":
         return (
             "REFLECT",
@@ -3571,9 +3629,32 @@ def _pytest_args(root: Path, metadata: dict[str, Any]) -> list[str]:
     ]
 
 
-def _test_input_digests(root: Path, metadata: dict[str, Any]) -> dict[str, str]:
+def _candidate_collection_args(
+    root: Path, metadata: dict[str, Any]
+) -> list[str]:
+    return [
+        "-m",
+        "pytest",
+        "-c",
+        os.devnull,
+        "--rootdir",
+        str(root),
+        "--noconftest",
+        "-p",
+        "practice_plugin",
+        str(metadata["candidate_test"]),
+        "--collect-only",
+        "-q",
+    ]
+
+
+def _input_digests(
+    root: Path,
+    metadata: dict[str, Any],
+    keys: tuple[str, ...],
+) -> dict[str, str]:
     digests: dict[str, str] = {}
-    for key in TEST_INPUT_KEYS:
+    for key in keys:
         if key == "reference_source":
             relative = (
                 Path("src/algo") / str(metadata["topic"]) / f"{metadata['problem']}.py"
@@ -3610,6 +3691,16 @@ def _test_input_digests(root: Path, metadata: dict[str, Any]) -> dict[str, str]:
                 raise PracticeError(f"cannot digest test input {path}: {exc}") from exc
         digests[key] = hashlib.sha256(contents).hexdigest()
     return digests
+
+
+def _test_input_digests(root: Path, metadata: dict[str, Any]) -> dict[str, str]:
+    return _input_digests(root, metadata, TEST_INPUT_KEYS)
+
+
+def _candidate_collection_input_digests(
+    root: Path, metadata: dict[str, Any]
+) -> dict[str, str]:
+    return _input_digests(root, metadata, CANDIDATE_COLLECTION_INPUT_KEYS)
 
 
 def _test_receipt_path(root: Path) -> Path:
@@ -3839,6 +3930,88 @@ def _execute_test_run(
     )
 
 
+def _candidate_collection_count(completion: bytes, token: str) -> int | None:
+    prefix = token.encode() + b":"
+    if not completion.startswith(prefix):
+        return None
+    value = completion[len(prefix) :]
+    if not value or not value.isdigit():
+        return None
+    return int(value)
+
+
+def _execute_candidate_collection(
+    root: Path,
+    metadata: dict[str, Any],
+    before: dict[str, str],
+) -> CandidateCollectionRun:
+    """Collect only candidate tests and attest the real pytest item count."""
+    timeout = _test_timeout_seconds()
+    read_fd, write_fd = os.pipe()
+    token = uuid.uuid4().hex
+    env = _practice_env(root)
+    env["PRACTICE_CANDIDATE_COLLECTION"] = "1"
+    env["PRACTICE_TEST_COMPLETION_FD"] = str(write_fd)
+    env["PRACTICE_TEST_COMPLETION_TOKEN"] = token
+    with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
+        try:
+            try:
+                proc = subprocess.Popen(
+                    [sys.executable, *_candidate_collection_args(root, metadata)],
+                    cwd=root,
+                    env=env,
+                    stdout=stdout_file,
+                    stderr=stderr_file,
+                    start_new_session=True,
+                    pass_fds=(write_fd,),
+                )
+            finally:
+                os.close(write_fd)
+        except OSError as exc:
+            os.close(read_fd)
+            raise PracticeError(
+                f"cannot launch candidate test collection: {exc}"
+            ) from exc
+        try:
+            exited = _wait_for_test_process(proc, timeout)
+        except BaseException:
+            with suppress(Exception):
+                _sweep_test_process_group(proc)
+            os.close(read_fd)
+            raise
+        returncode = _sweep_test_process_group(proc)
+        try:
+            readable, _, _ = select.select(
+                [read_fd],
+                [],
+                [],
+                TEST_ATTEST_WAIT_SECONDS,
+            )
+            completion = (
+                os.read(read_fd, TEST_ATTEST_MAX_BYTES) if readable else b""
+            )
+        finally:
+            os.close(read_fd)
+        stdout_file.seek(0)
+        stderr_file.seek(0)
+        stdout = stdout_file.read().decode(errors="replace")
+        stderr = stderr_file.read().decode(errors="replace")
+
+    timed_out = not exited
+    if timed_out:
+        returncode = 124
+    after = _candidate_collection_input_digests(root, metadata)
+    return CandidateCollectionRun(
+        returncode=returncode,
+        before=before,
+        after=after,
+        collected=_candidate_collection_count(completion, token),
+        timed_out=timed_out,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
 def _raw_session_id(root: Path) -> str | None:
     workspace = _workspace(root)
     if workspace.is_symlink() or not workspace.is_dir():
@@ -3875,17 +4048,94 @@ def _restore_plugin_for_same_session(root: Path, metadata: dict[str, Any]) -> No
         _replace_file(plugin, expected_plugin)
 
 
+def _print_missing_candidate_tests(metadata: dict[str, Any]) -> None:
+    print("STATE: BUILD")
+    print(f"TEST: {metadata['candidate_test']}")
+    print(
+        "NEXT: Add one collectable candidate test in the open test file, save, "
+        "then run just practice-test."
+    )
+
+
+def _replay_candidate_collection_output(result: CandidateCollectionRun) -> None:
+    if result.stdout:
+        sys.stdout.write(result.stdout)
+    if result.stderr:
+        sys.stderr.write(result.stderr)
+
+
 def run_tests(root: Path, metadata: dict[str, Any]) -> int:
     with _practice_lock(root):
         current = _read_metadata(root, migrate_legacy=True)
         if metadata.get("session_id") != current["session_id"]:
             raise PracticeError("stale rep session; reload `just practice-current`")
-        before = _prepare_test_run(root, current, require_unlocked=True)
-    result = _execute_test_run(root, current, before)
+        _require_unlocked(root, current)
+        collection_before = _candidate_collection_input_digests(root, current)
+    collection = _execute_candidate_collection(root, current, collection_before)
+
+    full_metadata: dict[str, Any] | None = None
+    full_before: dict[str, str] | None = None
     with _practice_lock(root):
         _restore_plugin_for_same_session(root, current)
         latest = _read_metadata(root, migrate_legacy=True)
         if current["session_id"] != latest["session_id"]:
+            raise PracticeError("stale rep session; reload `just practice-current`")
+        latest_collection_digests = _candidate_collection_input_digests(root, latest)
+        collection_stable = (
+            collection.fresh and latest_collection_digests == collection.after
+        )
+        if (
+            collection_stable
+            and collection.collected is not None
+            and collection.collected > 0
+            and collection.returncode == 0
+            and not collection.timed_out
+        ):
+            full_metadata = latest
+            full_before = _prepare_test_run(
+                root, latest, require_unlocked=True
+            )
+
+    if collection.timed_out:
+        _replay_candidate_collection_output(collection)
+        print(
+            "practice: candidate test collection exceeded "
+            f"{_test_timeout_seconds()} seconds; the rep remains open",
+            file=sys.stderr,
+        )
+        return 124
+    if collection.collected is None:
+        _replay_candidate_collection_output(collection)
+        print(
+            "practice: candidate test collection ended before pytest completed; "
+            "the rep remains open",
+            file=sys.stderr,
+        )
+        return 3
+    if not collection_stable:
+        print(
+            "practice: candidate collection inputs changed while pytest was "
+            "running; rerun for a fresh result",
+            file=sys.stderr,
+        )
+        return 3
+    if collection.collected == 0 and collection.returncode in {0, 5}:
+        _print_missing_candidate_tests(latest)
+        return 2
+    if full_metadata is None or full_before is None:
+        _replay_candidate_collection_output(collection)
+        if not collection.stdout and not collection.stderr:
+            print(
+                "practice: candidate test collection failed; the rep remains open",
+                file=sys.stderr,
+            )
+        return collection.returncode if collection.returncode != 0 else 3
+
+    result = _execute_test_run(root, full_metadata, full_before)
+    with _practice_lock(root):
+        _restore_plugin_for_same_session(root, full_metadata)
+        latest = _read_metadata(root, migrate_legacy=True)
+        if full_metadata["session_id"] != latest["session_id"]:
             raise PracticeError("stale rep session; reload `just practice-current`")
         latest_digests = _test_input_digests(root, latest)
         stable = result.fresh and latest_digests == result.after

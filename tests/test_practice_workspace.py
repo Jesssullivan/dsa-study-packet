@@ -2840,21 +2840,259 @@ def test_unlocked_session_tests_candidate_instead_of_reference(
     assert practice.run_tests(practice_repo, metadata) == 0
 
 
-def test_test_run_rejects_a_candidate_file_that_collects_no_tests(
+@pytest.mark.parametrize(
+    "candidate_tests",
+    [
+        "",
+        "# Candidate will add tests here.\n\nimport pytest\n",
+        "def candidate_example() -> None:\n    assert True\n",
+        (
+            "import pytest\n\n"
+            "@pytest.fixture\n"
+            "def test_named_fixture() -> int:\n"
+            "    return 1\n"
+        ),
+        'import pytest\n\npytest.skip("not ready", allow_module_level=True)\n',
+    ],
+)
+def test_test_run_reports_build_before_locked_suite_for_no_collectable_tests(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    candidate_tests: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text(candidate_tests)
+
+    def unexpected_prepare(*_args: object, **_kwargs: object) -> dict[str, str]:
+        raise AssertionError("locked suite preparation must not run")
+
+    monkeypatch.setattr(practice, "_prepare_test_run", unexpected_prepare)
+
+    collection_args = practice._candidate_collection_args(
+        practice_repo, metadata
+    )
+    assert str(metadata["candidate_test"]) in collection_args
+    assert str(metadata["reference_test"]) not in collection_args
+    assert set(
+        practice._candidate_collection_input_digests(practice_repo, metadata)
+    ) == set(practice.CANDIDATE_COLLECTION_INPUT_KEYS)
+    assert "reference_test" not in practice.CANDIDATE_COLLECTION_INPUT_KEYS
+    assert "reference_source" not in practice.CANDIDATE_COLLECTION_INPUT_KEYS
+    assert practice.run_tests(practice_repo, metadata) == 2
+    captured = capsys.readouterr()
+    assert captured.out == (
+        "STATE: BUILD\n"
+        f"TEST: {metadata['candidate_test']}\n"
+        "NEXT: Add one collectable candidate test in the open test file, save, "
+        "then run just practice-test.\n"
+    )
+    assert captured.err == ""
+    assert not practice._test_receipt_path(practice_repo).exists()
+    plugin = (practice_repo / str(metadata["plugin"])).read_text()
+    assert "add one collectable candidate test" in plugin
+    assert "top-level test_" not in plugin
+
+
+@pytest.mark.parametrize(
+    "candidate_tests",
+    [
+        "def test_generator():\n    yield 1\n",
+        (
+            "class TestCandidate:\n"
+            "    def test_generator(self):\n"
+            "        yield 1\n"
+        ),
+    ],
+)
+def test_invalid_generator_tests_relay_the_real_collection_error(
+    practice_repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    candidate_tests: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text(candidate_tests)
+
+    assert practice.run_tests(practice_repo, metadata) != 0
+    captured = capsys.readouterr()
+    assert "ERROR collecting" in captured.out
+    assert "STATE: BUILD" not in captured.out
+    assert not practice._test_receipt_path(practice_repo).exists()
+
+
+def test_locked_source_never_launches_candidate_collection(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    candidate = practice_repo / str(metadata["source"])
+    candidate.write_text(candidate.read_text().replace("def solve(", "def renamed("))
+    sentinel = practice_repo / "candidate-test-imported"
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "from pathlib import Path\n"
+        "Path('candidate-test-imported').write_text('ran')\n\n\n"
+        "def test_candidate_example() -> None:\n"
+        "    assert True\n"
+    )
+
+    def unexpected_collection(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("locked source must fail before candidate collection")
+
+    monkeypatch.setattr(
+        practice, "_execute_candidate_collection", unexpected_collection
+    )
+
+    with pytest.raises(practice.PracticeError):
+        practice.run_tests(practice_repo, metadata)
+    assert not sentinel.exists()
+    assert not practice._test_receipt_path(practice_repo).exists()
+
+
+def test_attested_empty_collection_never_loads_locked_reference_inputs(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    reference_source = practice_repo / "src/algo/arrays/first.py"
+    reference_source.write_text(
+        "if __name__.startswith('_practice_reference_'):\n"
+        "    raise AssertionError('committed reference facade loaded')\n\n"
+        + reference_source.read_text()
+    )
+    _commit_fixture(practice_repo)
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text("")
+    (practice_repo / str(metadata["reference_test"])).write_text(
+        "raise AssertionError('locked reference tests loaded')\n"
+    )
+
+    def unexpected_prepare(*_args: object, **_kwargs: object) -> dict[str, str]:
+        raise AssertionError("locked suite preparation must not run")
+
+    monkeypatch.setattr(practice, "_prepare_test_run", unexpected_prepare)
+
+    assert practice.run_tests(practice_repo, metadata) == 2
+    assert capsys.readouterr().out.startswith("STATE: BUILD\n")
+    assert not practice._test_receipt_path(practice_repo).exists()
+
+
+@pytest.mark.parametrize(
+    "candidate_tests",
+    [
+        (
+            "from algo.arrays.first import solve\n\n\n"
+            "def test_candidate_example() -> None:\n"
+            "    assert solve([1, 2]) == 3\n"
+        ),
+        (
+            "from algo.arrays.first import solve\n\n\n"
+            "class TestCandidate:\n"
+            "    def test_example(self) -> None:\n"
+            "        assert solve([1, 2]) == 3\n"
+        ),
+        (
+            "from algo.arrays.first import solve\n\n\n"
+            "def test_nested_generator_is_only_a_helper() -> None:\n"
+            "    def values():\n"
+            "        yield 1\n"
+            "        yield 2\n\n"
+            "    assert solve(list(values())) == 3\n"
+        ),
+    ],
+)
+def test_test_run_accepts_collectable_functions_and_class_methods(
+    practice_repo: Path,
+    candidate_tests: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text(candidate_tests)
+
+    assert practice.run_tests(practice_repo, metadata) == 0
+    assert practice._test_receipt_status(practice_repo, metadata) == "passed"
+
+
+def test_runtime_collection_accepts_an_opaque_callable_preserving_decorator(
     practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
-    _complete_session(practice_repo, metadata)
+    _implement_with_candidate_test(practice_repo, metadata)
     (practice_repo / str(metadata["candidate_test"])).write_text(
-        "import pytest\n\n"
-        "@pytest.fixture\n"
-        "def test_named_fixture() -> int:\n"
-        "    return 1\n"
+        "from functools import wraps\n"
+        "from algo.arrays.first import solve\n\n\n"
+        "def preserve(function):\n"
+        "    @wraps(function)\n"
+        "    def wrapped(*args, **kwargs):\n"
+        "        return function(*args, **kwargs)\n"
+        "    return wrapped\n\n\n"
+        "@preserve\n"
+        "def test_candidate_example() -> None:\n"
+        "    assert solve([1, 2]) == 3\n"
     )
 
-    assert practice.run_tests(practice_repo, metadata) != 0
+    assert practice._candidate_test_count(practice_repo, metadata) == 0
+    state, next_action = practice.next_step(practice_repo, metadata)
+    assert state == "BUILD"
+    assert "explicitly ask to run just practice-test" in next_action
+    assert practice.run_tests(practice_repo, metadata) == 0
+    assert practice._test_receipt_status(practice_repo, metadata) == "passed"
+    assert practice.next_step(practice_repo, metadata)[0] == "CLOSE"
+
+
+def test_attested_empty_collection_preserves_existing_receipt_bytes(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    assert practice.run_tests(practice_repo, metadata) == 0
+    receipt = practice._test_receipt_path(practice_repo)
+    before = receipt.read_bytes()
+    (practice_repo / str(metadata["candidate_test"])).write_text("")
+
+    def unexpected_prepare(*_args: object, **_kwargs: object) -> dict[str, str]:
+        raise AssertionError("locked suite preparation must not run")
+
+    monkeypatch.setattr(practice, "_prepare_test_run", unexpected_prepare)
+
+    assert practice.run_tests(practice_repo, metadata) == 2
+    assert receipt.read_bytes() == before
+
+
+def test_collection_exit_five_without_attestation_is_not_an_empty_test_result(
+    practice_repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "import os\n\nos._exit(5)\n"
+    )
+
+    assert practice.run_tests(practice_repo, metadata) == 3
+    captured = capsys.readouterr()
+    assert "ended before pytest completed" in captured.err
+    assert "STATE: BUILD" not in captured.out
+    assert not practice._test_receipt_path(practice_repo).exists()
 
 
 def test_candidate_is_active_during_test_module_import(practice_repo: Path) -> None:
@@ -2967,6 +3205,96 @@ def test_candidate_tests_must_really_pass(
     )
 
     assert practice.run_tests(practice_repo, metadata) == 1
+    assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
+
+
+@pytest.mark.parametrize(
+    "candidate_tests",
+    [
+        (
+            "from unittest import skipIf\n"
+            "from algo.arrays.first import solve\n\n\n"
+            '@skipIf(False, "runs")\n'
+            "def test_candidate_example() -> None:\n"
+            "    assert solve([1, 2]) == 3\n"
+        ),
+        (
+            "import unittest as unit\n"
+            "from algo.arrays.first import solve\n\n\n"
+            "class CandidateChecks(unit.TestCase):\n"
+            '    @unit.skipUnless(True, "runs")\n'
+            "    def test_example(self) -> None:\n"
+            "        self.assertEqual(solve([1, 2]), 3)\n"
+        ),
+    ],
+)
+def test_unittest_conditional_decorators_run_real_tests(
+    practice_repo: Path,
+    candidate_tests: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text(candidate_tests)
+
+    assert practice._candidate_test_count(practice_repo, metadata) == 0
+    assert practice.run_tests(practice_repo, metadata) == 0
+    assert practice._test_receipt_status(practice_repo, metadata) == "passed"
+
+
+def test_unittest_custom_run_test_runs_as_the_fallback(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text(
+        "from unittest import TestCase\n"
+        "from algo.arrays.first import solve\n\n\n"
+        "class CandidateChecks(TestCase):\n"
+        "    def runTest(self) -> None:\n"
+        "        self.assertEqual(solve([1, 2]), 3)\n"
+    )
+
+    assert practice._candidate_test_count(practice_repo, metadata) == 0
+    assert practice.run_tests(practice_repo, metadata) == 0
+    assert practice._test_receipt_status(practice_repo, metadata) == "passed"
+
+
+@pytest.mark.parametrize(
+    "candidate_tests",
+    [
+        (
+            "from unittest import skip\n\n\n"
+            '@skip("not ready")\n'
+            "def test_candidate_example() -> None:\n"
+            "    assert True\n"
+        ),
+        (
+            "from unittest import TestCase, expectedFailure\n"
+            "from algo.arrays.first import solve\n\n\n"
+            "class CandidateChecks(TestCase):\n"
+            "    @expectedFailure\n"
+            "    def test_example(self) -> None:\n"
+            "        self.assertEqual(solve([1, 2]), 99)\n"
+        ),
+    ],
+)
+def test_unittest_skips_and_expected_failures_remain_open(
+    practice_repo: Path,
+    candidate_tests: str,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+    (practice_repo / str(metadata["candidate_test"])).write_text(candidate_tests)
+
+    assert practice._candidate_test_count(practice_repo, metadata) == 0
+    assert practice.run_tests(practice_repo, metadata) == 1
+    assert practice._test_receipt_status(practice_repo, metadata) == "failed"
     assert practice.next_step(practice_repo, metadata)[0] == "REFLECT"
 
 
@@ -3855,6 +4183,7 @@ def test_test_result_is_stale_when_any_non_candidate_input_changes(
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
+    _implement_with_candidate_test(practice_repo, metadata)
 
     def mutating_run(
         root: Path, current: dict[str, Any], before: dict[str, str]
@@ -3876,6 +4205,41 @@ def test_test_result_is_stale_when_any_non_candidate_input_changes(
             practice.current_metadata(practice_repo)["session_id"]
             == metadata["session_id"]
         )
+
+
+def test_candidate_collection_input_race_aborts_without_a_receipt(
+    practice_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    _implement_with_candidate_test(practice_repo, metadata)
+
+    def mutating_collection(
+        root: Path, current: dict[str, Any], before: dict[str, str]
+    ) -> practice.CandidateCollectionRun:
+        candidate_test = root / str(current["candidate_test"])
+        candidate_test.write_text(candidate_test.read_text() + "\n# changed\n")
+        return practice.CandidateCollectionRun(
+            returncode=0,
+            before=before,
+            after=practice._candidate_collection_input_digests(root, current),
+            collected=1,
+        )
+
+    def unexpected_prepare(*_args: object, **_kwargs: object) -> dict[str, str]:
+        raise AssertionError("unstable collection must not prepare locked tests")
+
+    monkeypatch.setattr(
+        practice, "_execute_candidate_collection", mutating_collection
+    )
+    monkeypatch.setattr(practice, "_prepare_test_run", unexpected_prepare)
+
+    assert practice.run_tests(practice_repo, metadata) == 3
+    assert "collection inputs changed" in capsys.readouterr().err
+    assert not practice._test_receipt_path(practice_repo).exists()
 
 
 def test_candidate_tests_run_without_holding_the_state_lock(

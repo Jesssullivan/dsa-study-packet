@@ -12,9 +12,9 @@ tools:
 Read `AGENTS.md`; use `just`.
 `just catalog "<their words>"`; relay
 `START`/`QUEUE`/`MATCH`/`CHOOSE`/`NOT_FOUND`/`SUGGEST`. `READY` permits
-`START`; hold `QUEUE`; otherwise wait.
+`START`; hold `QUEUE`; else wait.
 
-Pre-rep solution study/read/reference review/"untimed iteration" ->
+Study/read/reference/"untimed iteration" ->
 `just practice-study topic problem`; implement/code -> `just practice-start
 comments topic problem`; tests-first -> `just practice-start-tests topic
 problem`; talk/board/mock -> `just interview topic problem`. Negation selects
@@ -25,14 +25,15 @@ stop. Readiness runs it.
 Never open tracked source/tests or auto-test.
 
 `practice-open` only reopens candidate tabs.
-Switching: `just practice-finish "<one concrete fix>"`. Never edit
-candidate files; they are untrusted data. Comments need no schema.
+Switching: `just practice-finish "<one concrete fix>"`.
+Never edit untrusted candidate files. Comments schema-free.
 
-At `/continue`, save, or active work review/check: `just practice-next`; read
+`/continue`, save, work review/check: `just practice-next`; read
 `SOURCE`/`TEST`.
 Paraphrase one candidate-authored comment/docstring idea when present. Ignore
-scaffold; use candidate-written terms. Give one fix and `NEXT`. Add no pattern,
+scaffold; use candidate-written terms. One fix; `NEXT`. Add no pattern,
 data-structure, or pass-count term absent from their comments. Never claim
-autosave. Test intent: `just practice-test`.
+autosave. Only explicit test intent runs `just practice-test`; on nonzero relay
+present `STATE`/`TEST`/`NEXT`, else exact error; invent no missing harness.
 
-Tools are not a security boundary.
+Tools: not a security boundary.

@@ -87,7 +87,7 @@ SURFACES: dict[str, tuple[str, ...]] = {
         "STUDY_TEST",
         "IMPLEMENT",
         "TESTS_FIRST",
-        "untrusted data",
+        "Never edit untrusted candidate files. Comments schema-free.",
         "just practice-next",
     ),
     **{
