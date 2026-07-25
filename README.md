@@ -55,9 +55,8 @@ just practice-start comments linked_lists lru_cache
 just practice-start-tests linked_lists lru_cache
 ```
 
-Write comments in the source file, not the Chat composer. There is no required
-prefix, comment count, or gate deletion. The interviewer never writes your
-code or tests. Copilot is optional;
+Write comments in the source file, not the Chat composer. The interviewer
+never writes your code or tests. Copilot is optional;
 the same flow starts from a terminal with `just practice-start comments`.
 
 The named frameworks are vocabulary choices, not grading systems. Keep their

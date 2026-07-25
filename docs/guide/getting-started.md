@@ -111,11 +111,9 @@ In the source file:
 6. Add focused tests, trace one example, and update comments that no longer
    match the code.
 
-Use ordinary source comments or candidate-authored docstrings in your own
-words. Write them in the file, not the Chat composer. There is no required
-prefix, comment count, or gate deletion. The interviewer reads only saved
-work, so enter `/continue` after a save or run `just practice-next`. It never
-writes your code or tests.
+Write your comments in the file, not the Chat composer. The interviewer reads
+only saved work, so enter `/continue` after a save or run `just
+practice-next`. It never writes your code or tests.
 
 The workspace is gitignored. Starting a different rep archives the previous
 workspace under `.challenges/history/`. Starting the same unfinished rep

@@ -27,10 +27,9 @@ just practice-start comments graphs dijkstra
 If named vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start
 the same loop with optional labels.
 
-Write ordinary source comments or docstrings in your own words, save, then use
-`/continue` or `just practice-next` for one next instruction. Comments belong
-in the file, not Chat; there is no required prefix, minimum count, or gate
-deletion. Then implement and add cases in your test file.
+Write your comments in the file, save, then use `/continue` or `just
+practice-next` for one next instruction. Then implement and add cases in your
+test file.
 
 ```bash
 just practice-test
