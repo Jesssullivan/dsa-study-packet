@@ -1,5 +1,60 @@
 # `.devcontainer/` notes
 
+## Copilot Chat-only acceptance candidate
+
+This branch requests `GitHub.copilot-chat` only. The
+[VS Code 1.109 release notes](https://code.visualstudio.com/updates/v1_109)
+state that VS Code deprecated `GitHub.copilot`, automatically uninstalls it,
+and serves the complete experience through Copilot Chat. The
+[VS Code 1.116 release notes](https://code.visualstudio.com/updates/v1_116)
+make Copilot Chat built in. However, GitHub's current
+[Codespaces Copilot guide](https://docs.github.com/en/codespaces/reference/using-github-copilot-in-github-codespaces?tool=vscode)
+still tells repositories to declare `GitHub.copilot`. A fresh Codespace is
+therefore the deciding evidence before this candidate becomes the supported
+repository contract.
+
+Repository automation can verify the declared extension list and the portable
+practice loop. It cannot prove account state, entitlement, extension-host
+health, editor tabs, or the absence of migration popups. Those require one
+new Codespace:
+
+1. Push the branch under test, then record its current remote head:
+
+   ```bash
+   EXPECTED_SHA="$(gh api \
+     repos/Jesssullivan/dsa-study-packet/commits/fix/codespaces-hygiene-94-20260724 \
+     --jq .sha)"
+   printf 'EXPECTED_SHA=%s\n' "$EXPECTED_SHA"
+   ```
+
+2. Use the branch-specific creation page,
+   <https://codespaces.new/Jesssullivan/dsa-study-packet/tree/fix/codespaces-hygiene-94-20260724>.
+   Do not add `?quickstart=1`, which changes this into a resume flow.
+3. In the new Codespace, record:
+
+   ```bash
+   printf 'CHECKOUT_SHA=%s\n' "$(git rev-parse HEAD)"
+   printf 'CODESPACE_NAME=%s\n' "${CODESPACE_NAME:-unset}"
+   code --version
+   code --list-extensions --show-versions | sort
+   gh auth status
+   ```
+
+   Require `CHECKOUT_SHA` to equal the `EXPECTED_SHA` recorded immediately
+   before creation. A branch name alone is not acceptance evidence.
+4. In the VS Code UI, separately confirm Copilot Chat sign-in, entitlement,
+   the Interviewer agent, and that no extension migration/install popup
+   appeared. `gh auth status` does not prove Copilot access.
+5. Run `/comments arrays two_sum`. Record that the exact candidate source and
+   test tabs open, then use ordinary saved Python comments or a docstring,
+   `/continue`, focused tests, the REPL, `STATE: CLOSE`, and an idempotent
+   finish.
+6. Stop or delete the test Codespace when evidence is captured.
+
+Do not describe a resumed Codespace, a local devcontainer, or the headless
+smoke workflow as this acceptance. If the live check fails, preserve the exact
+VS Code and extension logs before changing the extension list again.
+
 ## EXPERIMENT: killing the global `navigator` for Copilot Chat (vscode#312110)
 
 **Status:** experimental, container-wide workaround. Not a permanent fix.

@@ -1,5 +1,6 @@
 """Tests for the native Codespaces onboarding drift guard."""
 
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -37,6 +38,50 @@ def test_removed_slash_command_is_caught(tmp_path: Path) -> None:
 
     assert f'README.md: missing "{command}"' in failures
     assert all(failure.startswith("README.md:") for failure in failures)
+
+
+def test_deprecated_copilot_extension_is_caught(tmp_path: Path) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / ".devcontainer/devcontainer.json"
+    victim.write_text(
+        victim.read_text().replace(
+            '"GitHub.copilot-chat",',
+            '"GitHub.copilot",\n\t\t\t\t"GitHub.copilot-chat",',
+        )
+    )
+
+    assert (
+        ".devcontainer/devcontainer.json: "
+        "contains deprecated GitHub.copilot extension"
+    ) in check(tmp_path)
+
+
+def test_non_list_vscode_extensions_are_caught(tmp_path: Path) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / ".devcontainer/devcontainer.json"
+    config = json.loads(victim.read_text())
+    config["customizations"]["vscode"]["extensions"] = {
+        "GitHub.copilot-chat": True
+    }
+    victim.write_text(json.dumps(config))
+
+    assert (
+        ".devcontainer/devcontainer.json: "
+        "VS Code extensions must be a list of strings"
+    ) in check(tmp_path)
+
+
+def test_non_string_vscode_extension_is_caught(tmp_path: Path) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / ".devcontainer/devcontainer.json"
+    config = json.loads(victim.read_text())
+    config["customizations"]["vscode"]["extensions"].append(42)
+    victim.write_text(json.dumps(config))
+
+    assert (
+        ".devcontainer/devcontainer.json: "
+        "VS Code extensions must be a list of strings"
+    ) in check(tmp_path)
 
 
 def test_folder_open_launcher_is_caught(tmp_path: Path) -> None:

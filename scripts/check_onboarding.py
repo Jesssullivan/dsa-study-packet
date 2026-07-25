@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BRAND = "The DSA Woodshed"
 PARADIGMS = ("reacto", "clarp", "umpire", "comments")
 SLASH_COMMANDS = tuple(f"/{name}" for name in PARADIGMS)
+COPILOT_CHAT_EXTENSION = "GitHub.copilot-chat"
+DEPRECATED_COPILOT_EXTENSION = "GitHub.copilot"
 
 # Relative file -> substrings it must contain.
 SURFACES: dict[str, tuple[str, ...]] = {
@@ -48,7 +50,7 @@ SURFACES: dict[str, tuple[str, ...]] = {
         "just practice-finish",
     ),
     ".devcontainer/devcontainer.json": (
-        "GitHub.copilot-chat",
+        COPILOT_CHAT_EXTENSION,
         "setup.sh --tools",
         "setup.sh --sync",
         "setup.sh --seed",
@@ -168,6 +170,38 @@ def check(root: Path) -> list[str]:
         )
     settings_path = root / ".vscode/settings.json"
     tasks_path = root / ".vscode/tasks.json"
+    devcontainer_path = root / ".devcontainer/devcontainer.json"
+    if devcontainer_path.is_file():
+        try:
+            devcontainer = json.loads(devcontainer_path.read_text())
+            raw_extensions = devcontainer["customizations"]["vscode"]["extensions"]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            extensions = None
+            failures.append(
+                ".devcontainer/devcontainer.json: invalid VS Code customization"
+            )
+        else:
+            if not isinstance(raw_extensions, list) or not all(
+                isinstance(extension, str) for extension in raw_extensions
+            ):
+                extensions = None
+                failures.append(
+                    ".devcontainer/devcontainer.json: "
+                    "VS Code extensions must be a list of strings"
+                )
+            else:
+                extensions = raw_extensions
+        if extensions is not None:
+            if COPILOT_CHAT_EXTENSION not in extensions:
+                failures.append(
+                    ".devcontainer/devcontainer.json: "
+                    f"missing required {COPILOT_CHAT_EXTENSION} extension"
+                )
+            if DEPRECATED_COPILOT_EXTENSION in extensions:
+                failures.append(
+                    ".devcontainer/devcontainer.json: "
+                    f"contains deprecated {DEPRECATED_COPILOT_EXTENSION} extension"
+                )
     if settings_path.is_file():
         try:
             settings = json.loads(settings_path.read_text())
