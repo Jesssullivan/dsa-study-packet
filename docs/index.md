@@ -55,9 +55,8 @@ labels.
 
 Your source and test file open under `.challenges/workspace/`. Write ordinary
 comments or docstrings in the source file, not Chat. Save, then enter
-`/continue` for the next instruction. There is no prefix, minimum count, or
-gate to delete. Implement and add focused tests. Copilot is optional; `just
-practice-start comments` starts the same loop.
+`/continue` for the next instruction. Implement and add focused tests.
+Copilot is optional; `just practice-start comments` starts the same loop.
 
 ```bash
 just practice-next
