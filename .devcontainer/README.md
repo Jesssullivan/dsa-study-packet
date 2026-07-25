@@ -60,88 +60,54 @@ Do not describe a resumed Codespace, a local devcontainer, or the headless
 smoke workflow as this acceptance. If the live check fails, preserve the exact
 VS Code and extension logs before changing the extension list again.
 
-## EXPERIMENT: killing the global `navigator` for Copilot Chat (vscode#312110)
+## Known upstream Codespaces blocker: `PendingMigrationError`
 
-**Status:** experimental, container-wide workaround. Not a permanent fix.
+**Status:** unresolved upstream; there is no known working repository
+workaround.
 
-**Problem:** Node 22 defines a global `navigator` (the Web-platform API
-surface). The Copilot Chat extension bundled with VS Code / Codespaces reads
-`navigator` at module top level. When that read happens inside the *remote*
-extension host (`vscode-server`, which is how Codespaces runs extensions),
-VS Code's `PendingMigrationError` guard treats it as evidence of an
-inconsistent extension-host state and destabilizes the remote extension
-host — in practice, Copilot Chat slash-commands hang. There is no upstream
-fix as of this writing. Tracking issue:
-<https://github.com/microsoft/vscode/issues/312110>.
+A fresh Codespace at exact packet SHA
+`534fca42b4df9acc028bae6257f80763d4678e51` disproved the former
+container-wide `NODE_OPTIONS` preload:
 
-**Workaround:** `.devcontainer/kill-navigator.cjs` is a tiny, defensive Node
-preload that deletes `globalThis.navigator` (only if it exists and is
-configurable) before any other module in the process can read it. It is
-wired in via `containerEnv.NODE_OPTIONS` in `devcontainer.json`:
+- the VS Code server process inherited `NODE_OPTIONS`;
+- the remote extension-host process had `NODE_OPTIONS` unset because VS
+  Code's `extensionHostProcess.js` removes it before extension startup; and
+- `remoteexthost.log` still recorded repeated `PendingMigrationError` stacks
+  rooted in the built-in `GitHub.codespaces` 1.18.15 extension.
 
-```json
-"NODE_OPTIONS": "--require ${containerWorkspaceFolder}/.devcontainer/kill-navigator.cjs"
-```
+The preload therefore never reached the process where the observed failure
+occurred. It also changed every ordinary Node process in the container, and
+a missing preload file could make those processes fail before VS Code
+attached. The file and wiring were removed under
+[packet issue #105](https://github.com/Jesssullivan/dsa-study-packet/issues/105).
 
-This applies to *every* Node process started in the container — including
-`vscode-server`'s own extension host, not just this repo's scripts — because
-`NODE_OPTIONS` is a container-wide environment variable, not something
-scoped to a single invocation.
+Removal does **not** mean the upstream problem is fixed. Track
+[microsoft/vscode#312110](https://github.com/microsoft/vscode/issues/312110)
+as a related upstream `PendingMigrationError` report, not proof of an
+identical root cause. Its published stack is rooted in bundled Copilot; this
+exact-head Codespace's observed stack was rooted in built-in
+`GitHub.codespaces` 1.18.15. Require a new exact-head Codespace acceptance
+run before changing status. Copilot extension selection is a separate
+experiment tracked by
+[packet issue #94](https://github.com/Jesssullivan/dsa-study-packet/issues/94).
 
-`${containerWorkspaceFolder}` is used instead of a hardcoded path so the
-preload keeps resolving correctly if this repo is forked or cloned under a
-different name. Per the [Dev Container spec's variable
-table](https://containers.dev/implementors/json_reference/#variables-in-devcontainerjson),
-`${containerWorkspaceFolder}` is documented as usable in "Any" property,
-which includes `containerEnv` (this is different from `${containerEnv:VAR}`,
-which the same table restricts to `remoteEnv` only, because that form needs
-the container already running to introspect its environment).
+### Operator-safe evidence
 
-### The failure mode this creates, and why it matters
+For a new reproduction:
 
-`node --require <path>` exits non-zero for *every* Node invocation if
-`<path>` does not resolve to a real file — and `vscode-server` itself is a
-Node process. If `.devcontainer/kill-navigator.cjs` is ever moved, renamed,
-or accidentally left out of a fork, or if `${containerWorkspaceFolder}`
-resolves unexpectedly for some tool, the whole container's Node tooling
-(including the ability to attach VS Code / Codespaces to the container at
-all) can break, not just Copilot Chat.
+1. Create a new branch-specific Codespace and record its checkout SHA, VS
+   Code version, and extension versions.
+2. Verify Copilot sign-in and entitlement in the editor UI. Do not use
+   repository `gh` authentication as a proxy.
+3. Compare only the presence or absence of `NODE_OPTIONS` in the VS Code
+   server and remote extension-host processes. Do not publish full process
+   environments, settings sync data, or complete logs.
+4. Extract only the relevant `PendingMigrationError` stack and extension
+   identifier from `remoteexthost.log`. Redact tokens, user paths, and
+   unrelated extension data.
+5. Run the source-native practice acceptance separately, then stop or delete
+   the disposable Codespace.
 
-Mitigations already in place:
-
-- The preload script itself never throws and never breaks a Node
-  invocation once it has been successfully loaded (see the file's own
-  header comment for the exact contract).
-- `tests/test_codespaces_config.py` pins the `NODE_OPTIONS` wiring and the
-  presence/contents of the preload file, and (when `node` is available)
-  actually runs the preload as a subprocess.
-- `${containerWorkspaceFolder}` substitution keeps the path correct across
-  forks/renames rather than hardcoding `/workspaces/dsa-study-packet`.
-
-What is **not** mitigated: if the file is missing at container-build time
-for any other reason, every Node invocation in the container will fail
-until `devcontainer.json` is fixed and the container is rebuilt. Because
-that includes `vscode-server`, recovery may require editing
-`devcontainer.json` from outside the broken container (e.g. the GitHub web
-editor, or a local clone) and then rebuilding.
-
-### How to verify in a fresh Codespace
-
-1. Open a fresh Codespace on this branch (or rebuild an existing one so the
-   new `containerEnv` takes effect).
-2. Open a terminal and run `node -e "console.log(typeof navigator)"` — it
-   should print `undefined`.
-3. Open Copilot Chat and run `/comments` (or any slash-command) — it should
-   respond instead of hanging.
-
-### Rollback
-
-Delete the `NODE_OPTIONS` line from `containerEnv` in
-`.devcontainer/devcontainer.json` and delete
-`.devcontainer/kill-navigator.cjs`, then rebuild the container.
-
-### Removal condition
-
-Remove this workaround entirely once microsoft/vscode#312110 is confirmed
-fixed upstream in Codespaces (Copilot Chat no longer needs the global
-`navigator` removed to avoid `PendingMigrationError`).
+The practice acceptance remains the product signal. Process and log evidence
+only establishes where the upstream editor failure occurs; it must not be
+used to infer that the learner workflow passed.
