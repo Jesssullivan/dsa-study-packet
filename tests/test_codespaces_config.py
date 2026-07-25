@@ -154,7 +154,7 @@ def test_devcontainer_runs_each_lifecycle_phase_once() -> None:
     assert config["remoteEnv"]["PATH"].startswith("/home/vscode/.local/bin:")
 
 
-def test_devcontainer_uses_native_copilot_without_external_cli_provisioning() -> None:
+def test_devcontainer_uses_copilot_chat_without_deprecated_extension() -> None:
     config = _json(".devcontainer/devcontainer.json")
     assert isinstance(config, dict)
     customizations = config["customizations"]
@@ -162,7 +162,8 @@ def test_devcontainer_uses_native_copilot_without_external_cli_provisioning() ->
     vscode = customizations["vscode"]
     assert isinstance(vscode, dict)
     extensions = set(vscode["extensions"])
-    assert {"GitHub.copilot", "GitHub.copilot-chat"} <= extensions
+    assert "GitHub.copilot-chat" in extensions
+    assert "GitHub.copilot" not in extensions
     assert not any("anthropic" in extension.lower() for extension in extensions)
     features = config.get("features", {})
     assert isinstance(features, dict)
