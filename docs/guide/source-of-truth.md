@@ -33,12 +33,13 @@ in reference material are context, not runnable practice tracks.
 | local MkDocs output in `site/` | `just docs-build` |
 
 Production reading pages use a separate static site repository. Its
-`scripts/sync-content.mjs` reads a public packet checkout at `HEAD`, records
-the packet commit and source paths in `src/content/.manifest.json`, and
-prerenders [dsa-woodshed.space](https://dsa-woodshed.space). This repository
-owns the content; the site repository owns the shell, navigation, and
-rendering. The local `site/` output is a development artifact, not the
-production deployment.
+`scripts/sync-content.mjs` resolves one exact public packet commit and reads
+every synced source from that revision. It records the commit, source paths,
+and digests in `src/content/.manifest.json`. The site verifies those digests
+before it prerenders
+[dsa-woodshed.space](https://dsa-woodshed.space). This repository owns the
+content; the site repository owns the shell, navigation, and rendering. The
+local `site/` output is a development artifact, not the production deployment.
 
 ## Three Layers
 
