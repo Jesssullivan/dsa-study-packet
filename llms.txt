@@ -6,8 +6,9 @@
 ## Read Order
 
 1. `AGENTS.md`: agent conduct, practice entry points, public boundary
-2. `TRACK-CONTRACT.md`: the versioned practice-flow contract this and future
-   language tracks implement
+2. `TRACK-CONTRACT.md`: provisional, descriptive Python practice-flow contract
+   v2; validation follows G and prompt 75, preceding R, TypeScript, C++, or Rust
+   implementation
 3. `docs/guide/getting-started.md`: first rep walkthrough
 4. `docs/guide/source-of-truth.md`: full layer and public-boundary contract
 5. `CLAUDE.md`: Claude-specific overlay, secondary to `AGENTS.md`
@@ -39,8 +40,8 @@ values.
 
 ## Reading Site
 
-[dsa-woodshed.space](https://dsa-woodshed.space) renders this repo at `HEAD`.
-This repo owns content; the site owns the shell.
+[dsa-woodshed.space](https://dsa-woodshed.space) syncs an exact commit and
+verifies digests before build. Repo owns content; site owns shell.
 
 ## Constraints
 

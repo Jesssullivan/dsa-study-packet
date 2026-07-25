@@ -1,5 +1,6 @@
-"""The Core 42 problem set, grouped by topic.
+"""The Core 43 problem set, grouped by topic.
 
+The historical module and ``CORE_42`` identifier remain stable for callers.
 Single source of truth shared by the progress-page generator and the
 spaced-repetition scheduler (keeps the two from drifting).
 """
