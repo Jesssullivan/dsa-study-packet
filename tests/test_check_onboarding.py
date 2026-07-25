@@ -5,6 +5,8 @@ import shutil
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from check_onboarding import (  # type: ignore[import-not-found]
     FORBIDDEN,
@@ -40,19 +42,51 @@ def test_removed_slash_command_is_caught(tmp_path: Path) -> None:
     assert all(failure.startswith("README.md:") for failure in failures)
 
 
-def test_deprecated_copilot_extension_is_caught(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "deprecated_extension",
+    ["GitHub.copilot", "github.copilot", "GiThUb.CoPiLoT"],
+)
+def test_deprecated_copilot_extension_is_caught(
+    tmp_path: Path, deprecated_extension: str
+) -> None:
     _mirror_surfaces(tmp_path)
     victim = tmp_path / ".devcontainer/devcontainer.json"
-    victim.write_text(
-        victim.read_text().replace(
-            '"GitHub.copilot-chat",',
-            '"GitHub.copilot",\n\t\t\t\t"GitHub.copilot-chat",',
-        )
-    )
+    config = json.loads(victim.read_text())
+    config["customizations"]["vscode"]["extensions"].append(deprecated_extension)
+    victim.write_text(json.dumps(config))
+
+    assert (
+        ".devcontainer/devcontainer.json: contains deprecated GitHub.copilot extension"
+    ) in check(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "chat_extension",
+    ["github.copilot-chat", "GiThUb.CoPiLoT-ChAt"],
+)
+def test_required_copilot_chat_extension_is_case_insensitive(
+    tmp_path: Path, chat_extension: str
+) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / ".devcontainer/devcontainer.json"
+    config = json.loads(victim.read_text())
+    extensions = config["customizations"]["vscode"]["extensions"]
+    extensions[extensions.index("GitHub.copilot-chat")] = chat_extension
+    victim.write_text(json.dumps(config))
+
+    assert check(tmp_path) == []
+
+
+def test_missing_copilot_chat_extension_is_caught(tmp_path: Path) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / ".devcontainer/devcontainer.json"
+    config = json.loads(victim.read_text())
+    config["customizations"]["vscode"]["extensions"].remove("GitHub.copilot-chat")
+    victim.write_text(json.dumps(config))
 
     assert (
         ".devcontainer/devcontainer.json: "
-        "contains deprecated GitHub.copilot extension"
+        "missing required GitHub.copilot-chat extension"
     ) in check(tmp_path)
 
 
@@ -60,14 +94,11 @@ def test_non_list_vscode_extensions_are_caught(tmp_path: Path) -> None:
     _mirror_surfaces(tmp_path)
     victim = tmp_path / ".devcontainer/devcontainer.json"
     config = json.loads(victim.read_text())
-    config["customizations"]["vscode"]["extensions"] = {
-        "GitHub.copilot-chat": True
-    }
+    config["customizations"]["vscode"]["extensions"] = {"GitHub.copilot-chat": True}
     victim.write_text(json.dumps(config))
 
     assert (
-        ".devcontainer/devcontainer.json: "
-        "VS Code extensions must be a list of strings"
+        ".devcontainer/devcontainer.json: VS Code extensions must be a list of strings"
     ) in check(tmp_path)
 
 
@@ -79,8 +110,7 @@ def test_non_string_vscode_extension_is_caught(tmp_path: Path) -> None:
     victim.write_text(json.dumps(config))
 
     assert (
-        ".devcontainer/devcontainer.json: "
-        "VS Code extensions must be a list of strings"
+        ".devcontainer/devcontainer.json: VS Code extensions must be a list of strings"
     ) in check(tmp_path)
 
 

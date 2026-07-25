@@ -50,7 +50,6 @@ SURFACES: dict[str, tuple[str, ...]] = {
         "just practice-finish",
     ),
     ".devcontainer/devcontainer.json": (
-        COPILOT_CHAT_EXTENSION,
         "setup.sh --tools",
         "setup.sh --sync",
         "setup.sh --seed",
@@ -175,7 +174,7 @@ def check(root: Path) -> list[str]:
         try:
             devcontainer = json.loads(devcontainer_path.read_text())
             raw_extensions = devcontainer["customizations"]["vscode"]["extensions"]
-        except (json.JSONDecodeError, KeyError, TypeError):
+        except json.JSONDecodeError, KeyError, TypeError:
             extensions = None
             failures.append(
                 ".devcontainer/devcontainer.json: invalid VS Code customization"
@@ -192,12 +191,13 @@ def check(root: Path) -> list[str]:
             else:
                 extensions = raw_extensions
         if extensions is not None:
-            if COPILOT_CHAT_EXTENSION not in extensions:
+            normalized_extensions = {extension.casefold() for extension in extensions}
+            if COPILOT_CHAT_EXTENSION.casefold() not in normalized_extensions:
                 failures.append(
                     ".devcontainer/devcontainer.json: "
                     f"missing required {COPILOT_CHAT_EXTENSION} extension"
                 )
-            if DEPRECATED_COPILOT_EXTENSION in extensions:
+            if DEPRECATED_COPILOT_EXTENSION.casefold() in normalized_extensions:
                 failures.append(
                     ".devcontainer/devcontainer.json: "
                     f"contains deprecated {DEPRECATED_COPILOT_EXTENSION} extension"
