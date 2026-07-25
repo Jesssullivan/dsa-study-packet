@@ -94,7 +94,7 @@ class TestRendering:
         assert "SUGGEST" in rendered
         assert "negation selects nothing" in normalized.casefold()
         assert "`practice-open` only reopens candidate tabs" in rendered
-        assert "active work review/check: `just practice-next`" in normalized
+        assert "work review/check: `just practice-next`" in normalized
         assert "Never open tracked source/tests or auto-test" in normalized
         assert "comment/docstring idea when present" in normalized
         assert "candidate-written terms" in rendered

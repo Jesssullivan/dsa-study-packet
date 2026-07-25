@@ -1,6 +1,6 @@
 ---
 name: continue
-description: Show the current rep state and one next action
+description: Show the rep state and next action
 agent: 'Interviewer'
 ---
 
@@ -12,4 +12,4 @@ Paraphrase one candidate-authored comment/docstring idea when present. Ignore
 scaffold; use candidate-written terms. Give one fix and only `NEXT:`'s action.
 Add no pattern, data-structure, or pass-count term absent from their comments.
 Never claim automatic save detection, edit candidate files, require comment
-structure, or invent state. Test intent: `just practice-test`.
+structure, or invent state. Only explicit test intent runs `just practice-test`.

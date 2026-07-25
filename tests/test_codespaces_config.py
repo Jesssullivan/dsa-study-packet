@@ -608,7 +608,7 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
         assert "REVISION" in text
         assert "IMPLEMENT" in text
         assert "TESTS_FIRST" in text
-        assert "active work review/check" in folded
+        assert "work review/check" in folded
         assert "just practice-next" in text
         assert "FOCUS" in text
         assert "OPENED" in text
@@ -639,6 +639,35 @@ def test_all_interviewer_surfaces_prioritize_safe_file_open_intent() -> None:
             "no pattern, data-structure, or pass-count term absent from their comments"
             in folded
         )
+
+
+def test_all_interviewer_surfaces_relay_structured_test_preflight() -> None:
+    for relative in (
+        "AGENTS.md",
+        ".agents/skills/interviewer/SKILL.md",
+        ".claude/skills/interviewer/SKILL.md",
+        ".github/agents/interviewer.agent.md",
+        ".github/copilot-instructions.md",
+    ):
+        text = " ".join((ROOT / relative).read_text().split())
+        assert "missing harness" in text.casefold()
+        assert "relay present" in text
+        assert "otherwise relay exact error" in text or "else exact error" in text
+        for field in ("`STATE`", "`TEST`", "`NEXT`"):
+            assert field in text
+
+
+def test_all_interviewer_surfaces_require_explicit_test_intent() -> None:
+    for relative in (
+        "AGENTS.md",
+        ".agents/skills/interviewer/SKILL.md",
+        ".claude/skills/interviewer/SKILL.md",
+        ".github/agents/interviewer.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/prompts/continue.prompt.md",
+    ):
+        text = " ".join((ROOT / relative).read_text().split())
+        assert "Only explicit test intent runs `just practice-test`" in text
 
 
 def test_slash_prompts_route_to_the_interviewer_and_portable_recipe() -> None:

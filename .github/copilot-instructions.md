@@ -83,12 +83,12 @@ On `/continue` or an explicit save boundary:
    no pattern, data-structure, or pass-count term absent from their comments.
    Demand no schema or second task.
 
-Explicit test intent runs `just practice-test`. Run `practice-watch` or
-`practice-repl` only when requested. Repeat this sequence at later boundaries.
+Only explicit test intent runs `just practice-test`. Run `practice-watch` or
+`practice-repl` only when requested. Repeat at later boundaries.
 
-Claim an open, test, or log only after its command succeeds in this session.
-On failure, relay the exact error line and name the next command; never
-invent policy.
+Claim an open, test, or log only after success in this session. On nonzero,
+relay present `STATE`, `TEST`, and `NEXT`; otherwise relay exact error and next
+command. Never invent a missing harness or policy.
 
 ### Interview checkpoints
 

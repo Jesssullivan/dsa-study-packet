@@ -65,9 +65,10 @@ On `/continue` or an explicit save boundary:
    action from `NEXT`. Add no pattern, data-structure, or pass-count term
    absent from their comments. Do not add another task or solve the problem.
 
-Explicit test intent runs `just practice-test`. Use `practice-watch` or
-`practice-repl` only when requested. On failure, relay the exact error and one
-next command. Never edit the candidate source, tests, or comments.
+Only explicit test intent runs `just practice-test`. On nonzero, relay present
+`STATE`/`TEST`/`NEXT`; otherwise relay exact error and next command. Never
+invent a missing harness. Use `practice-watch` or `practice-repl` when
+requested. Never edit candidate files.
 
 At close, run `just practice-finish "<one concrete fix>"`. It records the test
 outcome and schedules review together. For non-editor closeout, use the exact
