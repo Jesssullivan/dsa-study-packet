@@ -27,6 +27,17 @@ just practice-start comments graphs dijkstra
 If named vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start
 the same loop with optional labels.
 
+To study a named problem before a rep, open read-only snapshots of its
+committed solution and reference tests:
+
+```bash
+just practice-study topic problem
+```
+
+Study creates no rep or log. When you are ready, run the exact `IMPLEMENT` or
+`TESTS_FIRST` transition it emits. Either one starts a fresh isolated candidate
+pair.
+
 Write your comments in the file, save, then use `/continue` or `just
 practice-next` for one next instruction. Then implement and add cases in your
 test file.

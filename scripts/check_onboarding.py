@@ -1,11 +1,11 @@
 """Guard the native Codespaces editor-practice onboarding contract.
 
 The learner should see the same four workspace slash commands in the public
-onboarding, the Codespaces banner, and VS Code's prompt recommendations. Each
-prompt must route through the portable ``just practice-start`` interface and
-the Interviewer agent without a direct edit tool. Codespaces must not
-resurrect the old folder-open terminals or provision external agent CLIs and
-credentials.
+onboarding, command maps, the Codespaces banner, and VS Code's prompt
+recommendations. Each prompt must route through the portable ``just
+practice-start`` interface and the Interviewer agent without a direct edit
+tool. Codespaces must not resurrect the old folder-open terminals or provision
+external agent CLIs and credentials.
 """
 
 from __future__ import annotations
@@ -24,6 +24,13 @@ DEPRECATED_COPILOT_EXTENSION = "GitHub.copilot"
 
 # Relative file -> substrings it must contain.
 SURFACES: dict[str, tuple[str, ...]] = {
+    "agent-map.md": (
+        "just practice-open",
+        "just practice-study topic problem",
+        "just practice-start-tests topic problem",
+        "IMPLEMENT",
+        "TESTS_FIRST",
+    ),
     "README.md": (
         BRAND,
         *SLASH_COMMANDS,
@@ -32,6 +39,17 @@ SURFACES: dict[str, tuple[str, ...]] = {
         "just practice-study",
         "just practice-next",
         "just practice-finish",
+    ),
+    "docs/challenges/index.md": (
+        "just practice-study topic problem",
+        "IMPLEMENT",
+        "TESTS_FIRST",
+    ),
+    "docs/guide/source-of-truth.md": (
+        "just practice-open",
+        "just practice-study",
+        "just practice-start-tests",
+        "just practice-next",
     ),
     "WELCOME.md": (
         *SLASH_COMMANDS,
