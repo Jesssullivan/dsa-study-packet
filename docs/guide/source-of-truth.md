@@ -45,7 +45,7 @@ production deployment.
 | Layer | What | Where | Public? |
 |-------|------|-------|---------|
 | **L1: knowledge** | algorithms, tests, concepts, reference sheets 01–09 | this repo | ✅ |
-| **L2: practice method** | sheets 10–11, `just practice-start` / `just practice-test` / `just interview` / `just practice-finish` / `just rep-finish`, spaced repetition | this repo | ✅ |
+| **L2: practice method** | sheets 10–11; `just practice-open`, `just practice-study`, `just practice-start`, `just practice-start-tests`, `just practice-next`, `just practice-test`, `just interview`, atomic finish commands, and spaced repetition | this repo | ✅ |
 | **L3: private overlay** | employer/panel front & back matter, people, dates, tailored positioning, personal rep logs | a private downstream repo | ⛔ never here |
 
 The distinction that keeps this publishable: L2 is a *method* ("how to reason,

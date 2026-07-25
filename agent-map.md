@@ -45,8 +45,7 @@ as a `STATE` value.
 
 ## Prohibited
 
-- Never write candidate source, tests, or the practice gate; the candidate
-  owns them.
+- Never write candidate source or tests; the candidate owns them.
 - Never read, score, or log private arrival writing. Read only command-emitted
   candidate paths at save boundaries or study snapshots on explicit request.
 - `just` is the only front door; never invoke raw Bazel directly.

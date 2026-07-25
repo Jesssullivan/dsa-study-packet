@@ -43,6 +43,27 @@ def test_removed_slash_command_is_caught(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    ("relative", "needle"),
+    [
+        ("agent-map.md", "just practice-study topic problem"),
+        ("docs/challenges/index.md", "TESTS_FIRST"),
+        ("docs/guide/source-of-truth.md", "just practice-open"),
+    ],
+)
+def test_public_study_surface_drift_is_caught(
+    tmp_path: Path, relative: str, needle: str
+) -> None:
+    _mirror_surfaces(tmp_path)
+    victim = tmp_path / relative
+    victim.write_text(victim.read_text().replace(needle, ""))
+
+    failures = check(tmp_path)
+
+    assert f'{relative}: missing "{needle}"' in failures
+    assert all(failure.startswith(f"{relative}:") for failure in failures)
+
+
+@pytest.mark.parametrize(
     "deprecated_extension",
     ["GitHub.copilot", "github.copilot", "GiThUb.CoPiLoT"],
 )
